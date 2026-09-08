@@ -5,26 +5,33 @@ import { appRoutes } from "./app-routes";
 import type { AppRoute } from "./route.types";
 import type { RouteAccessResult } from "./route-guard";
 
+import { useAuthStore } from "@/app/store/auth.store";
+
 interface AppRouterProps {
   canAccess?: (route: AppRoute) => RouteAccessResult;
 }
 
-/**
- * ===========================================================================
- * APPLICATION ROUTER
- * ===========================================================================
- *
- * Punto de entrada del sistema de routing de la aplicación.
- *
- * La infraestructura de routing vive en este directorio.
- * Las rutas concretas de la aplicación viven en `app-routes.tsx`.
- *
- * El router no conoce ningún dominio de negocio.
- */
 export const AppRouter = ({ canAccess }: AppRouterProps) => {
+  const isAuthenticated = useAuthStore(
+    (state) => state.isAuthenticated,
+  );
+
+  const defaultCanAccess = (route: AppRoute): RouteAccessResult => {
+    if (!route.meta?.requiresAuth) {
+      return "allowed";
+    }
+
+    return isAuthenticated ? "allowed" : "denied";
+  };
+
+  const accessStrategy = canAccess ?? defaultCanAccess;
+
   return (
     <BrowserRouter>
-      <RouteRenderer routes={appRoutes} canAccess={canAccess} />
+      <RouteRenderer
+        routes={appRoutes}
+        canAccess={accessStrategy}
+      />
     </BrowserRouter>
   );
 };

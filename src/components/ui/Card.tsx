@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 
-interface CardProps extends HTMLAttributes<HTMLDivElement> {}
+type CardProps = HTMLAttributes<HTMLDivElement>
 
 function Card({ className = "", ...props }: CardProps) {
   const classes = [
@@ -69,6 +69,15 @@ function CardFooter({
   return <div className={classes} {...props} />;
 }
 
+function CardBody({
+  className = "",
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
+  const classes = ["p-6", className].filter(Boolean).join(" ");
+
+  return <div className={classes} {...props} />;
+}
+
 export {
   Card,
   CardContent,
@@ -76,4 +85,5 @@ export {
   CardFooter,
   CardHeader,
   CardTitle,
+  CardBody,
 };

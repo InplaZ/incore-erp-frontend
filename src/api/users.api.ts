@@ -11,6 +11,7 @@ export interface User {
   is_active: boolean;
   last_login: string | null;
   date_joined: string;
+  
 }
 
 export interface CreateUserInput {

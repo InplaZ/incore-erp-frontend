@@ -18,6 +18,7 @@ describe("Sidebar", () => {
       id: "settings",
       label: "Configuración",
     },
+
   ];
 
   it("renderiza el sidebar y sus elementos", () => {

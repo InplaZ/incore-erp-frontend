@@ -78,6 +78,11 @@ export const api = createApiClient({
    */
   withCredentials: false,
 
+  auth:{
+    scheme: "Bearer",
+    getToken: () => localStorage.getItem("access_token")
+  },
+
   /**
    * Manejo específico de respuestas HTTP 401.
    *

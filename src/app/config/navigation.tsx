@@ -52,4 +52,10 @@ export const navigationItems: NavigationItem[] = [
     href: "/ui-playground",
     icon: <PanelsTopLeft className="size-5" />,
   },
+  {
+    id: "admin",
+    label: "Usuarios",
+    href: "/admin", //usuarios 
+    icon: <PanelsTopLeft className="size-5" />,
+  },
 ];
