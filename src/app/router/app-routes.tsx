@@ -1,78 +1,65 @@
-/* eslint-disable react-refresh/only-export-components */
-
 import { lazy } from "react";
 import { Navigate } from "react-router-dom";
 
 import type { AppRoute } from "./route.types";
 
 const UiPlaygroundPage = lazy(
-  () => import("@/pages/ui-playground/ui-playground-page")
+  () => import("../../pages/ui-playground/ui-playground-page"),
 );
 
-const HomePage = lazy(
-  () => import("@/pages/home/home-page")
-);
+const HomePage = lazy(() => import("../../pages/home/home-page"));
 
-const NotFoundPage = lazy(
-  () => import("@/pages/not-found/not-found-page")
-);
+const NotFoundPage = lazy(() => import("../../pages/not-found/not-found-page"));
 
-const AppLayout = lazy(
-  () => import("@/pages/layouts/app-layout")
-);
+const AppLayout = lazy(() => import("../../pages/layouts/app-layout"));
 
 const DashboardPage = lazy(
-  () => import("@/pages/dashboard/dashboard-page")
+  () => import("../../pages/dashboard/dashboard-page"),
 );
 
-const AdminPage = lazy(
-  () => import("@/features/admin/AdminPage")
-);
-
-const LoginPage = lazy(
-  () => import("@/features/auth/LoginPage")
-);
-
+/**
+ * ============================================================================
+ * APPLICATION ROUTES
+ * ============================================================================
+ *
+ * Configuración de rutas específica de la aplicación.
+ *
+ * El router genérico únicamente interpreta esta estructura.
+ */
 export const appRoutes: AppRoute[] = [
   /**
-   * LOGIN
-   * No utiliza AppLayout.
+   * --------------------------------------------------------------------------
+   * APPLICATION LAYOUT
+   * --------------------------------------------------------------------------
+   *
+   * Las rutas principales de la aplicación comparten:
+   *
+   * - Sidebar
+   * - Header
+   * - Área de contenido
    */
   {
-    path: "/auth",
-    element: <LoginPage />,
+    element: <AppLayout />,
+    children: [
+      {
+        path: "/",
+        element: <HomePage />,
+      },
+      {
+        path: "/dashboard",
+        element: <DashboardPage />,
+      },
+      {
+        path: "/ui-playground",
+        element: <UiPlaygroundPage />,
+      },
+    ],
   },
 
   /**
-   * APLICACIÓN
-   */
-  {
-  element: <AppLayout />,
-  meta: {
-    requiresAuth: true,
-  },
-  children: [
-    {
-      path: "/",
-      element: <HomePage />,
-    },
-    {
-      path: "/dashboard",
-      element: <DashboardPage />,
-    },
-    {
-      path: "/ui-playground",
-      element: <UiPlaygroundPage />,
-    },
-    {
-      path: "/admin",
-      element: <AdminPage />,
-    },
-  ],
-},
-
-  /**
+   * --------------------------------------------------------------------------
    * REDIRECT
+   * --------------------------------------------------------------------------
    */
   {
     path: "/old-dashboard",
@@ -80,7 +67,9 @@ export const appRoutes: AppRoute[] = [
   },
 
   /**
+   * --------------------------------------------------------------------------
    * FALLBACK
+   * --------------------------------------------------------------------------
    */
   {
     path: "*",

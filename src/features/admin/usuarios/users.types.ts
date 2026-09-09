@@ -1,6 +1,4 @@
-import { createCrudOperations } from "./api-crud";
-import { api } from "./api.config";
-import type { CrudListParams } from "./api.types";
+import type { CrudListParams } from "@/api/api.types";
 
 export interface User {
   id: number;
@@ -11,7 +9,6 @@ export interface User {
   is_active: boolean;
   last_login: string | null;
   date_joined: string;
-  
 }
 
 export interface CreateUserInput {
@@ -46,13 +43,3 @@ export interface UserListResponse {
   previous: string | null;
   results: User[];
 }
-
-export const usersApi = createCrudOperations<
-  User,
-  CreateUserInput,
-  UpdateUserInput,
-  UserListResponse,
-  UserListParams
->(api, "usuarios",{
-  trailingSlash: true
-});
