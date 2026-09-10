@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 
 import type { AppRoute } from "./route.types";
 
+import { comercialRoutes } from "./routes/comercial.routes";
 // Layout
 const AppLayout = lazy(
   () => import("../../pages/layouts/app-layout"),
@@ -74,6 +75,7 @@ export const appRoutes: AppRoute[] = [
         path: "/admin",
         element: <AdminPage />,
       },
+      ...comercialRoutes,
     ],
   },
 
