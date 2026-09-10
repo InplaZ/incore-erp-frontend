@@ -36,7 +36,7 @@ export const DEFAULT_THEME: Theme = "system";
  *
  * "neutral" corresponde al comportamiento original del template.
  */
-export const DEFAULT_COLOR_THEME: ColorTheme = "rose";
+export const DEFAULT_COLOR_THEME: ColorTheme = "green"; //CAMBIO DE COLOR POR DEFECTO
 
 /**
  * ----------------------------------------------------------------------------

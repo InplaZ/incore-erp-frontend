@@ -35,7 +35,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left panel */}
-      <div className="hidden lg:flex flex-1 bg-inplaz-900 text-white p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex flex-1 bg-inplaz-900 text-blue-700 p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl -mr-20 -mt-20" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-inplaz-500/20 rounded-full blur-3xl -ml-20 -mb-20" />
 

@@ -9,8 +9,8 @@ import {
   Lock,
 } from 'lucide-react';
 
-import { usersApi } from '@/api/users.api';
-import { rolesApi } from '@/api/roles.api';
+import { usersApi } from '@/features/admin/usuarios/users.api';
+import { rolesApi } from '@/features/admin/roles/roles.api';
 
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
@@ -21,6 +21,8 @@ import { LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 import { formatDate } from '@/utils';
+import type { UserListResponse } from "@/features/admin/usuarios/users.types";
+import type { RoleListResponse } from "@/features/admin/roles/roles.types";
 
 const PERMISSIONS_MATRIX = [
   {
@@ -55,7 +57,7 @@ export default function AdminPage() {
   const {
     data: usuariosData,
     isLoading: usuariosLoading,
-  } = useQuery({
+  } = useQuery<UserListResponse>({
     queryKey: ['admin-usuarios'],
     queryFn: () => usersApi.list(),
   });
@@ -67,7 +69,7 @@ export default function AdminPage() {
   const {
     data: rolesData,
     isLoading: rolesLoading,
-  } = useQuery({
+  } = useQuery<RoleListResponse>({
     queryKey: ['admin-roles'],
     queryFn: () => rolesApi.list(),
   });

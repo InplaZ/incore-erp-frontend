@@ -54,7 +54,7 @@ export const navigationItems: NavigationItem[] = [
   },
   {
     id: "admin",
-    label: "Usuarios",
+    label: "Usuario", //Como se ve en el navar
     href: "/admin", //usuarios 
     icon: <PanelsTopLeft className="size-5" />,
   },

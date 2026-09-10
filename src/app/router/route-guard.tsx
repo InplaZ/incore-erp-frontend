@@ -154,5 +154,5 @@ export const RouteGuard = ({
    *
    * Por eso el comportamiento predeterminado utiliza `/`.
    */
-  return <Navigate to="/auth" replace />;
+  return <Navigate to="/login" replace />;
 };

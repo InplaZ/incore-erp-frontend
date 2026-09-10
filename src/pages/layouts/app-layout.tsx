@@ -10,8 +10,24 @@ import { SidebarNavigationLink } from "../../components/navigation/SidebarNaviga
 
 import { navigationItems } from "../../app/config/navigation";
 
+import { useAuthStore } from "@/app/store/auth.store";
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, roles, logout } = useAuthStore();
+
+  //Crear usuario para Header
+  const headerUser = user
+    ? {
+        name:
+          `${user.first_name} ${user.last_name}`.trim() ||
+          user.username,
+        email: user.email,
+        role: roles[0]?.name,
+        initials:
+          `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}` ||
+          user.username[0]?.toUpperCase(),
+      }
+    : undefined;
 
   /*
    * Convertimos NavigationItem a la interfaz
@@ -57,6 +73,8 @@ export function AppLayout() {
           searchPlaceholder="Buscar..."
           showMenuButton
           onMenuClick={() => setMobileOpen(true)}
+          user={headerUser}
+          onLogout={logout}
         />
 
         <main className="min-w-0 flex-1 overflow-x-hidden bg-background p-4 md:p-6">

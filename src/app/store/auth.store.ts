@@ -1,11 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import type { User, Role } from '@/types';
-import { authApi } from '@/api/auth.api';
+import type { User } from '@/features/admin/usuarios/users.types';
+import type { Role } from '@/features/admin/roles/roles.types';
+import type { Permission } from '@/features/admin/permisos/permissions.types';
+
+import { authApi } from '@/features/auth/auth.api';
 
 interface AuthState {
   user: User | null;
+  roles: Role[];
+  permissions: Permission[];
   isAuthenticated: boolean;
   sidebarCollapsed: boolean;
 
@@ -27,6 +32,8 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      roles: [],
+      permissions: [],
       isAuthenticated: false,
       sidebarCollapsed: false,
 
@@ -49,7 +56,17 @@ export const useAuthStore = create<AuthState>()(
           response.refresh,
         );
 
+        // Obtener usuario
+        const user = await authApi.getUser(username);
+        // Obtener roles
+        const roles = await authApi.getRoles(user.id);
+        // Obtener permisos efectivos
+        const permissions = await authApi.getPermissions(user.id);
+        // Guardar información de sesión
         set({
+          user,
+          roles,
+          permissions,
           isAuthenticated: true,
         });
 
@@ -65,6 +82,8 @@ export const useAuthStore = create<AuthState>()(
 
         set({
           user: null,
+          roles: [],
+          permissions: [],
           isAuthenticated: false,
         });
       },
@@ -81,30 +100,26 @@ export const useAuthStore = create<AuthState>()(
       // PERMISOS
       // ============================================================
       hasPermission: (perm) => {
-        const user = get().user;
+        const permissions = get().permissions;
 
-        if (!user) {
-          return false;
-        }
-
-        if (user.permissions.includes('*')) {
+        if (permissions.some((permission) => permission.codename === '*')) {
           return true;
         }
 
-        return user.permissions.includes(perm);
+        return permissions.some(
+          (permission) => permission.codename === perm,
+        );
       },
 
       // ============================================================
       // ROLES
       // ============================================================
       hasRole: (...roles) => {
-        const user = get().user;
+        const userRoles = get().roles;
 
-        if (!user) {
-          return false;
-        }
-
-        return roles.includes(user.role);
+        return userRoles.some((userRole) =>
+          roles.some((role) => role.id === userRole.id),
+        );
       },
     }),
     {
