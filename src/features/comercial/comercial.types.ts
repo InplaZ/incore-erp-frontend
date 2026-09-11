@@ -160,6 +160,10 @@ export interface SolicitudComercial {
   fecha: string;
   descripcion: string;
 
+  cantidad: string;
+  fecha_entrega: string | null;
+  observaciones: string;
+
   prioridad: PrioridadSolicitud;
   estado: EstadoSolicitud;
 
@@ -169,13 +173,15 @@ export interface SolicitudComercial {
 
 export interface SolicitudComercialCreate {
   cuenta_comercial: number;
-  usuario: number;
 
   fecha: string;
   descripcion: string;
 
+  cantidad: string;
+  fecha_entrega?: string | null;
+  observaciones?: string;
+
   prioridad?: PrioridadSolicitud;
-  estado?: EstadoSolicitud;
 }
 
 export type SolicitudComercialUpdate =
@@ -366,7 +372,7 @@ export type EspecificacionBobinaSolicitadaUpdate =
 
 export type TipoComunicacion = 
   | "enviado"
-  | "recibid";
+  | "recibido";
 
 export type MedioComunicacion =
   | "llamada"

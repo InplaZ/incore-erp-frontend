@@ -137,14 +137,14 @@ export const solicitudesComercialesApi = {
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<SolicitudComercial>> => {
     return api.get<PaginatedResponse<SolicitudComercial>>(
-      "/solicitudes/",
+      "/comercial/solicitudes/",
       { params },
     );
   },
 
   get: async (id: number): Promise<SolicitudComercial> => {
     return api.get<SolicitudComercial>(
-      `/solicitudes/${id}/`,
+      `/comercial/solicitudes/${id}/`,
     );
   },
 
@@ -152,7 +152,7 @@ export const solicitudesComercialesApi = {
     data: SolicitudComercialCreate,
   ): Promise<SolicitudComercial> => {
     return api.post<SolicitudComercial>(
-      "/solicitudes/",
+      "/comercial/solicitudes/",
       data,
     );
   },
@@ -162,13 +162,13 @@ export const solicitudesComercialesApi = {
     data: SolicitudComercialUpdate,
   ): Promise<SolicitudComercial> => {
     return api.patch<SolicitudComercial>(
-      `/solicitudes/${id}/`,
+      `/comercial/solicitudes/${id}/`,
       data,
     );
   },
 
   remove: async (id: number): Promise<void> => {
-    await api.delete(`/solicitudes/${id}/`);
+    await api.delete(`/comercial/solicitudes/${id}/`);
   },
 };
 
@@ -182,7 +182,7 @@ export const especificacionesProductoApi = {
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<EspecificacionProductoSolicitado>> => {
     return api.get<PaginatedResponse<EspecificacionProductoSolicitado>>(
-      "/especificacion-producto-solicitado/",
+      "/comercial/especificacion-producto-solicitado/",
       { params },
     );
   },
@@ -191,7 +191,7 @@ export const especificacionesProductoApi = {
     id: number,
   ): Promise<EspecificacionProductoSolicitado> => {
     return api.get<EspecificacionProductoSolicitado>(
-      `/especificacion-producto-solicitado/${id}/`,
+      `/comercial/especificacion-producto-solicitado/${id}/`,
     );
   },
 
@@ -199,7 +199,7 @@ export const especificacionesProductoApi = {
     data: EspecificacionProductoSolicitadoCreate,
   ): Promise<EspecificacionProductoSolicitado> => {
     return api.post<EspecificacionProductoSolicitado>(
-      "/especificacion-producto-solicitado/",
+      "/comercial/especificacion-producto-solicitado/",
       data,
     );
   },
@@ -210,7 +210,7 @@ export const especificacionesProductoApi = {
   ): Promise<EspecificacionProductoSolicitado> => {
     const response =
       await api.patch<EspecificacionProductoSolicitado>(
-        `/especificacion-producto-solicitado/${id}/`,
+        `/comercial/especificacion-producto-solicitado/${id}/`,
         data,
       );
 
@@ -219,7 +219,7 @@ export const especificacionesProductoApi = {
 
   remove: async (id: number): Promise<void> => {
     await api.delete(
-      `/especificacion-producto-solicitado/${id}/`,
+      `/comercial/especificacion-producto-solicitado/${id}/`,
     );
   },
 };
@@ -234,7 +234,7 @@ export const especificacionesBolsaApi = {
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<EspecificacionBolsaSolicitada>> => {
     return api.get<PaginatedResponse<EspecificacionBolsaSolicitada>>(
-      "/especificacion-bolsa-solicitada/",
+      "/comercial/especificacion-bolsa-solicitada/",
       { params },
     );
   },
@@ -243,7 +243,7 @@ export const especificacionesBolsaApi = {
     id: number,
   ): Promise<EspecificacionBolsaSolicitada> => {
     return api.get<EspecificacionBolsaSolicitada>(
-      `/especificacion-bolsa-solicitada/${id}/`,
+      `/comercial/especificacion-bolsa-solicitada/${id}/`,
     );
   },
 
@@ -251,7 +251,7 @@ export const especificacionesBolsaApi = {
     data: EspecificacionBolsaSolicitadaCreate,
   ): Promise<EspecificacionBolsaSolicitada> => {
     return api.post<EspecificacionBolsaSolicitada>(
-      "/especificacion-bolsa-solicitada/",
+      "/comercial/especificacion-bolsa-solicitada/",
       data,
     );
   },
@@ -261,14 +261,14 @@ export const especificacionesBolsaApi = {
     data: EspecificacionBolsaSolicitadaUpdate,
   ): Promise<EspecificacionBolsaSolicitada> => {
     return api.patch<EspecificacionBolsaSolicitada>(
-      `/especificacion-bolsa-solicitada/${id}/`,
+      `/comercial/especificacion-bolsa-solicitada/${id}/`,
       data,
     );
   },
 
   remove: async (id: number): Promise<void> => {
     await api.delete(
-      `/especificacion-bolsa-solicitada/${id}/`,
+      `/comercial/especificacion-bolsa-solicitada/${id}/`,
     );
   },
 };
@@ -283,7 +283,7 @@ export const especificacionesBobinaApi = {
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<EspecificacionBobinaSolicitada>> => {
     return api.get<PaginatedResponse<EspecificacionBobinaSolicitada>>(
-      "/especificacion-bobina-solicitada/",
+      "/comercial/especificacion-bobina-solicitada/",
       { params },
     );
   },
@@ -292,7 +292,7 @@ export const especificacionesBobinaApi = {
     id: number,
   ): Promise<EspecificacionBobinaSolicitada> => {
     return api.get<EspecificacionBobinaSolicitada>(
-      `/especificacion-bobina-solicitada/${id}/`,
+      `/comercial/especificacion-bobina-solicitada/${id}/`,
     );
   },
 
@@ -300,7 +300,7 @@ export const especificacionesBobinaApi = {
     data: EspecificacionBobinaSolicitadaCreate,
   ): Promise<EspecificacionBobinaSolicitada> => {
     return api.post<EspecificacionBobinaSolicitada>(
-      "/especificacion-bobina-solicitada/",
+      "/comercial/especificacion-bobina-solicitada/",
       data,
     );
   },
@@ -310,14 +310,14 @@ export const especificacionesBobinaApi = {
     data: EspecificacionBobinaSolicitadaUpdate,
   ): Promise<EspecificacionBobinaSolicitada> => {
     return api.patch<EspecificacionBobinaSolicitada>(
-      `/especificacion-bobina-solicitada/${id}/`,
+      `/comercial/especificacion-bobina-solicitada/${id}/`,
       data,
     );
   },
 
   remove: async (id: number): Promise<void> => {
     await api.delete(
-      `/especificacion-bobina-solicitada/${id}/`,
+      `/comercial/especificacion-bobina-solicitada/${id}/`,
     );
   },
 };
