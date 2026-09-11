@@ -11,45 +11,173 @@ import {
   UsersRound,
 } from "lucide-react";
 
-const activities = [
-  {
-    time: "09:00",
-    title: "Llamada de seguimiento",
-    client: "Empaques del Norte",
-    type: "Llamada",
-    icon: Phone,
-  },
-  {
-    time: "10:30",
-    title: "Confirmar medidas de producción",
-    client: "Plásticos Andinos",
-    type: "Seguimiento",
-    icon: CalendarDays,
-  },
-  {
-    time: "12:00",
-    title: "Enviar cotización",
-    client: "Manufacturas del Pacífico",
-    type: "Cotización",
-    icon: ClipboardList,
-  },
-  {
-    time: "15:00",
-    title: "Reunión comercial",
-    client: "Industrias Carvajal",
-    type: "Reunión",
-    icon: UsersRound,
-  },
-];
+import { useMemo, useState } from "react";
+import NuevaActividadModal from "@/features/comercial/components/NuevaActividadModal";
+import {
+  useActividadesComerciales,
+  useCuentasComerciales,
+} from "@/features/comercial/comercial.hooks";
+
+import type {
+  TipoActividad,
+} from "@/features/comercial/comercial.types";
+
+import ActividadMenu from "@/features/comercial/components/ActividadMenu";
+
+import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
+//FUNCINES
+function getClientName(client: {
+  nombres: string;
+  apellido_paterno: string;
+  apellido_materno: string;
+  razon_social: string;
+  tipo_persona: string;
+}) {
+  if (client.tipo_persona === "juridica") {
+    return client.razon_social || "Sin razón social";
+  }
+
+  return [
+    client.nombres,
+    client.apellido_paterno,
+    client.apellido_materno,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function getActivityLabel(tipo: TipoActividad) {
+  const labels: Record<TipoActividad, string> = {
+    llamada: "Llamada",
+    reunion: "Reunión",
+    cotizacion: "Cotización",
+    seguimiento: "Seguimiento",
+    confirmacion: "Confirmación",
+  };
+
+  return labels[tipo];
+}
+
+function getActivityIcon(tipo: TipoActividad) {
+  const icons: Record<TipoActividad, typeof Phone> = {
+    llamada: Phone,
+    reunion: UsersRound,
+    cotizacion: ClipboardList,
+    seguimiento: CalendarDays,
+    confirmacion: CalendarDays,
+  };
+
+  return icons[tipo];
+}
+
+function formatActivityTime(date: string) {
+  return new Date(date).toLocaleTimeString("es-BO", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+function formatCurrentDate() {
+  return new Intl.DateTimeFormat("es-BO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+}
+
+function formatAgendaDate() {
+  return new Intl.DateTimeFormat("es-BO", {
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
+}
+
+type AgendaTab = "hoy" | "proximos" | "completadas";
 
 export default function AgendaComercialPage() {
+
+  //Contenido
+  const [showNuevaActividad, setShowNuevaActividad] = useState(false);
+  const [activeTab, setActiveTab] = useState<AgendaTab>("hoy");
+  const {
+    data: actividades = [],
+    isLoading: loadingActividades,
+    isError: errorActividades,
+  } = useActividadesComerciales();
+
+  const {
+    data: clientes = [],
+    isLoading: loadingClientes,
+  } = useCuentasComerciales();
+
+  const actividadesConCliente = useMemo(() => {
+    return actividades.map((actividad) => {
+      const cliente = clientes.find(
+        (item) => item.id === actividad.cuenta_comercial,
+      );
+
+      return {
+        ...actividad,
+        clienteNombre: cliente
+          ? getClientName(cliente)
+          : "Cliente no encontrado",
+      };
+    });
+  }, [actividades, clientes]);
+
+  const ahora = new Date();
+
+  const actividadesHoy = useMemo(() => {
+    return actividadesConCliente.filter((actividad) => {
+      const fecha = new Date(actividad.fecha_programada);
+
+      return (
+        fecha.getFullYear() === ahora.getFullYear() &&
+        fecha.getMonth() === ahora.getMonth() &&
+        fecha.getDate() === ahora.getDate()
+      );
+    });
+  }, [actividadesConCliente]);
+
+  const actividadesProximas = useMemo(() => {
+    const hoy = new Date();
+
+    hoy.setHours(0, 0, 0, 0);
+
+    return actividadesConCliente.filter((actividad) => {
+      const fecha = new Date(actividad.fecha_programada);
+
+      fecha.setHours(0, 0, 0, 0);
+
+      return (
+        fecha > hoy &&
+        actividad.estado !== "completada"
+      );
+    });
+  }, [actividadesConCliente]);
+
+  const actividadesCompletadas = useMemo(() => {
+    return actividadesConCliente.filter(
+      (actividad) => actividad.estado === "completada",
+    );
+  }, [actividadesConCliente]);
+
+  const actividadesMostradas =
+    activeTab === "hoy"
+      ? actividadesHoy
+      : activeTab === "proximos"
+        ? actividadesProximas
+        : actividadesCompletadas;
+
+  const [showRegistrarComunicacion, setShowRegistrarComunicacion] = useState(false)
   return (
     <div className="space-y-6">
       {/* Encabezado */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            LUNES, 31 DE AGOSTO DE 2026
+            {formatCurrentDate()}
           </p>
 
           <h1 className="mt-1 text-2xl font-semibold text-foreground">
@@ -57,8 +185,11 @@ export default function AgendaComercialPage() {
           </h1>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Tienes <strong>8 actividades</strong> para hoy. Aquí está el
-            resumen de tu operación comercial.
+            Tienes{" "}
+            <strong>
+              {actividadesHoy.length} actividades
+            </strong>{" "}
+            para hoy. Aquí está el resumen de tu operación comercial.
           </p>
         </div>
 
@@ -73,14 +204,14 @@ export default function AgendaComercialPage() {
         <MetricCard
           icon={CalendarDays}
           label="Actividades hoy"
-          value="8"
+          value={actividadesHoy.length.toString()}
           detail="3 pendientes"
         />
 
         <MetricCard
           icon={Phone}
           label="Llamadas pendientes"
-          value="5"
+          value={actividadesMostradas.filter((a) => a.tipo === "llamada").length.toString()}
           detail="2 vencidas"
           negative
         />
@@ -111,7 +242,7 @@ export default function AgendaComercialPage() {
               </h2>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                31 de agosto · Tu actividad comercial
+                {formatAgendaDate()}
               </p>
             </div>
 
@@ -123,57 +254,113 @@ export default function AgendaComercialPage() {
 
           {/* Tabs */}
           <div className="flex gap-6 border-b border-border px-5">
-            <button className="border-b-2 border-primary py-3 text-sm font-medium text-primary">
-              Hoy <span className="ml-1">8</span>
+            <button
+              type="button"
+              onClick={() => setActiveTab("hoy")}
+              className={
+                activeTab === "hoy"
+                  ? "border-b-2 border-primary py-3 text-sm font-medium text-primary"
+                  : "border-b-2 border-transparent py-3 text-sm text-muted-foreground hover:text-foreground"
+              }
+            >
+              Hoy{" "}
+              <span className="ml-1">
+                {actividadesHoy.length}
+              </span>
             </button>
 
-            <button className="py-3 text-sm text-muted-foreground hover:text-foreground">
-              Próximos
+            <button
+              type="button"
+              onClick={() => setActiveTab("proximos")}
+              className={
+                activeTab === "proximos"
+                  ? "border-b-2 border-primary py-3 text-sm font-medium text-primary"
+                  : "border-b-2 border-transparent py-3 text-sm text-muted-foreground hover:text-foreground"
+              }
+            >
+              Próximos{" "}
+              <span className="ml-1">
+                {actividadesProximas.length}
+              </span>
             </button>
 
-            <button className="py-3 text-sm text-muted-foreground hover:text-foreground">
-              Completadas
+            <button
+              type="button"
+              onClick={() => setActiveTab("completadas")}
+              className={
+                activeTab === "completadas"
+                  ? "border-b-2 border-primary py-3 text-sm font-medium text-primary"
+                  : "border-b-2 border-transparent py-3 text-sm text-muted-foreground hover:text-foreground"
+              }
+            >
+              Completadas{" "}
+              <span className="ml-1">
+                {actividadesCompletadas.length}
+              </span>
             </button>
           </div>
 
           {/* Actividades */}
           <div className="divide-y divide-border">
-            {activities.map((activity) => {
-              const Icon = activity.icon;
+            {loadingActividades || loadingClientes ? (
+              <div className="px-5 py-8 text-center text-sm text-muted-foreground">
+                Cargando actividades...
+              </div>
+            ) : errorActividades ? (
+              <div className="px-5 py-8 text-center text-sm text-destructive">
+                No se pudieron cargar las actividades.
+              </div>
+            ) : actividadesMostradas.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-muted-foreground">
+                {activeTab === "hoy"
+                  ? "No tienes actividades programadas para hoy."
+                  : activeTab === "proximos"
+                    ? "No tienes actividades próximas."
+                    : "No tienes actividades completadas."}
+              </div>
+            ) : (
+              actividadesMostradas.map((activity) => {
+                const Icon = getActivityIcon(activity.tipo);
 
-              return (
-                <div
-                  key={activity.time}
-                  className="flex items-center gap-3 px-5 py-4"
-                >
-                  <div className="w-12 shrink-0 text-xs font-medium text-muted-foreground">
-                    {activity.time}
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-center gap-3 px-5 py-4"
+                  >
+                    <div className="w-12 shrink-0 text-xs font-medium text-muted-foreground">
+                      {formatActivityTime(
+                        activity.fecha_programada,
+                      )}
+                    </div>
+
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Icon className="h-4 w-4" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {activity.descripcion}
+                      </p>
+
+                      <p className="truncate text-xs text-muted-foreground">
+                        {activity.clienteNombre}
+                      </p>
+                    </div>
+
+                    <span className="hidden rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground md:block">
+                      {getActivityLabel(activity.tipo)}
+                    </span>
+
+                    <ActividadMenu
+                      actividad={activity}
+                      onRegistrarComunicacion={() =>
+                        setShowRegistrarComunicacion(true)
+                      }
+                    />
                   </div>
-
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Icon className="h-4 w-4" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {activity.title}
-                    </p>
-
-                    <p className="truncate text-xs text-muted-foreground">
-                      {activity.client}
-                    </p>
-                  </div>
-
-                  <span className="hidden rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground md:block">
-                    {activity.type}
-                  </span>
-
-                  <button className="text-muted-foreground hover:text-foreground">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           <button className="flex w-full items-center justify-center gap-2 border-t border-border px-5 py-3 text-sm font-medium text-primary hover:bg-secondary">
@@ -212,6 +399,7 @@ export default function AgendaComercialPage() {
             <QuickAction
               icon={Phone}
               label="Programar actividad"
+              onClick={() => setShowNuevaActividad(true)}
             />
 
             <QuickAction
@@ -321,6 +509,15 @@ export default function AgendaComercialPage() {
           </div>
         </section>
       </div>
+      <NuevaActividadModal
+        open={showNuevaActividad}
+        onClose={() => setShowNuevaActividad(false)}
+      />
+
+      <RegistrarComunicacionModal
+        open={showRegistrarComunicacion}
+        onClose={() => setShowRegistrarComunicacion(false)}
+      />
     </div>
   );
 }
@@ -372,12 +569,18 @@ function MetricCard({
 function QuickAction({
   icon: Icon,
   label,
+  onClick,
 }: {
   icon: typeof ClipboardList;
   label: string;
+  onClick?: () => void;
 }) {
   return (
-    <button className="group flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-secondary">
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-secondary"
+    >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
         <Icon className="h-4 w-4" />
       </div>

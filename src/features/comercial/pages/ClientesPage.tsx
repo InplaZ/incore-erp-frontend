@@ -1,19 +1,27 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom"
 import {
   ChevronDown,
   Filter,
-  MoreHorizontal,
+  Pencil,
   Plus,
   Search,
+  Trash2,
 } from "lucide-react";
 
-import { useCuentasComerciales } from "../comercial.hooks";
+import {
+  useCuentasComerciales,
+  useDeleteCuentaComercial,
+} from "../comercial.hooks";
+
 import type {
   CuentaComercial,
   EstadoCuenta,
 } from "../comercial.types";
 
 import NuevoClienteModal from "../components/NuevoClienteModal";
+import ConfirmDialog from "@/components/feedback/ConfirmDialog";
+
 
 export default function ClientesPage() {
   const [search, setSearch] = useState("");
@@ -42,8 +50,21 @@ export default function ClientesPage() {
     };
   }, [clients]);
 
+  const [selectedCliente, setSelectedClient] = useState<CuentaComercial | null>(null);
   const [showNewClient, setShowNewClient] = useState(false);
+  const deleteCuenta = useDeleteCuentaComercial();
+  const [clientToDelete, setClientToDelete] = useState<CuentaComercial | null>(null);
 
+  const handleDelete = async () => {
+    if (!clientToDelete) return;
+
+    try {
+      await deleteCuenta.mutateAsync(clientToDelete.id);
+      setClientToDelete(null);
+    } catch (error) {
+      console.error("Error al eliminar cliente:", error);
+    }
+  };
   return (
     <div className="space-y-6">
       {/* Encabezado */}
@@ -174,7 +195,7 @@ export default function ClientesPage() {
                 <span>Cliente</span>
                 <span>Contacto principal</span>
                 <span>Estado</span>
-                <span>Identificación</span>
+                <span>Teléfono</span>
                 <span />
               </div>
 
@@ -183,6 +204,8 @@ export default function ClientesPage() {
                 <ClientRow
                   key={client.id}
                   client={client}
+                  onEdit={() => setSelectedClient(client)}
+                  onDelete={() => setClientToDelete(client)}
                 />
               ))}
 
@@ -226,6 +249,29 @@ export default function ClientesPage() {
           onSuccess={() => setShowNewClient(false)}
         />
       )}
+      {
+        selectedCliente && (
+          <NuevoClienteModal
+            client={selectedCliente}
+            onClose={() => setSelectedClient(null)}
+            onSuccess={() => setSelectedClient(null)}
+          />
+        )
+      }
+      <ConfirmDialog
+        open={!!clientToDelete}
+        title="¿Eliminar cliente?"
+        description={
+          clientToDelete
+            ? `¿Estás seguro de eliminar a ${getClientName(clientToDelete)}? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        loading={deleteCuenta.isPending}
+        onCancel={() => setClientToDelete(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
@@ -237,19 +283,29 @@ export default function ClientesPage() {
 
 function ClientRow({
   client,
+  onEdit,
+  onDelete,
 }: {
   client: CuentaComercial;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
+  const navigate = useNavigate();
   const displayName = getClientName(client);
   const initials = getInitials(displayName);
 
   return (
-    <button
-      type="button"
-      className="grid w-full grid-cols-[2fr_1.5fr_1.2fr_1.2fr_40px] items-center gap-4 border-b border-border px-5 py-4 text-left last:border-b-0 hover:bg-secondary/40"
+    <div
+      className="grid w-full grid-cols-[2fr_1.5fr_1.2fr_1.2fr_40px] items-center gap-4 border-b border-border px-5 py-4 hover:bg-secondary/40"
     >
       {/* Cliente */}
-      <div className="flex min-w-0 items-center gap-3">
+      <button
+        type="button"
+        onClick={() =>
+          navigate(`/comercial/clientes/${client.id}`)
+        }
+        className="flex min-w-0 items-center gap-3 text-left"
+      >
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
           {initials}
         </div>
@@ -261,19 +317,15 @@ function ClientRow({
 
           <p className="truncate text-xs text-muted-foreground">
             {client.documento_identidad?.toUpperCase() ?? "ID"}{" "}
-            {client.identificacion}
+            {client.numero_documento}
           </p>
         </div>
-      </div>
+      </button>
 
       {/* Contacto */}
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-foreground">
           {client.correo || "Sin correo"}
-        </p>
-
-        <p className="truncate text-xs text-muted-foreground">
-          {client.telefono || "Sin teléfono"}
         </p>
       </div>
 
@@ -291,22 +343,46 @@ function ClientRow({
         {getEstadoLabel(client.estado)}
       </span>
 
-      {/* Identificación */}
+      {/* Teléfono */}
       <div>
         <p className="text-sm font-semibold text-foreground">
-          {client.identificacion}
-        </p>
-
-        <p className="text-xs text-muted-foreground">
-          {client.documento_identidad?.toUpperCase() ?? "Documento"}
+          {client.telefono || "-"}
         </p>
       </div>
 
-      <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-    </button>
+      {/* Acciones */}
+      <div className="flex items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit();
+          }}
+          title="Editar cliente"
+        >
+          <Pencil
+            width={24}
+            height={24}
+          />
+        </button>
+
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete();
+          }}
+          title="Eliminar cliente"
+        >
+          <Trash2
+            width={24}
+            height={24}
+          />
+        </button>
+      </div>
+    </div>
   );
 }
-
 
 // ============================================================
 // HELPERS

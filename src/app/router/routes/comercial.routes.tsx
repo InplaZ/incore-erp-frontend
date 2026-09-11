@@ -21,6 +21,10 @@ const ProduccionPage = lazy(
     () => import("@/features/comercial/pages/ProduccionPage")
 );
 
+const DetalleCliente = lazy(
+    () => import("@/features/comercial/pages/DetalleClientePage")
+)
+
 export const comercialRoutes: AppRoute[] = [
     {
         path: "/comercial",
@@ -42,6 +46,10 @@ export const comercialRoutes: AppRoute[] = [
                 path: "produccion",
                 element: <ProduccionPage />
             },
+            {
+                path: "clientes/:id",
+                element: <DetalleCliente />,
+            }
         ]
     }
 ];

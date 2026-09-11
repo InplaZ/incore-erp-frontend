@@ -1,34 +1,51 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { useCreateCuentaComercial } from "../comercial.hooks";
-import type { CuentaComercialCreate } from "../comercial.types";
+
+import {
+  useCreateCuentaComercial,
+  useUpdateCuentaComercial,
+} from "../comercial.hooks";
+
+import type {
+  CuentaComercial,
+  CuentaComercialCreate,
+  CuentaComercialUpdate,
+} from "../comercial.types";
 
 interface NuevoClienteModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  client?: CuentaComercial;
 }
 
 export default function NuevoClienteModal({
   onClose,
   onSuccess,
+  client,
 }: NuevoClienteModalProps) {
   const createCuenta = useCreateCuentaComercial();
+  const updateCuenta = useUpdateCuentaComercial();
+
+  const isEditing = !!client;
 
   const [form, setForm] = useState<CuentaComercialCreate>({
-    nombre: "",
-    apellido_paterno: "",
-    apellido_materno: "",
-    tipo_persona: "natural",
-    razon_social: "",
-    identificacion: 0,
-    documento_identidad: "ci",
-    telefono: "",
-    correo: "",
-    direccion: "",
-    estado: "prospecto",
-    tipo_relacion: "cliente",
-    fecha_alta: new Date().toISOString(),
+    nombres: client?.nombres ?? "",
+    apellido_paterno: client?.apellido_paterno ?? "",
+    apellido_materno: client?.apellido_materno ?? "",
+    tipo_persona: client?.tipo_persona ?? "natural",
+    razon_social: client?.razon_social ?? "",
+    documento_identidad: client?.documento_identidad ?? "ci",
+    numero_documento: client?.numero_documento ?? "",
+    telefono: client?.telefono ?? "",
+    correo: client?.correo ?? "",
+    direccion: client?.direccion ?? "",
+    estado: client?.estado ?? "prospecto",
+    tipo_relacion: client?.tipo_relacion ?? "cliente",
+    fecha_alta: client?.fecha_alta ?? new Date().toISOString(),
   });
+
+  const isPending =
+    createCuenta.isPending || updateCuenta.isPending;
 
   const handleChange = (
     field: keyof CuentaComercialCreate,
@@ -46,10 +63,27 @@ export default function NuevoClienteModal({
     event.preventDefault();
 
     try {
-      await createCuenta.mutateAsync(form);
+      if (isEditing && client) {
+        const updateData: CuentaComercialUpdate = {
+          ...form,
+        };
+
+        await updateCuenta.mutateAsync({
+          id: client.id,
+          data: updateData,
+        });
+      } else {
+        await createCuenta.mutateAsync(form);
+      }
+
       onSuccess();
     } catch (error) {
-      console.error("Error al crear cliente:", error);
+      console.error(
+        isEditing
+          ? "Error al actualizar cliente:"
+          : "Error al crear cliente:",
+        error,
+      );
     }
   };
 
@@ -61,11 +95,13 @@ export default function NuevoClienteModal({
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-foreground">
-              Nuevo cliente
+              {isEditing ? "Editar cliente" : "Nuevo cliente"}
             </h2>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Registra una nueva cuenta comercial.
+              {isEditing
+                ? "Modifica los datos del cliente."
+                : "Registra una nueva cuenta comercial."}
             </p>
           </div>
 
@@ -80,7 +116,6 @@ export default function NuevoClienteModal({
 
         {/* Formulario */}
         <form onSubmit={handleSubmit}>
-
           <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
@@ -123,23 +158,28 @@ export default function NuevoClienteModal({
                 </select>
               </div>
 
-              {/* Identificación */}
+              {/* Número de documento */}
               <div>
                 <label className="mb-1.5 block text-sm font-medium">
-                  Identificación *
+                  Número de documento *
                 </label>
 
                 <input
-                  type="number"
+                  type="text"
                   required
-                  value={form.identificacion || ""}
+                  value={form.numero_documento ?? ""}
                   onChange={(e) =>
                     handleChange(
-                      "identificacion",
-                      Number(e.target.value),
+                      "numero_documento",
+                      e.target.value,
                     )
                   }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  placeholder={
+                    form.documento_identidad === "nit"
+                      ? "Ingrese el NIT"
+                      : "Ingrese el CI"
+                  }
                 />
               </div>
 
@@ -150,9 +190,9 @@ export default function NuevoClienteModal({
                 </label>
 
                 <input
-                  value={form.nombre ?? ""}
+                  value={form.nombres ?? ""}
                   onChange={(e) =>
-                    handleChange("nombre", e.target.value)
+                    handleChange("nombres", e.target.value)
                   }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 />
@@ -300,9 +340,12 @@ export default function NuevoClienteModal({
               </div>
             </div>
 
-            {createCuenta.isError && (
+            {/* Error */}
+            {(createCuenta.isError || updateCuenta.isError) && (
               <p className="mt-4 text-sm text-destructive">
-                No se pudo crear el cliente. Verifica los datos e inténtalo nuevamente.
+                {isEditing
+                  ? "No se pudo actualizar el cliente. Verifica los datos e inténtalo nuevamente."
+                  : "No se pudo crear el cliente. Verifica los datos e inténtalo nuevamente."}
               </p>
             )}
           </div>
@@ -312,7 +355,7 @@ export default function NuevoClienteModal({
             <button
               type="button"
               onClick={onClose}
-              disabled={createCuenta.isPending}
+              disabled={isPending}
               className="rounded-md border border-border px-4 py-2 text-sm hover:bg-secondary disabled:opacity-50"
             >
               Cancelar
@@ -320,12 +363,14 @@ export default function NuevoClienteModal({
 
             <button
               type="submit"
-              disabled={createCuenta.isPending}
+              disabled={isPending}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {createCuenta.isPending
+              {isPending
                 ? "Guardando..."
-                : "Crear cliente"}
+                : isEditing
+                  ? "Guardar cambios"
+                  : "Crear cliente"}
             </button>
           </div>
         </form>

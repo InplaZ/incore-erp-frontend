@@ -90,16 +90,16 @@ export const cuentasComercialesApi = {
 export const actividadesComercialesApi = {
   list: async (
     params?: ApiQueryParams,
-  ): Promise<PaginatedResponse<ActividadComercial>> => {
-    return api.get<PaginatedResponse<ActividadComercial>>(
-      "/actividades/",
+  ): Promise<ActividadComercial[]> => {
+    return api.get<ActividadComercial[]>(
+      "/comercial/actividades/",
       { params },
     );
   },
 
   get: async (id: number): Promise<ActividadComercial> => {
     return api.get<ActividadComercial>(
-      `/actividades/${id}/`,
+      `/comercial/actividades/${id}/`,
     );
   },
 
@@ -107,7 +107,7 @@ export const actividadesComercialesApi = {
     data: ActividadComercialCreate,
   ): Promise<ActividadComercial> => {
     return api.post<ActividadComercial>(
-      "/actividades/",
+      "/comercial/actividades/",
       data,
     );
   },
@@ -117,13 +117,13 @@ export const actividadesComercialesApi = {
     data: ActividadComercialUpdate,
   ): Promise<ActividadComercial> => {
     return api.patch<ActividadComercial>(
-      `/actividades/${id}/`,
+      `/comercial/actividades/${id}/`,
       data,
     );
   },
 
   remove: async (id: number): Promise<void> => {
-    await api.delete(`/actividades/${id}/`);
+    await api.delete(`/comercial/actividades/${id}/`);
   },
 };
 
@@ -332,14 +332,14 @@ export const comunicacionesApi = {
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<Comunicacion>> => {
     return api.get<PaginatedResponse<Comunicacion>>(
-      "/comunicaciones/",
+      "/comercial/comunicaciones/",
       { params },
     );
   },
 
   get: async (id: number): Promise<Comunicacion> => {
     return api.get<Comunicacion>(
-      `/comunicaciones/${id}/`,
+      `/comercial/comunicaciones/${id}/`,
     );
   },
 
@@ -347,7 +347,7 @@ export const comunicacionesApi = {
     data: ComunicacionCreate,
   ): Promise<Comunicacion> => {
     return api.post<Comunicacion>(
-      "/comunicaciones/",
+      "/comercial/comunicaciones/",
       data,
     );
   },
@@ -357,13 +357,13 @@ export const comunicacionesApi = {
     data: ComunicacionUpdate,
   ): Promise<Comunicacion> => {
     return api.patch<Comunicacion>(
-      `/comunicaciones/${id}/`,
+      `/comercial/comunicaciones/${id}/`,
       data,
     );
   },
 
   remove: async (id: number): Promise<void> => {
-    await api.delete(`/comunicaciones/${id}/`);
+    await api.delete(`/comercial/comunicaciones/${id}/`);
   },
 };
 

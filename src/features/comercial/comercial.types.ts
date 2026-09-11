@@ -39,6 +39,7 @@ export interface CuentaComercial {
 
     identificacion: number;
     documento_identidad: DocumentoIdentidad | null;
+    numero_documento: string;
 
     telefono: string;
     correo: string;
@@ -56,15 +57,15 @@ export interface CuentaComercial {
 export interface CuentaComercialCreate {
     usuario?: number | null;
 
-    nombre?: string;
+    nombres?: string;
     apellido_paterno?: string;
     apellido_materno?: string;
 
     tipo_persona: TipoPersona;
     razon_social?: string;
 
-    identificacion: number;
     documento_identidad?: DocumentoIdentidad | null;
+    numero_documento?: string;
 
     telefono?: string;
     correo?: string;
@@ -86,7 +87,8 @@ export type TipoActividad =
   | "llamada"
   | "reunion"
   | "cotizacion"
-  | "seguimiento";
+  | "seguimiento"
+  | "confirmacion";
 
 export type EstadoActividad =
   | "pendiente"
@@ -115,21 +117,20 @@ export interface ActividadComercial {
 
 export interface ActividadComercialCreate {
   cuenta_comercial: number;
-  usuario: number;
-
   tipo: TipoActividad;
   descripcion: string;
-
   fecha_programada: string;
-  fecha_completada?: string | null;
+}
 
+export type ActividadComercialUpdate = {
+  cuenta_comercial?: number;
+  tipo?: TipoActividad;
+  descripcion?: string;
+  fecha_programada?: string;
+  fecha_completada?: string | null;
   estado?: EstadoActividad;
   resultado?: string | null;
 }
-
-export type ActividadComercialUpdate =
-  Partial<ActividadComercialCreate>;
-
 
 // ============================================================
 // SOLICITUDES COMERCIALES
@@ -363,25 +364,30 @@ export type EspecificacionBobinaSolicitadaUpdate =
 // COMUNICACIONES
 // ============================================================
 
+export type TipoComunicacion = 
+  | "enviado"
+  | "recibid";
+
+export type MedioComunicacion =
+  | "llamada"
+  | "whatsapp"
+  | "correo"
+  | "reunion";
+
 export interface Comunicacion {
   id: number;
-
   solicitud_comercial: number;
   usuario: number;
-
   tipo: string;
   medio: string;
-
   asunto: string | null;
   contenido: string;
-
   created_at: string;
   updated_at: string;
 }
 
 export interface ComunicacionCreate {
   solicitud_comercial: number;
-  usuario: number;
 
   tipo: string;
   medio: string;
@@ -390,9 +396,13 @@ export interface ComunicacionCreate {
   contenido: string;
 }
 
-export type ComunicacionUpdate =
-  Partial<ComunicacionCreate>;
-
+export type ComunicacionUpdate = {
+  solicitud_comercial?: number;
+  tipo?: TipoComunicacion;
+  medio?: MedioComunicacion;
+  asunto?: string | null;
+  contenido?: string;
+}
 
 // ============================================================
 // COTIZACIONES

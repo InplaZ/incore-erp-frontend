@@ -279,6 +279,25 @@ export function useUpdateActividadComercial() {
     },
   });
 }
+export function useDeleteActividadComercial() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) =>
+      actividadesComercialesApi.remove(id),
+
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({
+        queryKey: comercialQueryKeys.actividades(),
+      });
+
+      queryClient.removeQueries({
+        queryKey: comercialQueryKeys.actividad(id),
+      });
+    },
+  });
+}
+
 
 
 // ============================================================
@@ -651,7 +670,26 @@ export function useUpdateComunicacion() {
     },
   });
 }
+export function useDeleteComunicacion() {
+  const queryClient = useQueryClient();
 
+  return useMutation({
+    mutationFn: (id: number) =>
+      comunicacionesApi.remove(id),
+
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.comunicaciones(),
+      });
+
+      queryClient.removeQueries({
+        queryKey:
+          comercialQueryKeys.comunicacion(id),
+      });
+    },
+  });
+}
 
 // ============================================================
 // COTIZACIONES
