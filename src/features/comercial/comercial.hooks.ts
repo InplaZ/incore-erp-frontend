@@ -17,6 +17,7 @@ import {
   pedidosApi,
   pedidosDetallesApi,
   solicitudesComercialesApi,
+  ejecutivosComercialesApi,
 } from "./comercial.api";
 
 import type {
@@ -60,6 +61,10 @@ export const comercialQueryKeys = {
   cuentas: () => [...comercialQueryKeys.all, "cuentas"] as const,
   cuenta: (id: number) =>
     [...comercialQueryKeys.cuentas(), id] as const,
+
+  ejecutivos: () => [...comercialQueryKeys.all, "ejecutivos"] as const,
+  ejecutivo: (id: number) =>
+    [...comercialQueryKeys.ejecutivos(), id] as const,
 
   actividades: () =>
     [...comercialQueryKeys.all, "actividades"] as const,
@@ -124,6 +129,7 @@ export const comercialQueryKeys = {
 
   pedidoDetalle: (id: number) =>
     [...comercialQueryKeys.pedidosDetalles(), id] as const,
+
 };
 
 
@@ -211,8 +217,15 @@ export function useDeleteCuentaComercial() {
     },
   });
 }
-
-
+// ============================================================
+// EJECUTIVOS COMERCIALES
+// ============================================================
+export function useEjecutivosComerciales() {
+  return useQuery({
+    queryKey: comercialQueryKeys.ejecutivos(),
+    queryFn: () => ejecutivosComercialesApi.list(),
+  });
+}
 // ============================================================
 // ACTIVIDADES COMERCIALES
 // ============================================================

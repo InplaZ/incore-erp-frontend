@@ -38,6 +38,7 @@ import type {
   SolicitudComercial,
   SolicitudComercialCreate,
   SolicitudComercialUpdate,
+  EjecutivoComercial,
 } from "./comercial.types";
 
 // ============================================================
@@ -82,6 +83,16 @@ export const cuentasComercialesApi = {
   },
 };
 
+// ============================================================
+// EJECUTIVOS COMERCIAL
+// ============================================================
+export const ejecutivosComercialesApi = {
+  list: async (): Promise<EjecutivoComercial[]> => {
+    return api.get<EjecutivoComercial[]>(
+      "/usuarios/ejecutivos-comerciales/",
+    );
+  },
+};
 
 // ============================================================
 // ACTIVIDADES COMERCIALES

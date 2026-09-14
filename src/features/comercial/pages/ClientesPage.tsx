@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom";
 import {
   ChevronDown,
   Filter,
@@ -12,26 +12,32 @@ import {
 import {
   useCuentasComerciales,
   useDeleteCuentaComercial,
+  useEjecutivosComerciales,
 } from "../comercial.hooks";
 
 import type {
   CuentaComercial,
   EstadoCuenta,
+  EjecutivoComercial,
 } from "../comercial.types";
 
 import NuevoClienteModal from "../components/NuevoClienteModal";
 import ConfirmDialog from "@/components/feedback/ConfirmDialog";
 
-
 export default function ClientesPage() {
   const [search, setSearch] = useState("");
-  const [estado, setEstado] = useState<EstadoCuenta | "todos">("todos");
+  const [estado, setEstado] =
+    useState<EstadoCuenta | "todos">("todos");
 
-  const { data, isLoading, isError, error } =
-    useCuentasComerciales({
-      search: search || undefined,
-      estado: estado !== "todos" ? estado : undefined,
-    });
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+  } = useCuentasComerciales({
+    search: search || undefined,
+    estado: estado !== "todos" ? estado : undefined,
+  });
 
   const clients = data ?? [];
 
@@ -50,10 +56,18 @@ export default function ClientesPage() {
     };
   }, [clients]);
 
-  const [selectedCliente, setSelectedClient] = useState<CuentaComercial | null>(null);
-  const [showNewClient, setShowNewClient] = useState(false);
+  const { data: ejecutivos } = useEjecutivosComerciales();
+
+  const [selectedCliente, setSelectedClient] =
+    useState<CuentaComercial | null>(null);
+
+  const [showNewClient, setShowNewClient] =
+    useState(false);
+
   const deleteCuenta = useDeleteCuentaComercial();
-  const [clientToDelete, setClientToDelete] = useState<CuentaComercial | null>(null);
+
+  const [clientToDelete, setClientToDelete] =
+    useState<CuentaComercial | null>(null);
 
   const handleDelete = async () => {
     if (!clientToDelete) return;
@@ -65,6 +79,7 @@ export default function ClientesPage() {
       console.error("Error al eliminar cliente:", error);
     }
   };
+
   return (
     <div className="space-y-6">
       {/* Encabezado */}
@@ -178,8 +193,9 @@ export default function ClientesPage() {
         {isError && (
           <div className="px-5 py-10 text-center text-sm text-destructive">
             No se pudieron cargar los clientes.
+
             {error instanceof Error && (
-              <span className="block mt-1">
+              <span className="mt-1 block">
                 {error.message}
               </span>
             )}
@@ -204,6 +220,7 @@ export default function ClientesPage() {
                 <ClientRow
                   key={client.id}
                   client={client}
+                  ejecutivos={ejecutivos ?? []}
                   onEdit={() => setSelectedClient(client)}
                   onDelete={() => setClientToDelete(client)}
                 />
@@ -243,21 +260,25 @@ export default function ClientesPage() {
           </div>
         )}
       </section>
+
+      {/* Nuevo cliente */}
       {showNewClient && (
         <NuevoClienteModal
           onClose={() => setShowNewClient(false)}
           onSuccess={() => setShowNewClient(false)}
         />
       )}
-      {
-        selectedCliente && (
-          <NuevoClienteModal
-            client={selectedCliente}
-            onClose={() => setSelectedClient(null)}
-            onSuccess={() => setSelectedClient(null)}
-          />
-        )
-      }
+
+      {/* Editar cliente */}
+      {selectedCliente && (
+        <NuevoClienteModal
+          client={selectedCliente}
+          onClose={() => setSelectedClient(null)}
+          onSuccess={() => setSelectedClient(null)}
+        />
+      )}
+
+      {/* Eliminar cliente */}
       <ConfirmDialog
         open={!!clientToDelete}
         title="¿Eliminar cliente?"
@@ -276,28 +297,37 @@ export default function ClientesPage() {
   );
 }
 
-
 // ============================================================
 // FILA DE CLIENTE
 // ============================================================
 
 function ClientRow({
   client,
+  ejecutivos,
   onEdit,
   onDelete,
 }: {
   client: CuentaComercial;
+  ejecutivos: EjecutivoComercial[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const navigate = useNavigate();
+
   const displayName = getClientName(client);
   const initials = getInitials(displayName);
 
+  // Buscar el ejecutivo correspondiente al ID
+  const ejecutivo = ejecutivos.find(
+    (item) => item.id === client.ejecutivo_asignado,
+  );
+
+  const nombreEjecutivo = ejecutivo
+    ? `${ejecutivo.first_name} ${ejecutivo.last_name}`.trim()
+    : "Sin asignar";
+
   return (
-    <div
-      className="grid w-full grid-cols-[2fr_1.5fr_1.2fr_1.2fr_40px] items-center gap-4 border-b border-border px-5 py-4 hover:bg-secondary/40"
-    >
+    <div className="grid w-full grid-cols-[2fr_1.5fr_1.2fr_1.2fr_40px] items-center gap-4 border-b border-border px-5 py-4 hover:bg-secondary/40">
       {/* Cliente */}
       <button
         type="button"
@@ -316,8 +346,7 @@ function ClientRow({
           </p>
 
           <p className="truncate text-xs text-muted-foreground">
-            {client.documento_identidad?.toUpperCase() ?? "ID"}{" "}
-            {client.numero_documento}
+            Ejecutivo: {nombreEjecutivo}
           </p>
         </div>
       </button>
@@ -327,16 +356,22 @@ function ClientRow({
         <p className="truncate text-sm font-medium text-foreground">
           {client.correo || "Sin correo"}
         </p>
+
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {client.documento_identidad?.toUpperCase() ?? "ID"}{" "}
+          {client.numero_documento || "Sin documento"}
+        </p>
       </div>
 
       {/* Estado */}
       <span
-        className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${client.estado === "prospecto"
-          ? "bg-primary/10 text-primary"
-          : client.estado === "cliente"
-            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-            : "bg-secondary text-muted-foreground"
-          }`}
+        className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+          client.estado === "prospecto"
+            ? "bg-primary/10 text-primary"
+            : client.estado === "cliente"
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : "bg-secondary text-muted-foreground"
+        }`}
       >
         <span className="h-1.5 w-1.5 rounded-full bg-current" />
 
@@ -433,7 +468,6 @@ function getEstadoLabel(
       return estado;
   }
 }
-
 
 // ============================================================
 // SUMMARY

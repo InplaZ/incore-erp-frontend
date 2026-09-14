@@ -7,6 +7,15 @@ export interface PaginatedResponse<T>{
     previous: string | null;
     results: T[];
 }
+// ============================================================
+// EJECUTIVO COMERCIAL
+// ============================================================
+export interface EjecutivoComercial{
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+}
 //================================
 //Cuentas comerciales
 //================================
@@ -29,6 +38,7 @@ export type DocumentoIdentidad =
 export interface CuentaComercial {
     id: number;
     usuario: number | null;
+    ejecutivo_asignado: number | null; 
 
     nombres: string;
     apellido_paterno: string;
@@ -56,6 +66,7 @@ export interface CuentaComercial {
 
 export interface CuentaComercialCreate {
     usuario?: number | null;
+    ejecutivo_asignado?: number | null;
 
     nombres?: string;
     apellido_paterno?: string;
@@ -75,6 +86,7 @@ export interface CuentaComercialCreate {
     tipo_relacion?: TipoRelacion | null;
 
     fecha_alta: string;
+
 }
 
 export type CuentaComercialUpdate = Partial<CuentaComercialCreate>
@@ -101,6 +113,7 @@ export interface ActividadComercial {
 
   cuenta_comercial: number;
   usuario: number;
+  ejecutivo_asignado: string;
 
   tipo: TipoActividad;
   descripcion: string;
