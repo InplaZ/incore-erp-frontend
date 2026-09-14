@@ -3,8 +3,8 @@ import { Truck } from "lucide-react";
 import type { PrioridadSolicitud } from "../../comercial.types";
 
 interface RequerimientoStepEntregaProps {
-  cantidad: string;
-  setCantidad: (value: string) => void;
+  cantidadUnidades: string;
+  setCantidadUnidades: (value: string) => void;
 
   prioridad: PrioridadSolicitud;
   setPrioridad: (value: PrioridadSolicitud) => void;
@@ -14,17 +14,22 @@ interface RequerimientoStepEntregaProps {
 
   observaciones: string;
   setObservaciones: (value: string) => void;
+
+  cantidadKg: string;
+  setCantidadKg: (value: string) => void;
 }
 
 export default function RequerimientoStepEntrega({
-  cantidad,
-  setCantidad,
+  cantidadUnidades,
+  setCantidadUnidades,
   prioridad,
   setPrioridad,
   fechaEntrega,
   setFechaEntrega,
   observaciones,
   setObservaciones,
+  cantidadKg,
+  setCantidadKg,
 }: RequerimientoStepEntregaProps) {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -48,9 +53,9 @@ export default function RequerimientoStepEntrega({
             type="number"
             min="0"
             step="0.01"
-            value={cantidad}
+            value={cantidadUnidades}
             onChange={(event) =>
-              setCantidad(event.target.value)
+              setCantidadUnidades(event.target.value)
             }
             placeholder="Ej. 5000"
             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"

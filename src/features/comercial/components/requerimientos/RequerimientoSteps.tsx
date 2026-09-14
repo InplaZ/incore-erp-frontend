@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 
-type RequirementStep = 1 | 2 | 3 | 4 | 5;
+export type RequirementStep = 1 | 2 | 3 | 4 | 5;
 
 interface RequerimientoStepsProps {
   step: RequirementStep;

@@ -365,13 +365,12 @@ function ClientRow({
 
       {/* Estado */}
       <span
-        className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
-          client.estado === "prospecto"
+        className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${client.estado === "prospecto"
             ? "bg-primary/10 text-primary"
             : client.estado === "cliente"
               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
               : "bg-secondary text-muted-foreground"
-        }`}
+          }`}
       >
         <span className="h-1.5 w-1.5 rounded-full bg-current" />
 

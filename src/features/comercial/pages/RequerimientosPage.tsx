@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import {
   useCuentasComerciales,
@@ -6,8 +7,13 @@ import {
 
 import type {
   MaterialProducto,
+  Opacidad,
   PrioridadSolicitud,
   TipoImpresion,
+  TratamientoAcabadoEspecial,
+  TratamientoImpresion,
+  TipoSello,
+  TipoTroquel,
 } from "../comercial.types";
 
 import RequerimientoSteps from "../components/requerimientos/RequerimientoSteps";
@@ -23,6 +29,7 @@ import RequerimientoNavigation from "../components/requerimientos/RequerimientoN
 export type RequirementStep = 1 | 2 | 3 | 4 | 5;
 
 export default function RequerimientosPage() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<RequirementStep>(1);
 
   /*
@@ -44,7 +51,7 @@ export default function RequerimientosPage() {
     useState("");
 
   const [material, setMaterial] =
-    useState<MaterialProducto>("PEBD");
+    useState<MaterialProducto>("pebd");
 
   const [micraje, setMicraje] =
     useState("");
@@ -52,6 +59,17 @@ export default function RequerimientosPage() {
   const [colorBolsa, setColorBolsa] =
     useState("");
 
+  const [opacidad, setOpacidad] =
+    useState<Opacidad>("media");
+
+  const [
+    tratamientosAcabadosEspeciales,
+    setTratamientosAcabadosEspeciales,
+  ] = useState<TratamientoAcabadoEspecial[]>([]);
+
+  /*
+   * Impresión
+   */
   const [impresion, setImpresion] =
     useState(false);
 
@@ -60,6 +78,9 @@ export default function RequerimientosPage() {
 
   const [tipoImpresion, setTipoImpresion] =
     useState<TipoImpresion>("corrida");
+
+  const [tratamientoImpresion, setTratamientoImpresion] =
+    useState<TratamientoImpresion>("solido");
 
   const [otrasCaracteristicas, setOtrasCaracteristicas] =
     useState("");
@@ -82,11 +103,23 @@ export default function RequerimientosPage() {
   const [fuelle, setFuelle] =
     useState(false);
 
-  const [tipoTroquel, setTipoTroquel] =
+  const [fuelleIzquierdo, setFuelleIzquierdo] =
     useState("");
 
+  const [fuelleDerecho, setFuelleDerecho] =
+    useState("");
+
+  const [fuelleInferior, setFuelleInferior] =
+    useState("");
+
+  const [fuelleSuperior, setFuelleSuperior] =
+    useState("");
+
+  const [tipoTroquel, setTipoTroquel] =
+    useState<TipoTroquel | "">("");
+
   const [tipoSello, setTipoSello] =
-    useState("fondo");
+    useState<TipoSello>("fondo");
 
   const [pestana, setPestana] =
     useState("");
@@ -94,7 +127,10 @@ export default function RequerimientosPage() {
   /*
    * Entrega
    */
-  const [cantidad, setCantidad] =
+  const [cantidadUnidades, setCantidadUnidades] =
+    useState("");
+
+  const [cantidadKg, setCantidadKg] =
     useState("");
 
   const [prioridad, setPrioridad] =
@@ -150,29 +186,59 @@ export default function RequerimientosPage() {
   const resetWizard = () => {
     setStep(1);
 
+    /*
+     * Cliente
+     */
     setCuentaComercialId(null);
 
+    /*
+     * Producto
+     */
     setProduct(null);
 
+    /*
+     * Características generales
+     */
     setDescripcion("");
-    setMaterial("PEBD");
+    setMaterial("pebd");
     setMicraje("");
     setColorBolsa("");
+    setOpacidad("media");
+    setTratamientosAcabadosEspeciales([]);
+
+    /*
+     * Impresión
+     */
     setImpresion(false);
     setColorImpresion("");
     setTipoImpresion("corrida");
+    setTratamientoImpresion("solido");
+
     setOtrasCaracteristicas("");
 
+    /*
+     * Características de bolsa
+     */
     setAnchoDoblado("");
     setAnchoDesdoblado("");
     setLargoDoblado("");
     setLargoDesdoblado("");
+
     setFuelle(false);
+    setFuelleIzquierdo("");
+    setFuelleDerecho("");
+    setFuelleInferior("");
+    setFuelleSuperior("");
+
     setTipoTroquel("");
     setTipoSello("fondo");
     setPestana("");
 
-    setCantidad("");
+    /*
+     * Entrega
+     */
+    setCantidadUnidades("");
+    setCantidadKg("");
     setPrioridad("normal");
     setFechaEntrega("");
     setObservaciones("");
@@ -183,36 +249,67 @@ export default function RequerimientosPage() {
    * Primero terminamos la estructura visual.
    */
   const handleSubmit = () => {
+    try {
     console.log("Requerimiento:", {
       cuenta_comercial: cuentaComercialId,
 
       producto: product,
 
+      /*
+       * Especificación general
+       */
       descripcion,
       material,
       micraje,
       color_bolsa: colorBolsa,
+      opacidad,
+      tratamientos_acabados_especiales:
+        tratamientosAcabadosEspeciales,
+
+      /*
+       * Impresión
+       */
       impresion,
       color_impresion: colorImpresion,
       tipo_impresion: tipoImpresion,
+      tratamiento_impresion: tratamientoImpresion,
+
       otras_caracteristicas: otrasCaracteristicas,
 
+      /*
+       * Especificación de bolsa
+       */
       bolsa: {
         ancho_doblado: anchoDoblado,
         ancho_desdoblado: anchoDesdoblado,
         largo_doblado: largoDoblado,
         largo_desdoblado: largoDesdoblado,
+
         fuelle,
+        fuelle_izquierdo: fuelleIzquierdo,
+        fuelle_derecho: fuelleDerecho,
+        fuelle_inferior: fuelleInferior,
+        fuelle_superior: fuelleSuperior,
+
         tipo_troquel: tipoTroquel,
         tipo_sello: tipoSello,
         pestana,
       },
 
-      cantidad,
+      /*
+       * Solicitud
+       */
+      cantidad_unidades: cantidadUnidades,
+      cantidad_kg: cantidadKg,
       prioridad,
       fecha_entrega: fechaEntrega,
       observaciones,
     });
+
+    navigate("/comercial");
+    } catch(error) {
+      console.log("Erro al registra requerimiento", error)
+    }
   };
 
   return (
@@ -248,11 +345,19 @@ export default function RequerimientosPage() {
             setProduct={setProduct}
           />
         )}
+        
 
         {step === 3 && (
           <RequerimientoStepDetalles
             product={product}
+            cantidadUnidades={cantidadUnidades}
+            setCantidadUnidades={setCantidadUnidades}
+            cantidadKg={cantidadKg}
+            setCantidadKg={setCantidadKg}
 
+            /*
+             * Características generales
+             */
             descripcion={descripcion}
             setDescripcion={setDescripcion}
 
@@ -265,6 +370,19 @@ export default function RequerimientosPage() {
             colorBolsa={colorBolsa}
             setColorBolsa={setColorBolsa}
 
+            opacidad={opacidad}
+            setOpacidad={setOpacidad}
+
+            tratamientosAcabadosEspeciales={
+              tratamientosAcabadosEspeciales
+            }
+            setTratamientosAcabadosEspeciales={
+              setTratamientosAcabadosEspeciales
+            }
+
+            /*
+             * Impresión
+             */
             impresion={impresion}
             setImpresion={setImpresion}
 
@@ -274,6 +392,13 @@ export default function RequerimientosPage() {
             tipoImpresion={tipoImpresion}
             setTipoImpresion={setTipoImpresion}
 
+            tratamientoImpresion={
+              tratamientoImpresion
+            }
+            setTratamientoImpresion={
+              setTratamientoImpresion
+            }
+
             otrasCaracteristicas={
               otrasCaracteristicas
             }
@@ -281,6 +406,9 @@ export default function RequerimientosPage() {
               setOtrasCaracteristicas
             }
 
+            /*
+             * Dimensiones de bolsa
+             */
             anchoDoblado={anchoDoblado}
             setAnchoDoblado={setAnchoDoblado}
 
@@ -297,9 +425,37 @@ export default function RequerimientosPage() {
               setLargoDesdoblado
             }
 
+            /*
+             * Fuelle
+             */
             fuelle={fuelle}
-            setFuelle={setFuelle}
+              setFuelle={setFuelle}
 
+            fuelleIzquierdo={
+              fuelleIzquierdo
+            }
+            setFuelleIzquierdo={
+              setFuelleIzquierdo
+            }
+
+            fuelleDerecho={fuelleDerecho}
+            setFuelleDerecho={
+              setFuelleDerecho
+            }
+
+            fuelleInferior={fuelleInferior}
+            setFuelleInferior={
+              setFuelleInferior
+            }
+
+            fuelleSuperior={fuelleSuperior}
+            setFuelleSuperior={
+              setFuelleSuperior
+            }
+
+            /*
+             * Terminaciones de bolsa
+             */
             tipoTroquel={tipoTroquel}
             setTipoTroquel={setTipoTroquel}
 
@@ -313,8 +469,15 @@ export default function RequerimientosPage() {
 
         {step === 4 && (
           <RequerimientoStepEntrega
-            cantidad={cantidad}
-            setCantidad={setCantidad}
+            cantidadUnidades={
+              cantidadUnidades
+            }
+            setCantidadUnidades={
+              setCantidadUnidades
+            }
+
+            cantidadKg={cantidadKg}
+            setCantidadKg={setCantidadKg}
 
             prioridad={prioridad}
             setPrioridad={setPrioridad}
@@ -323,7 +486,9 @@ export default function RequerimientosPage() {
             setFechaEntrega={setFechaEntrega}
 
             observaciones={observaciones}
-            setObservaciones={setObservaciones}
+            setObservaciones={
+              setObservaciones
+            }
           />
         )}
 
@@ -335,7 +500,11 @@ export default function RequerimientosPage() {
 
             product={product}
 
-            cantidad={cantidad}
+            cantidadUnidades={
+              cantidadUnidades
+            }
+            cantidadKg={cantidadKg}
+
             prioridad={prioridad}
             fechaEntrega={fechaEntrega}
 

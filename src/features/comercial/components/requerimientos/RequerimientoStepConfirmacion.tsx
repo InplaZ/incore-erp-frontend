@@ -8,7 +8,8 @@ interface RequerimientoStepConfirmacionProps {
 
   product: ProductType;
 
-  cantidad: string;
+  cantidadUnidades: string;
+  cantidadKg: string;
   prioridad: string;
   fechaEntrega: string;
 
@@ -19,7 +20,8 @@ interface RequerimientoStepConfirmacionProps {
 export default function RequerimientoStepConfirmacion({
   cuentaSeleccionada,
   product,
-  cantidad,
+  cantidadUnidades,
+  cantidadKg,
   prioridad,
   fechaEntrega,
   descripcion,
@@ -65,7 +67,7 @@ export default function RequerimientoStepConfirmacion({
         <div className="grid gap-4 sm:grid-cols-2">
           <SummaryItem
             label="Cantidad"
-            value={cantidad || "No definida"}
+            value={cantidadUnidades || "No definida"}
           />
 
           <SummaryItem

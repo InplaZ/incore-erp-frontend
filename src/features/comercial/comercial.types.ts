@@ -173,7 +173,8 @@ export interface SolicitudComercial {
   fecha: string;
   descripcion: string;
 
-  cantidad: string;
+  cantidad_unidades: string;
+  cantidad_kg: string;
   fecha_entrega: string | null;
   observaciones: string;
 
@@ -190,7 +191,8 @@ export interface SolicitudComercialCreate {
   fecha: string;
   descripcion: string;
 
-  cantidad: string;
+  cantidad_unidades: string;
+  cantidad_kg: string;
   fecha_entrega?: string | null;
   observaciones?: string;
 
@@ -204,38 +206,58 @@ export type SolicitudComercialUpdate =
 // ============================================================
 // ESPECIFICACIÓN DE PRODUCTO SOLICITADO
 // ============================================================
+export type TipoCapa =
+  | "monocapa"
+  | "bicapa"
+  | "tricapa";
 
 export type MaterialProducto =
-  | "PEAD"
-  | "PEBD"
-  | "PP";
+  | "pead"
+  | "pebd"
+  | "pp"
+  | "bopp"
+  | "otro";
+
+export type Opacidad = 
+  | "alta"
+  | "media"
+  | "baja";
 
 export type TipoImpresion =
   | "corrida"
   | "dimensionada";
+
+export type CaraImpresion =
+  | "anverso"
+  | "reverso"
+  | "ambas";
+
+export type TratamientoImpresion = 
+  | "solido"
+  | "degradado"
+  | "trameado";
+
+export type TratamientoAcabadoEspecial = 
+  | "film_aromatizado"
+  | "oxobiodegradable"
+  | "perforada"
+  | "precorte";
 
 export interface EspecificacionProductoSolicitado {
   id: number;
 
   solicitud_comercial: number;
   categoria_producto: number;
-
   material: MaterialProducto;
-
   apto_alimento: boolean;
-
   micraje: string | null;
-
   color_bolsa: string;
-
   impresion: boolean;
-
   color_impresion: string[];
-
   tipo_impresion: TipoImpresion;
-
   otras_caracteristicas: string;
-
+  opacidad: Opacidad;
+  tratamientos_acabados_especiales: TratamientoAcabadoEspecial[]; 
   created_at: string;
   updated_at: string;
 }
@@ -243,22 +265,15 @@ export interface EspecificacionProductoSolicitado {
 export interface EspecificacionProductoSolicitadoCreate {
   solicitud_comercial: number;
   categoria_producto: number;
-
   material: MaterialProducto;
-
   apto_alimento: boolean;
-
   micraje?: string | null;
-
   color_bolsa: string;
-
   impresion: boolean;
-
   color_impresion: string[];
-
   tipo_impresion: TipoImpresion;
-
   otras_caracteristicas?: string;
+  tratamientos_acabados_especiales?: TratamientoAcabadoEspecial[]; 
 }
 
 export type EspecificacionProductoSolicitadoUpdate =
@@ -271,13 +286,18 @@ export type EspecificacionProductoSolicitadoUpdate =
 
 export type TipoTroquel =
   | "camiseta"
-  | "boutique"
-  | "aza"
-  | "boutique_reforzado";
+  | "normal"
+  | "rinonera"
+  | "con_asa"
+  | "refuerzo"
+  | "solapa"
+  | "adhesiva"
+  | "cierre_facil";
 
 export type TipoSello =
   | "fondo"
-  | "lateral";
+  | "lateral"
+  | "ninguno";
 
 export interface EspecificacionBolsaSolicitada {
   id: number;

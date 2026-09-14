@@ -4,14 +4,14 @@ import {
   Check,
 } from "lucide-react";
 
-import type  RequirementStep  from "@/features/comercial/components/requerimientos/RequerimientoSteps";
+import type { RequirementStep } from "@/features/comercial/components/requerimientos/RequerimientoSteps";
 
 interface RequerimientoNavigationProps {
   step: RequirementStep;
   onNext: () => void;
   onPrevious: () => void;
   onCancel: () => void;
-  onSubmit: () => void;
+  onSubmit: () => void | Promise<void>;
   submitting?: boolean;
 }
 
