@@ -19,9 +19,11 @@ import type {
   TratamientoImpresion,
   TipoSello,
   TipoTroquel,
+  PosicionImpresion,
 } from "../../comercial.types";
 
 import type { ProductType } from "./RequerimientoStepProducto";
+import { Select } from "@/components/ui";
 
 interface RequerimientoStepDetallesProps {
   product: ProductType;
@@ -43,11 +45,24 @@ interface RequerimientoStepDetallesProps {
   setColorBolsa: (value: string) => void;
   opacidad: Opacidad;
   setOpacidad: (value: Opacidad) => void;
+  aptoAlimento: boolean;
+  setAptoAlimento: (value: boolean) => void;
 
   tratamientosAcabadosEspeciales: TratamientoAcabadoEspecial[];
   setTratamientosAcabadosEspeciales: (
     value: TratamientoAcabadoEspecial[],
   ) => void;
+
+  posicionImpresion: PosicionImpresion;
+  setPosicionImpresion: (value: PosicionImpresion) => void;
+  distanciaImpresionSuperior: string;
+  setDistanciaImpresionSuperior: (value: string) => void;
+  distanciaImpresionInferior: string;
+  setDistanciaImpresionInferior: (value: string) => void;
+  distanciaImpresionIzquierda: string;
+  setDistanciaImpresionIzquierda: (value: string) => void;
+  distanciaImpresionDerecha: string;
+  setDistanciaImpresionDerecha: (value: string) => void;
 
   // Impresión
   impresion: boolean;
@@ -243,6 +258,16 @@ export default function RequerimientoStepDetalles(
     setTipoImpresion,
     tratamientoImpresion,
     setTratamientoImpresion,
+    posicionImpresion,
+    setPosicionImpresion,
+    distanciaImpresionSuperior,
+    setDistanciaImpresionSuperior,
+    distanciaImpresionInferior,
+    setDistanciaImpresionInferior,
+    distanciaImpresionIzquierda,
+    setDistanciaImpresionIzquierda,
+    distanciaImpresionDerecha,
+    setDistanciaImpresionDerecha,
     otrasCaracteristicas,
     setOtrasCaracteristicas,
     anchoDoblado,
@@ -269,6 +294,8 @@ export default function RequerimientoStepDetalles(
     setTipoSello,
     pestana,
     setPestana,
+    aptoAlimento,
+    setAptoAlimento,
   } = props;
 
   const [fuelleDerechoEditado, setFuelleDerechoEditado] = useState(false);
@@ -469,13 +496,26 @@ export default function RequerimientoStepDetalles(
             onChange={(v) => setMaterial(v as MaterialProducto)}
             type="select"
             options={[
-              { value: "pead", label: "PEAD" },
-              { value: "pebd", label: "PEBD" },
-              { value: "pp", label: "PP" },
-              { value: "bopp", label: "BOPP" },
-              { value: "otro", label: "Otro" },
+              { value: "PEAD", label: "PEAD" },
+              { value: "PEBD", label: "PEBD" },
+              { value: "PP", label: "PP" },
+              { value: "BOPP", label: "BOPP" },
+              { value: "OTRO", label: "Otro" },
             ]}
           />
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              Apto para alimentos
+            </label>
+
+            <Select
+              value={aptoAlimento ? "Sí" : "No"}
+              onChange={(e) => setAptoAlimento(e.target.value === "Sí")}
+            >
+              <option value="Sí">Sí</option>
+              <option value="No">No</option>
+            </Select>
+          </div>
           <Field
             label="Micraje"
             value={micraje}
@@ -750,6 +790,57 @@ export default function RequerimientoStepDetalles(
                 ]}
               />
             </div>
+            <Field
+              label="Posición de impresión"
+              value={posicionImpresion}
+              onChange={(v) =>
+                setPosicionImpresion(v as PosicionImpresion)
+              }
+              type="select"
+              options={[
+                { value: "centrada", label: "Centrada" },
+                { value: "personalizada", label: "Personalizada" },
+              ]}
+            />
+            {posicionImpresion === "personalizada" && (
+              <div className="sm:col-span-2 grid gap-4 rounded-xl border border-border bg-background p-4 sm:grid-cols-2">
+                <Field
+                  label="Distancia superior"
+                  value={distanciaImpresionSuperior}
+                  onChange={setDistanciaImpresionSuperior}
+                  placeholder="Ej. 5"
+                  suffix="cm"
+                  type="number"
+                />
+
+                <Field
+                  label="Distancia inferior"
+                  value={distanciaImpresionInferior}
+                  onChange={setDistanciaImpresionInferior}
+                  placeholder="Ej. 5"
+                  suffix="cm"
+                  type="number"
+                />
+
+                <Field
+                  label="Distancia izquierda"
+                  value={distanciaImpresionIzquierda}
+                  onChange={setDistanciaImpresionIzquierda}
+                  placeholder="Ej. 3"
+                  suffix="cm"
+                  type="number"
+                />
+
+                <Field
+                  label="Distancia derecha"
+                  value={distanciaImpresionDerecha}
+                  onChange={setDistanciaImpresionDerecha}
+                  placeholder="Ej. 3"
+                  suffix="cm"
+                  type="number"
+                />
+              </div>
+            )}
           </div>
         )}
       </Section>

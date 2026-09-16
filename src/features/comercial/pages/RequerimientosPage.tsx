@@ -14,8 +14,9 @@ import type {
   TratamientoImpresion,
   TipoSello,
   TipoTroquel,
+  PosicionImpresion,
 } from "../comercial.types";
-
+import { useProductosCategorias } from "@/features/productos/productos.hook";
 import RequerimientoSteps from "../components/requerimientos/RequerimientoSteps";
 import RequerimientoStepCliente from "../components/requerimientos/RequerimientoStepCliente";
 import RequerimientoStepProducto, {
@@ -26,12 +27,16 @@ import RequerimientoStepEntrega from "../components/requerimientos/Requerimiento
 import RequerimientoStepConfirmacion from "../components/requerimientos/RequerimientoStepConfirmacion";
 import RequerimientoNavigation from "../components/requerimientos/RequerimientoNavigation";
 
+import {
+  crearRequerimiento,
+  type RequerimientoFormData,
+} from "@/features/comercial/components/requerimientos/requerimiento.service";
+
 export type RequirementStep = 1 | 2 | 3 | 4 | 5;
 
 export default function RequerimientosPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState<RequirementStep>(1);
-
   /*
    * Cliente
    */
@@ -51,7 +56,7 @@ export default function RequerimientosPage() {
     useState("");
 
   const [material, setMaterial] =
-    useState<MaterialProducto>("pebd");
+    useState<MaterialProducto>("PEBD");
 
   const [micraje, setMicraje] =
     useState("");
@@ -81,6 +86,21 @@ export default function RequerimientosPage() {
 
   const [tratamientoImpresion, setTratamientoImpresion] =
     useState<TratamientoImpresion>("solido");
+
+  const [posicionImpresion, setPosicionImpresion] =
+    useState<PosicionImpresion>("centrada");
+
+  const [distanciaImpresionSuperior, setDistanciaImpresionSuperior] =
+    useState("");
+
+  const [distanciaImpresionInferior, setDistanciaImpresionInferior] =
+    useState("");
+
+  const [distanciaImpresionIzquierda, setDistanciaImpresionIzquierda] =
+    useState("");
+
+  const [distanciaImpresionDerecha, setDistanciaImpresionDerecha] =
+    useState("");
 
   const [otrasCaracteristicas, setOtrasCaracteristicas] =
     useState("");
@@ -124,6 +144,9 @@ export default function RequerimientosPage() {
   const [pestana, setPestana] =
     useState("");
 
+  const [aptoAlimento, setAptoAlimento] =
+    useState(false);
+
   /*
    * Entrega
    */
@@ -137,6 +160,9 @@ export default function RequerimientosPage() {
     useState<PrioridadSolicitud>("normal");
 
   const [fechaEntrega, setFechaEntrega] =
+    useState("");
+
+  const [lugarEntrega, setLugarEntrega] =
     useState("");
 
   const [observaciones, setObservaciones] =
@@ -155,6 +181,21 @@ export default function RequerimientosPage() {
     (cuenta) =>
       cuenta.id === cuentaComercialId,
   );
+
+  const { data: categorias = [] } =
+    useProductosCategorias();
+
+  const categoriaSeleccionada = categorias.find((categoria) => {
+    if (product === "bag") {
+      return categoria.nombre.toLowerCase() === "bolsas";
+    }
+
+    if (product === "roll") {
+      return categoria.nombre.toLowerCase() === "bobinas";
+    }
+
+    return false;
+  });
 
   /*
    * Navegación
@@ -187,20 +228,14 @@ export default function RequerimientosPage() {
     setStep(1);
 
     /*
-     * Cliente
-     */
-    setCuentaComercialId(null);
-
-    /*
      * Producto
      */
     setProduct(null);
-
     /*
      * Características generales
      */
     setDescripcion("");
-    setMaterial("pebd");
+    setMaterial("PEBD");
     setMicraje("");
     setColorBolsa("");
     setOpacidad("media");
@@ -213,6 +248,12 @@ export default function RequerimientosPage() {
     setColorImpresion("");
     setTipoImpresion("corrida");
     setTratamientoImpresion("solido");
+
+    setPosicionImpresion("centrada");
+    setDistanciaImpresionSuperior("");
+    setDistanciaImpresionInferior("");
+    setDistanciaImpresionIzquierda("");
+    setDistanciaImpresionDerecha("");
 
     setOtrasCaracteristicas("");
 
@@ -241,6 +282,7 @@ export default function RequerimientosPage() {
     setCantidadKg("");
     setPrioridad("normal");
     setFechaEntrega("");
+    setLugarEntrega("");
     setObservaciones("");
   };
 
@@ -248,67 +290,92 @@ export default function RequerimientosPage() {
    * Todavía no hacemos los POST.
    * Primero terminamos la estructura visual.
    */
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     try {
-    console.log("Requerimiento:", {
-      cuenta_comercial: cuentaComercialId,
+      if (!cuentaComercialId) {
+        throw new Error(
+          "Debe seleccionar un cliente.",
+        );
+      }
 
-      producto: product,
+      if (!categoriaSeleccionada) {
+        throw new Error(
+          "No se encontró una categoría de producto.",
+        );
+      }
 
-      /*
-       * Especificación general
-       */
-      descripcion,
-      material,
-      micraje,
-      color_bolsa: colorBolsa,
-      opacidad,
-      tratamientos_acabados_especiales:
+      if (!product) {
+        throw new Error(
+          "Debe seleccionar un tipo de producto.",
+        );
+      }
+
+      const formData: RequerimientoFormData = {
+        cuentaComercialId,
+
+        product,
+
+        categoriaProductoId:
+          categoriaSeleccionada.id,
+
+        descripcion,
+        material,
+        micraje,
+        colorBolsa,
+        opacidad,
+        aptoAlimento,
         tratamientosAcabadosEspeciales,
 
-      /*
-       * Impresión
-       */
-      impresion,
-      color_impresion: colorImpresion,
-      tipo_impresion: tipoImpresion,
-      tratamiento_impresion: tratamientoImpresion,
+        impresion,
+        colorImpresion,
+        tipoImpresion,
+        tratamientoImpresion,
+        posicionImpresion,
 
-      otras_caracteristicas: otrasCaracteristicas,
+        distanciaImpresionSuperior,
+        distanciaImpresionInferior,
+        distanciaImpresionIzquierda,
+        distanciaImpresionDerecha,
 
-      /*
-       * Especificación de bolsa
-       */
-      bolsa: {
-        ancho_doblado: anchoDoblado,
-        ancho_desdoblado: anchoDesdoblado,
-        largo_doblado: largoDoblado,
-        largo_desdoblado: largoDesdoblado,
+        otrasCaracteristicas,
+
+        anchoDoblado,
+        anchoDesdoblado,
+        largoDoblado,
+        largoDesdoblado,
 
         fuelle,
-        fuelle_izquierdo: fuelleIzquierdo,
-        fuelle_derecho: fuelleDerecho,
-        fuelle_inferior: fuelleInferior,
-        fuelle_superior: fuelleSuperior,
+        fuelleIzquierdo,
+        fuelleDerecho,
+        fuelleInferior,
+        fuelleSuperior,
 
-        tipo_troquel: tipoTroquel,
-        tipo_sello: tipoSello,
+        tipoTroquel,
+        tipoSello,
         pestana,
-      },
 
-      /*
-       * Solicitud
-       */
-      cantidad_unidades: cantidadUnidades,
-      cantidad_kg: cantidadKg,
-      prioridad,
-      fecha_entrega: fechaEntrega,
-      observaciones,
-    });
+        cantidadUnidades,
+        cantidadKg,
+        prioridad,
+        fechaEntrega,
+        lugarEntrega,
+        observaciones,
+      };
 
-    navigate("/comercial");
-    } catch(error) {
-      console.log("Erro al registra requerimiento", error)
+      const resultado =
+        await crearRequerimiento(formData);
+
+      console.log(
+        "Requerimiento creado correctamente:",
+        resultado,
+      );
+
+      navigate("/comercial");
+    } catch (error) {
+      console.error(
+        "Error al registrar requerimiento:",
+        error,
+      );
     }
   };
 
@@ -345,7 +412,7 @@ export default function RequerimientosPage() {
             setProduct={setProduct}
           />
         )}
-        
+
 
         {step === 3 && (
           <RequerimientoStepDetalles
@@ -380,6 +447,10 @@ export default function RequerimientosPage() {
               setTratamientosAcabadosEspeciales
             }
 
+            aptoAlimento={aptoAlimento}
+            setAptoAlimento={setAptoAlimento}
+
+
             /*
              * Impresión
              */
@@ -398,6 +469,22 @@ export default function RequerimientosPage() {
             setTratamientoImpresion={
               setTratamientoImpresion
             }
+
+            posicionImpresion={posicionImpresion}
+            setPosicionImpresion={setPosicionImpresion}
+
+            distanciaImpresionSuperior={distanciaImpresionSuperior}
+            setDistanciaImpresionSuperior={setDistanciaImpresionSuperior}
+
+            distanciaImpresionInferior={distanciaImpresionInferior}
+            setDistanciaImpresionInferior={setDistanciaImpresionInferior}
+
+            distanciaImpresionIzquierda={distanciaImpresionIzquierda}
+            setDistanciaImpresionIzquierda={setDistanciaImpresionIzquierda}
+
+            distanciaImpresionDerecha={distanciaImpresionDerecha}
+            setDistanciaImpresionDerecha={setDistanciaImpresionDerecha}
+
 
             otrasCaracteristicas={
               otrasCaracteristicas
@@ -429,7 +516,7 @@ export default function RequerimientosPage() {
              * Fuelle
              */
             fuelle={fuelle}
-              setFuelle={setFuelle}
+            setFuelle={setFuelle}
 
             fuelleIzquierdo={
               fuelleIzquierdo
@@ -485,6 +572,9 @@ export default function RequerimientosPage() {
             fechaEntrega={fechaEntrega}
             setFechaEntrega={setFechaEntrega}
 
+            lugarEntrega={lugarEntrega}
+            setLugarEntrega={setLugarEntrega}
+
             observaciones={observaciones}
             setObservaciones={
               setObservaciones
@@ -494,22 +584,49 @@ export default function RequerimientosPage() {
 
         {step === 5 && (
           <RequerimientoStepConfirmacion
-            cuentaSeleccionada={
-              cuentaSeleccionada
-            }
-
+            cuentaSeleccionada={cuentaSeleccionada}
             product={product}
 
-            cantidadUnidades={
-              cantidadUnidades
-            }
+            cantidadUnidades={cantidadUnidades}
             cantidadKg={cantidadKg}
-
             prioridad={prioridad}
             fechaEntrega={fechaEntrega}
 
             descripcion={descripcion}
             observaciones={observaciones}
+            lugarEntrega={lugarEntrega}
+
+            material={material}
+            aptoAlimento={aptoAlimento}
+            micraje={micraje}
+            colorBolsa={colorBolsa}
+            opacidad={opacidad}
+
+            tratamientosAcabadosEspeciales={
+              tratamientosAcabadosEspeciales
+            }
+
+            impresion={impresion}
+            colorImpresion={colorImpresion}
+            tipoImpresion={tipoImpresion}
+            tratamientoImpresion={tratamientoImpresion}
+
+            otrasCaracteristicas={otrasCaracteristicas}
+
+            anchoDoblado={anchoDoblado}
+            anchoDesdoblado={anchoDesdoblado}
+            largoDoblado={largoDoblado}
+            largoDesdoblado={largoDesdoblado}
+
+            fuelle={fuelle}
+            fuelleIzquierdo={fuelleIzquierdo}
+            fuelleDerecho={fuelleDerecho}
+            fuelleInferior={fuelleInferior}
+            fuelleSuperior={fuelleSuperior}
+
+            tipoTroquel={tipoTroquel}
+            tipoSello={tipoSello}
+            pestana={pestana}
           />
         )}
       </div>

@@ -176,6 +176,7 @@ export interface SolicitudComercial {
   cantidad_unidades: string;
   cantidad_kg: string;
   fecha_entrega: string | null;
+  lugar_entrega: string;
   observaciones: string;
 
   prioridad: PrioridadSolicitud;
@@ -194,15 +195,25 @@ export interface SolicitudComercialCreate {
   cantidad_unidades: string;
   cantidad_kg: string;
   fecha_entrega?: string | null;
+  lugar_entrega?: string;
   observaciones?: string;
 
   prioridad?: PrioridadSolicitud;
+
+  estado: EstadoSolicitud;
 }
 
 export type SolicitudComercialUpdate =
   Partial<SolicitudComercialCreate>;
 
-
+// ============================================================
+// Categoria Producto 
+// ============================================================
+export type ProductType = 
+  | "bag"
+  | "roll"
+  | "other"
+  | null;
 // ============================================================
 // ESPECIFICACIÓN DE PRODUCTO SOLICITADO
 // ============================================================
@@ -212,11 +223,11 @@ export type TipoCapa =
   | "tricapa";
 
 export type MaterialProducto =
-  | "pead"
-  | "pebd"
-  | "pp"
-  | "bopp"
-  | "otro";
+  | "PEAD"
+  | "PEBD"
+  | "PP"
+  | "BOPP"
+  | "OTRO";
 
 export type Opacidad = 
   | "alta"
@@ -236,6 +247,10 @@ export type TratamientoImpresion =
   | "solido"
   | "degradado"
   | "trameado";
+  
+export type PosicionImpresion =
+  | "centrada"
+  | "personalizada";
 
 export type TratamientoAcabadoEspecial = 
   | "film_aromatizado"
@@ -255,6 +270,11 @@ export interface EspecificacionProductoSolicitado {
   impresion: boolean;
   color_impresion: string[];
   tipo_impresion: TipoImpresion;
+  posicion_impresion: PosicionImpresion;
+  distancia_impresion_superior: string | null;
+  distancia_impresion_inferior: string | null;
+  distancia_impresion_izquierda: string | null;
+  distancia_impresion_derecha: string | null;
   otras_caracteristicas: string;
   opacidad: Opacidad;
   tratamientos_acabados_especiales: TratamientoAcabadoEspecial[]; 
@@ -272,6 +292,11 @@ export interface EspecificacionProductoSolicitadoCreate {
   impresion: boolean;
   color_impresion: string[];
   tipo_impresion: TipoImpresion;
+  posicion_impresion?: PosicionImpresion;
+  distancia_impresion_superior?: string | null;
+  distancia_impresion_inferior?: string | null;
+  distancia_impresion_izquierda?: string | null;
+  distancia_impresion_derecha?: string | null;
   otras_caracteristicas?: string;
   tratamientos_acabados_especiales?: TratamientoAcabadoEspecial[]; 
 }

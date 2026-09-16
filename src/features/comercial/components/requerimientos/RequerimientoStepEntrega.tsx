@@ -1,5 +1,3 @@
-import { Truck } from "lucide-react";
-
 import type { PrioridadSolicitud } from "../../comercial.types";
 
 interface RequerimientoStepEntregaProps {
@@ -11,6 +9,9 @@ interface RequerimientoStepEntregaProps {
 
   fechaEntrega: string;
   setFechaEntrega: (value: string) => void;
+
+  lugarEntrega: string;
+  setLugarEntrega: (value: string) => void;
 
   observaciones: string;
   setObservaciones: (value: string) => void;
@@ -26,6 +27,8 @@ export default function RequerimientoStepEntrega({
   setPrioridad,
   fechaEntrega,
   setFechaEntrega,
+  lugarEntrega,
+  setLugarEntrega,
   observaciones,
   setObservaciones,
   cantidadKg,
@@ -97,19 +100,20 @@ export default function RequerimientoStepEntrega({
             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
         </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium">
+            Lugar de entrega
+          </label>
 
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-4">
-          <Truck className="h-5 w-5 shrink-0 text-primary" />
-
-          <div>
-            <p className="text-sm font-medium">
-              Fecha solicitada
-            </p>
-
-            <p className="mt-1 text-xs text-muted-foreground">
-              Será evaluada durante la revisión de viabilidad.
-            </p>
-          </div>
+          <textarea
+            value={lugarEntrega}
+            onChange={(event) =>
+              setLugarEntrega(event.target.value)
+            }
+            rows={3}
+            placeholder="Ej. Planta INPLAZ, almacén del cliente..."
+            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+          />
         </div>
       </div>
 
