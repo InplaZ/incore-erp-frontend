@@ -314,12 +314,12 @@ export function Sidebar<TItem extends SidebarItem = SidebarItem>({
       item.disabled && "cursor-not-allowed opacity-50",
 
       item.active && !item.disabled
-        ? "bg-primary text-primary-foreground"
+        ? "bg-sidebar-active text-white"
         : [
-            "text-muted-foreground",
-            "hover:bg-secondary",
-            "hover:text-foreground",
-          ].join(" "),
+          "text-sidebar-foreground",
+          "hover:bg-sidebar-hover",
+          "hover:text-sidebar-foreground",
+        ].join(" "),
 
       "focus-visible:outline-none",
       "focus-visible:ring-2",
@@ -376,7 +376,7 @@ export function Sidebar<TItem extends SidebarItem = SidebarItem>({
   const sidebarClasses = [
     "fixed inset-y-0 left-0 z-50",
     "flex min-h-screen shrink-0 flex-col",
-    "border-r border-border bg-card",
+    "border-r border-sidebar bg-sidebar text-sidebar-foreground", //COLOR DEL SIDEBAR AZUL
     "transition-all duration-200",
 
     "md:sticky md:top-0 md:z-0",

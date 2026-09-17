@@ -75,14 +75,14 @@ export function PedidoDetallePage() {
           <div className="flex flex-wrap items-center gap-4">
             <Badge className={PEDIDO_ESTADO_COLORS[pedido.estado]}>{PEDIDO_ESTADO_LABELS[pedido.estado]}</Badge>
             <PriorityBadge label={PRIORIDAD_LABELS[pedido.prioridad]} dotClass={PRIORIDAD_DOTS[pedido.prioridad]} colorClass={PRIORIDAD_COLORS[pedido.prioridad]} />
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Avatar name={pedido.responsableNombre} size="sm" />
               {pedido.responsableNombre}
             </div>
-            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" /> Creado: {formatDate(pedido.fechaCreacion)}
             </div>
-            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" /> Entrega: {formatDate(pedido.fechaComprometida)}
             </div>
           </div>
@@ -98,19 +98,19 @@ export function PedidoDetallePage() {
               <div key={estado} className="flex items-center gap-1 shrink-0">
                 <div className={cn(
                   'flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg border min-w-[100px]',
-                  i <= estadoIndex ? 'bg-brand-50 border-brand-300' : 'bg-slate-50 border-slate-200',
+                  i <= estadoIndex ? 'bg-accent border-accent/20' : 'bg-muted border-border',
                 )}>
                   <div className={cn(
                     'h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold',
-                    i < estadoIndex ? 'bg-brand-600 text-white' : i === estadoIndex ? 'bg-inplaz-600 text-white' : 'bg-slate-200 text-slate-400',
+                    i < estadoIndex ? 'bg-success text-white' : i === estadoIndex ? 'bg-sidebar-active text-white' : 'bg-muted text-muted-foreground',
                   )}>
                     {i < estadoIndex ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
                   </div>
-                  <span className={cn('text-xs text-center', i <= estadoIndex ? 'text-slate-700 font-medium' : 'text-slate-400')}>
+                  <span className={cn('text-xs text-center', i <= estadoIndex ? 'text-foreground font-medium' : 'text-muted-foreground')}>
                     {PEDIDO_ESTADO_LABELS[estado]}
                   </span>
                 </div>
-                {i < PEDIDO_ESTADOS.length - 1 && <div className={cn('h-0.5 w-4', i < estadoIndex ? 'bg-brand-400' : 'bg-slate-200')} />}
+                {i < PEDIDO_ESTADOS.length - 1 && <div className={cn('h-0.5 w-4', i < estadoIndex ? 'bg-success/50' : 'bg-border')} />}
               </div>
             ))}
           </div>
@@ -133,9 +133,9 @@ export function PedidoDetallePage() {
               <InfoRow label="Acabado" value={pedido.acabado} />
               <InfoRow label="Máquina" value={pedido.maquinaNombre ?? 'Sin asignar'} />
               {pedido.observaciones && (
-                <div className="pt-2 border-t border-slate-100">
-                  <p className="text-xs text-slate-500 mb-1">Observaciones</p>
-                  <p className="text-sm text-slate-700">{pedido.observaciones}</p>
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs text-muted-foreground mb-1">Observaciones</p>
+                  <p className="text-sm text-foreground">{pedido.observaciones}</p>
                 </div>
               )}
             </CardBody>
@@ -161,15 +161,15 @@ export function PedidoDetallePage() {
                   {timeline.map((e, i) => (
                     <div key={e.id} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <div className="h-8 w-8 rounded-full bg-inplaz-100 flex items-center justify-center shrink-0">
-                          <MessageSquare className="h-4 w-4 text-inplaz-600" />
+                        <div className="h-8 w-8 rounded-full bg-sidebar/10 flex items-center justify-center shrink-0">
+                          <MessageSquare className="h-4 w-4 text-sidebar-foreground" />
                         </div>
-                        {i < timeline.length - 1 && <div className="w-0.5 flex-1 bg-slate-200 my-1" />}
+                        {i < timeline.length - 1 && <div className="w-0.5 flex-1 bg-border my-1" />}
                       </div>
                       <div className="flex-1 pb-4">
-                        <p className="text-sm text-slate-700"><span className="font-medium">{e.usuario}</span> {e.accion.toLowerCase()}</p>
-                        {e.comentario && <p className="text-sm text-slate-500 mt-0.5">{e.comentario}</p>}
-                        <p className="text-xs text-slate-400 mt-1">{formatDateTime(e.fecha)}</p>
+                        <p className="text-sm text-foreground"><span className="font-medium">{e.usuario}</span> {e.accion.toLowerCase()}</p>
+                        {e.comentario && <p className="text-sm text-muted-foreground mt-0.5">{e.comentario}</p>}
+                        <p className="text-xs text-muted-foreground/60 mt-1">{formatDateTime(e.fecha)}</p>
                       </div>
                     </div>
                   ))}
@@ -180,13 +180,13 @@ export function PedidoDetallePage() {
                 documentos.length === 0 ? <EmptyState title="Sin documentos" /> : (
                   <div className="space-y-2">
                     {documentos.map(d => (
-                      <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition cursor-pointer">
-                        <FileText className="h-5 w-5 text-slate-400" />
+                      <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted transition cursor-pointer">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-700">{d.nombre}</p>
-                          <p className="text-xs text-slate-400">{formatDate(d.fecha)}</p>
+                          <p className="text-sm font-medium text-foreground">{d.nombre}</p>
+                          <p className="text-xs text-muted-foreground/60">{formatDate(d.fecha)}</p>
                         </div>
-                        <Badge className="bg-slate-100 text-slate-600 border-slate-200">{d.tipo.replace('_', ' ')}</Badge>
+                        <Badge className="bg-muted text-muted-foreground border-border">{d.tipo.replace('_', ' ')}</Badge>
                       </div>
                     ))}
                   </div>
@@ -199,18 +199,18 @@ export function PedidoDetallePage() {
                     {incidencias.map(inc => (
                       <div key={inc.id} className={cn(
                         'p-3 rounded-lg border',
-                        inc.resuelta ? 'bg-brand-50 border-brand-200' : 'bg-danger-50 border-danger-200',
+                        inc.resuelta ? 'bg-accent border-accent/20' : 'bg-destructive/10 border-destructive/20',
                       )}>
                         <div className="flex items-start gap-3">
-                          {inc.resuelta ? <CheckCircle2 className="h-5 w-5 text-brand-600 shrink-0" /> : <XCircle className="h-5 w-5 text-danger-600 shrink-0" />}
+                          {inc.resuelta ? <CheckCircle2 className="h-5 w-5 text-success shrink-0" /> : <XCircle className="h-5 w-5 text-destructive shrink-0" />}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <Badge className={inc.severidad === 'alta' ? 'bg-danger-100 text-danger-700 border-danger-300' : 'bg-amber-100 text-amber-700 border-amber-300'}>
+                              <Badge className={inc.severidad === 'alta' ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-warning/10 text-warning border-warning/20'}>
                                 {inc.severidad}
                               </Badge>
-                              <span className="text-xs text-slate-400">{formatDateTime(inc.fecha)}</span>
+                              <span className="text-xs text-muted-foreground/60">{formatDateTime(inc.fecha)}</span>
                             </div>
-                            <p className="text-sm text-slate-700">{inc.descripcion}</p>
+                            <p className="text-sm text-foreground">{inc.descripcion}</p>
                           </div>
                         </div>
                       </div>
@@ -229,8 +229,8 @@ export function PedidoDetallePage() {
 function InfoRow({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-slate-500 flex items-center gap-1.5">{icon}{label}</span>
-      <span className="text-slate-700 font-medium text-right">{value}</span>
+      <span className="text-muted-foreground flex items-center gap-1.5">{icon}{label}</span>
+      <span className="text-foreground font-medium text-right">{value}</span>
     </div>
   );
 }

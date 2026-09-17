@@ -13,12 +13,12 @@ const sizes = {
 };
 
 const colors = [
-  'bg-brand-100 text-brand-700',
-  'bg-inplaz-100 text-inplaz-700',
-  'bg-amber-100 text-amber-700',
-  'bg-purple-100 text-purple-700',
-  'bg-rose-100 text-rose-700',
-  'bg-teal-100 text-teal-700',
+  'bg-accent text-accent-foreground',
+  'bg-sidebar/10 text-sidebar-foreground',
+  'bg-warning/10 text-warning',
+  'bg-secondary text-secondary-foreground',
+  'bg-destructive/10 text-destructive',
+  'bg-info/10 text-info',
 ];
 
 function colorFor(name: string): string {

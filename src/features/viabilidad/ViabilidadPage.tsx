@@ -52,17 +52,17 @@ export function ViabilidadPage() {
         <div>
           <Card>
             <CardHeader><CardTitle>Pedidos por evaluar</CardTitle></CardHeader>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-border">
               {viabilidadPedidos.length === 0 ? (
                 <EmptyState title="Sin pedidos pendientes" />
               ) : viabilidadPedidos.map(p => (
-                <div key={p.id} onClick={() => navigate(`/pedidos/${p.id}`)} className="p-4 hover:bg-slate-50 cursor-pointer transition">
+                <div key={p.id} onClick={() => navigate(`/pedidos/${p.id}`)} className="p-4 hover:bg-muted cursor-pointer transition">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold text-slate-800 text-sm">{p.numero}</span>
+                    <span className="font-semibold text-foreground text-sm">{p.numero}</span>
                     <Badge className={PEDIDO_ESTADO_COLORS[p.estado]}>{PEDIDO_ESTADO_LABELS[p.estado]}</Badge>
                   </div>
-                  <p className="text-xs text-slate-500">{p.clienteNombre}</p>
-                  <p className="text-xs text-slate-500 mt-1">{p.productoNombre} · {formatNumber(p.cantidad)}</p>
+                  <p className="text-xs text-muted-foreground">{p.clienteNombre}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{p.productoNombre} · {formatNumber(p.cantidad)}</p>
                   <Button size="sm" className="mt-2 w-full" onClick={(e) => { e.stopPropagation(); ejecutar(p.id); }}>
                     <Play className="h-3 w-3" /> Ejecutar viabilidad
                   </Button>
@@ -85,13 +85,13 @@ export function ViabilidadPage() {
                   <h2 className={cn('text-2xl font-bold mt-4', resultadoConfig[viabilidad.resultado].text)}>
                     PEDIDO {VIABILIDAD_LABELS[viabilidad.resultado]}
                   </h2>
-                  <p className="text-sm text-slate-500 mt-2">
+                  <p className="text-sm text-muted-foreground mt-2">
                     {viabilidad.resultado === 'viable' && 'El pedido puede ser producido bajo las condiciones actuales.'}
                     {viabilidad.resultado === 'no_viable' && 'El pedido no puede ser producido con las máquinas disponibles.'}
                     {viabilidad.resultado === 'requiere_revision' && 'El pedido requiere revisión manual antes de aprobar.'}
                   </p>
-                  <div className="flex items-center justify-center gap-4 mt-4 text-sm text-slate-500">
-                    <span>Evaluado por: <span className="font-medium text-slate-700">{viabilidad.usuario}</span></span>
+                  <div className="flex items-center justify-center gap-4 mt-4 text-sm text-muted-foreground">
+                    <span>Evaluado por: <span className="font-medium text-foreground">{viabilidad.usuario}</span></span>
                     <span>{formatDateTime(viabilidad.fecha)}</span>
                   </div>
                 </CardBody>
@@ -103,10 +103,10 @@ export function ViabilidadPage() {
                 <CardBody>
                   <div className="flex flex-wrap gap-2">
                     {viabilidad.maquinasCompatibles.map(m => (
-                      <Badge key={m} className="bg-inplaz-100 text-inplaz-700 border-inplaz-300">{m}</Badge>
+                      <Badge key={m} className="bg-sidebar/10 text-sidebar-foreground border-sidebar/20">{m}</Badge>
                     ))}
                   </div>
-                  <p className="text-sm text-slate-500 mt-3">Tiempo estimado: <span className="font-medium text-slate-700">{viabilidad.tiempoEstimado}</span></p>
+                  <p className="text-sm text-muted-foreground mt-3">Tiempo estimado: <span className="font-medium text-foreground">{viabilidad.tiempoEstimado}</span></p>
                 </CardBody>
               </Card>
 
@@ -115,15 +115,15 @@ export function ViabilidadPage() {
                 <CardHeader><CardTitle>Reglas evaluadas</CardTitle></CardHeader>
                 <CardBody className="space-y-3">
                   {viabilidad.reglas.map(regla => (
-                    <div key={regla.id} className="flex items-start gap-3 p-3 rounded-lg border border-slate-200">
+                    <div key={regla.id} className="flex items-start gap-3 p-3 rounded-lg border border-border">
                       <span className="mt-0.5">{reglaIcon(regla.resultado)}</span>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-700">{regla.nombre}</p>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-slate-500">
-                          <span>Evaluado: <span className="text-slate-700 font-medium">{regla.valorEvaluado}</span></span>
-                          <span>Requerido: <span className="text-slate-700 font-medium">{regla.valorRequerido}</span></span>
+                        <p className="text-sm font-medium text-foreground">{regla.nombre}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
+                          <span>Evaluado: <span className="text-foreground font-medium">{regla.valorEvaluado}</span></span>
+                          <span>Requerido: <span className="text-foreground font-medium">{regla.valorRequerido}</span></span>
                         </div>
-                        {regla.observacion && <p className="text-xs text-amber-600 mt-1">{regla.observacion}</p>}
+                        {regla.observacion && <p className="text-xs text-warning mt-1">{regla.observacion}</p>}
                       </div>
                     </div>
                   ))}

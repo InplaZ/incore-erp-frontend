@@ -38,16 +38,16 @@ export const PEDIDO_ESTADO_LABELS: Record<PedidoEstado, string> = {
 };
 
 export const PEDIDO_ESTADO_COLORS: Record<PedidoEstado, string> = {
-  nuevo: 'bg-slate-100 text-slate-700 border-slate-300',
-  en_revision: 'bg-info-100 text-info-700 border-info-500/30',
-  viabilidad: 'bg-amber-100 text-amber-700 border-amber-500/30',
-  aprobado: 'bg-brand-100 text-brand-700 border-brand-500/30',
-  programado: 'bg-inplaz-100 text-inplaz-700 border-inplaz-500/30',
-  en_produccion: 'bg-inplaz-100 text-inplaz-700 border-inplaz-500/30',
-  control_calidad: 'bg-purple-100 text-purple-700 border-purple-500/30',
-  listo_despacho: 'bg-brand-100 text-brand-700 border-brand-500/30',
-  despachado: 'bg-brand-100 text-brand-700 border-brand-500/30',
-  completado: 'bg-slate-100 text-slate-500 border-slate-300',
+  nuevo: 'bg-muted text-muted-foreground border-border',
+  en_revision: 'bg-info/10 text-info border-info/20',
+  viabilidad: 'bg-warning/10 text-warning border-warning/20',
+  aprobado: 'bg-accent text-accent-foreground border-accent/20',
+  programado: 'bg-sidebar/10 text-sidebar-foreground border-sidebar/20',
+  en_produccion: 'bg-sidebar/10 text-sidebar-foreground border-sidebar/20',
+  control_calidad: 'bg-secondary text-secondary-foreground border-secondary/20',
+  listo_despacho: 'bg-accent text-accent-foreground border-accent/20',
+  despachado: 'bg-accent text-accent-foreground border-accent/20',
+  completado: 'bg-muted text-muted-foreground border-border',
 };
 
 export const PRIORIDAD_LABELS: Record<Prioridad, string> = {
@@ -58,17 +58,17 @@ export const PRIORIDAD_LABELS: Record<Prioridad, string> = {
 };
 
 export const PRIORIDAD_COLORS: Record<Prioridad, string> = {
-  critica: 'bg-danger-100 text-danger-700 border-danger-500/30',
-  alta: 'bg-orange-100 text-orange-700 border-orange-500/30',
-  media: 'bg-amber-100 text-amber-700 border-amber-500/30',
-  baja: 'bg-brand-100 text-brand-700 border-brand-500/30',
+  critica: 'bg-destructive/10 text-destructive border-destructive/20',
+  alta: 'bg-warning/10 text-warning border-warning/20',
+  media: 'bg-warning/10 text-warning border-warning/20',
+  baja: 'bg-accent text-accent-foreground border-accent/20',
 };
 
 export const PRIORIDAD_DOTS: Record<Prioridad, string> = {
-  critica: 'bg-danger-500',
-  alta: 'bg-orange-500',
-  media: 'bg-amber-500',
-  baja: 'bg-brand-500',
+  critica: 'bg-destructive',
+  alta: 'bg-warning',
+  media: 'bg-warning',
+  baja: 'bg-success',
 };
 
 export const PRODUCCION_ESTADOS: ProduccionEstado[] = [
@@ -90,12 +90,12 @@ export const PRODUCCION_ESTADO_LABELS: Record<ProduccionEstado, string> = {
 };
 
 export const PRODUCCION_ESTADO_COLORS: Record<ProduccionEstado, string> = {
-  programado: 'bg-slate-100 text-slate-700 border-slate-300',
-  en_preparacion: 'bg-info-100 text-info-700 border-info-500/30',
-  en_produccion: 'bg-inplaz-100 text-inplaz-700 border-inplaz-500/30',
-  pausado: 'bg-amber-100 text-amber-700 border-amber-500/30',
-  control_calidad: 'bg-purple-100 text-purple-700 border-purple-500/30',
-  finalizado: 'bg-brand-100 text-brand-700 border-brand-500/30',
+  programado: 'bg-muted text-muted-foreground border-border',
+  en_preparacion: 'bg-info/10 text-info border-info/20',
+  en_produccion: 'bg-sidebar/10 text-sidebar-foreground border-sidebar/20',
+  pausado: 'bg-warning/10 text-warning border-warning/20',
+  control_calidad: 'bg-secondary text-secondary-foreground border-secondary/20',
+  finalizado: 'bg-accent text-accent-foreground border-accent/20',
 };
 
 export const DESPACHO_ESTADOS: DespachoEstado[] = [
@@ -117,12 +117,12 @@ export const DESPACHO_ESTADO_LABELS: Record<DespachoEstado, string> = {
 };
 
 export const DESPACHO_ESTADO_COLORS: Record<DespachoEstado, string> = {
-  pendiente: 'bg-slate-100 text-slate-700 border-slate-300',
-  programado: 'bg-info-100 text-info-700 border-info-500/30',
-  en_preparacion: 'bg-amber-100 text-amber-700 border-amber-500/30',
-  listo: 'bg-brand-100 text-brand-700 border-brand-500/30',
-  despachado: 'bg-inplaz-100 text-inplaz-700 border-inplaz-500/30',
-  entregado: 'bg-brand-100 text-brand-700 border-brand-500/30',
+  pendiente: 'bg-muted text-muted-foreground border-border',
+  programado: 'bg-info/10 text-info border-info/20',
+  en_preparacion: 'bg-warning/10 text-warning border-warning/20',
+  listo: 'bg-accent text-accent-foreground border-accent/20',
+  despachado: 'bg-sidebar/10 text-sidebar-foreground border-sidebar/20',
+  entregado: 'bg-accent text-accent-foreground border-accent/20',
 };
 
 export const OPORTUNIDAD_ESTADOS: OportunidadEstado[] = [
@@ -154,11 +154,11 @@ export const COTIZACION_ESTADO_LABELS: Record<CotizacionEstado, string> = {
 };
 
 export const COTIZACION_ESTADO_COLORS: Record<CotizacionEstado, string> = {
-  borrador: 'bg-slate-100 text-slate-700 border-slate-300',
-  enviada: 'bg-info-100 text-info-700 border-info-500/30',
-  aprobada: 'bg-brand-100 text-brand-700 border-brand-500/30',
-  rechazada: 'bg-danger-100 text-danger-700 border-danger-500/30',
-  convertida: 'bg-inplaz-100 text-inplaz-700 border-inplaz-500/30',
+  borrador: 'bg-muted text-muted-foreground border-border',
+  enviada: 'bg-info/10 text-info border-info/20',
+  aprobada: 'bg-accent text-accent-foreground border-accent/20',
+  rechazada: 'bg-destructive/10 text-destructive border-destructive/20',
+  convertida: 'bg-sidebar/10 text-sidebar-foreground border-sidebar/20',
 };
 
 export const MAQUINA_ESTADO_LABELS: Record<MaquinaEstado, string> = {
@@ -169,17 +169,17 @@ export const MAQUINA_ESTADO_LABELS: Record<MaquinaEstado, string> = {
 };
 
 export const MAQUINA_ESTADO_COLORS: Record<MaquinaEstado, string> = {
-  disponible: 'bg-brand-100 text-brand-700 border-brand-500/30',
-  en_produccion: 'bg-inplaz-100 text-inplaz-700 border-inplaz-500/30',
-  mantenimiento: 'bg-amber-100 text-amber-700 border-amber-500/30',
-  fuera_servicio: 'bg-danger-100 text-danger-700 border-danger-500/30',
+  disponible: 'bg-accent text-accent-foreground border-accent/20',
+  en_produccion: 'bg-sidebar/10 text-sidebar-foreground border-sidebar/20',
+  mantenimiento: 'bg-warning/10 text-warning border-warning/20',
+  fuera_servicio: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
 export const MAQUINA_ESTADO_DOTS: Record<MaquinaEstado, string> = {
-  disponible: 'bg-brand-500',
-  en_produccion: 'bg-inplaz-500',
-  mantenimiento: 'bg-amber-500',
-  fuera_servicio: 'bg-danger-500',
+  disponible: 'bg-success',
+  en_produccion: 'bg-sidebar-active',
+  mantenimiento: 'bg-warning',
+  fuera_servicio: 'bg-destructive',
 };
 
 export const VIABILIDAD_LABELS: Record<ViabilidadResultado, string> = {
@@ -210,14 +210,14 @@ export const ETIQUETA_LABELS: Record<Etiqueta, string> = {
 };
 
 export const ETIQUETA_COLORS: Record<Etiqueta, string> = {
-  urgente: 'bg-danger-100 text-danger-700',
-  cliente_nuevo: 'bg-inplaz-100 text-inplaz-700',
-  retrasado: 'bg-orange-100 text-orange-700',
-  viabilidad: 'bg-amber-100 text-amber-700',
-  produccion: 'bg-inplaz-100 text-inplaz-700',
-  despacho: 'bg-brand-100 text-brand-700',
-  comercial: 'bg-purple-100 text-purple-700',
-  incidencia: 'bg-danger-100 text-danger-700',
+  urgente: 'bg-destructive/10 text-destructive',
+  cliente_nuevo: 'bg-sidebar/10 text-sidebar-foreground',
+  retrasado: 'bg-warning/10 text-warning',
+  viabilidad: 'bg-warning/10 text-warning',
+  produccion: 'bg-sidebar/10 text-sidebar-foreground',
+  despacho: 'bg-accent text-accent-foreground',
+  comercial: 'bg-secondary text-secondary-foreground',
+  incidencia: 'bg-destructive/10 text-destructive',
 };
 
 export const NAV_ITEMS = [

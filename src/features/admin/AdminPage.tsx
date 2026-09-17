@@ -132,7 +132,7 @@ export default function AdminPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500">
+                <tr className="bg-muted border-b border-border text-xs uppercase text-muted-foreground">
                   <th className="px-4 py-3 text-left font-medium">
                     Usuario
                   </th>
@@ -155,7 +155,7 @@ export default function AdminPage() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {usuarios.map((u) => {
                   const nombre =
                     `${u.first_name} ${u.last_name}`.trim() ||
@@ -164,7 +164,7 @@ export default function AdminPage() {
                   return (
                     <tr
                       key={u.id}
-                      className="hover:bg-slate-50 transition"
+                      className="hover:bg-muted transition"
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
@@ -174,11 +174,11 @@ export default function AdminPage() {
                           />
 
                           <div>
-                            <p className="font-medium text-slate-800">
+                            <p className="font-medium text-foreground">
                               {nombre}
                             </p>
 
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-muted-foreground">
                               {u.email}
                             </p>
                           </div>
@@ -190,26 +190,26 @@ export default function AdminPage() {
                         Falta conectar /usuarios/{id}/roles/
                       */}
                       <td className="px-4 py-3">
-                        <Badge className="bg-slate-100 text-slate-600 border-slate-200">
+                        <Badge className="bg-muted text-muted-foreground border-border">
                           Sin asignar
                         </Badge>
                       </td>
 
                       <td className="px-4 py-3">
                         {u.is_active ? (
-                          <span className="inline-flex items-center gap-1 text-brand-600 text-xs font-medium">
+                          <span className="inline-flex items-center gap-1 text-success text-xs font-medium">
                             <CheckCircle2 className="h-4 w-4" />
                             Activo
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-slate-400 text-xs font-medium">
+                          <span className="inline-flex items-center gap-1 text-muted-foreground text-xs font-medium">
                             <XCircle className="h-4 w-4" />
                             Inactivo
                           </span>
                         )}
                       </td>
 
-                      <td className="px-4 py-3 text-slate-500 text-xs">
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
                         {u.last_login
                           ? formatDate(u.last_login)
                           : '—'}
@@ -249,22 +249,22 @@ export default function AdminPage() {
             <Card key={role.id}>
               <CardBody>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-lg bg-inplaz-100 flex items-center justify-center">
-                    <Shield className="h-5 w-5 text-inplaz-600" />
+                  <div className="h-10 w-10 rounded-lg bg-sidebar/10 flex items-center justify-center">
+                    <Shield className="h-5 w-5 text-sidebar-foreground" />
                   </div>
 
                   <div>
-                    <p className="font-semibold text-slate-800">
+                    <p className="font-semibold text-foreground">
                       {role.name}
                     </p>
 
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       Rol del sistema
                     </p>
                   </div>
                 </div>
 
-                <Badge className="bg-slate-100 text-slate-600 border-slate-200">
+                <Badge className="bg-muted text-muted-foreground border-border">
                   ID: {role.id}
                 </Badge>
               </CardBody>
@@ -282,7 +282,7 @@ export default function AdminPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500">
+                <tr className="bg-muted border-b border-border text-xs uppercase text-muted-foreground">
                   <th className="px-4 py-3 text-left font-medium">
                     Recurso
                   </th>

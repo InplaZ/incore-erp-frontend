@@ -84,6 +84,11 @@
 
   --color-border: var(--border);
 
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-hover: var(--sidebar-hover);
+
   /**
    * --------------------------------------------------------------------------
    * Feedback colors
@@ -145,15 +150,12 @@
   --radius-xl: 1rem;
   --radius-2xl: 1.25rem;
 
-  /**
-   * Surface
-   */
-
-  --background: #ffffff;
-  --foreground: #18181b;
+  /* Surface */
+  --background: #f8fafc;
+  --foreground: #17345d;
 
   --card: #ffffff;
-  --card-foreground: #18181b;
+  --card-foreground: #17345d;
 
   /**
    * Primary
@@ -171,15 +173,15 @@
    * Secondary
    */
 
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
+  --secondary: #eef4f9;
+  --secondary-foreground: #17345d;
 
   /**
    * Muted
    */
 
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
 
   /**
    * Accent
@@ -188,14 +190,20 @@
    * estados hover o elementos destacados.
    */
 
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
+  --accent: #eaf8ef;
+  --accent-foreground: #15803d;
 
   /**
    * Borders
    */
 
-  --border: #e4e4e7;
+  --border: #dbe4ee;
+
+  /* Sidebar */
+  --sidebar: #1f3b82;
+  --sidebar-foreground: #ffffff;
+  --sidebar-active: #16a34a;
+  --sidebar-hover: #294994;
 
   /**
    * Feedback
@@ -406,6 +414,7 @@
  */
 
 @layer base {
+
   *,
   *::before,
   *::after {

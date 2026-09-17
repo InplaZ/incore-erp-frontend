@@ -39,12 +39,12 @@ export function SidebarNavigationLink({
           item.disabled && "cursor-not-allowed opacity-50",
 
           isActive && !item.disabled
-            ? "bg-primary text-primary-foreground"
+            ? "bg-sidebar-active text-white"
             : [
-                "text-muted-foreground",
-                "hover:bg-secondary",
-                "hover:text-foreground",
-              ].join(" "),
+              "text-sidebar-foreground",
+              "hover:bg-sidebar-hover",
+              "hover:text-sidebar-foreground",
+            ].join(" "),
         ]
           .filter(Boolean)
           .join(" ")

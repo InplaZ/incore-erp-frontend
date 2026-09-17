@@ -9,7 +9,7 @@ const HomePage = () => {
             </p>
 
             <h1 className="text-4xl font-bold tracking-tight">
-              Frontend Template React
+              INPLAZ
             </h1>
 
             <p className="text-lg text-muted-foreground">

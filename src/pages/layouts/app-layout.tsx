@@ -68,7 +68,7 @@ export function AppLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header
-          title="Frontend Template"
+          title="INPLAZ"
           search
           searchPlaceholder="Buscar..."
           showMenuButton
@@ -95,11 +95,11 @@ function SidebarBrand() {
   return (
     <div className="flex min-w-0 items-center gap-3">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-        F
+        I
       </div>
 
-      <span className="truncate font-semibold text-foreground">
-        Frontend Template
+      <span className="truncate font-semibold text-white">
+        INPLAZ
       </span>
     </div>
   );

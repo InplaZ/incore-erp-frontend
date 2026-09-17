@@ -73,7 +73,7 @@ export function PedidosPage() {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Buscar pedido, cliente, producto..." className="pl-9" />
         </div>
 
@@ -87,11 +87,11 @@ export function PedidosPage() {
           {Object.entries(PRIORIDAD_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
 
-        <div className="flex items-center rounded-lg border border-slate-200 p-0.5 bg-white ml-auto">
-          <button onClick={() => setView('tabla')} className={cn('p-1.5 rounded-md transition', view === 'tabla' ? 'bg-inplaz-100 text-inplaz-700' : 'text-slate-400 hover:text-slate-600')}>
+        <div className="flex items-center rounded-lg border border-border p-0.5 bg-card ml-auto">
+          <button onClick={() => setView('tabla')} className={cn('p-1.5 rounded-md transition', view === 'tabla' ? 'bg-sidebar/10 text-sidebar-foreground' : 'text-muted-foreground hover:text-foreground')}>
             <List className="h-4 w-4" />
           </button>
-          <button onClick={() => setView('kanban')} className={cn('p-1.5 rounded-md transition', view === 'kanban' ? 'bg-inplaz-100 text-inplaz-700' : 'text-slate-400 hover:text-slate-600')}>
+          <button onClick={() => setView('kanban')} className={cn('p-1.5 rounded-md transition', view === 'kanban' ? 'bg-sidebar/10 text-sidebar-foreground' : 'text-muted-foreground hover:text-foreground')}>
             <LayoutGrid className="h-4 w-4" />
           </button>
         </div>
@@ -105,12 +105,12 @@ export function PedidosPage() {
 
       {view === 'tabla' && totalPages > 1 && (
         <div className="flex items-center justify-between mt-4">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Mostrando {page * pageSize + 1} - {Math.min((page + 1) * pageSize, filtered.length)} de {filtered.length}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Anterior</Button>
-            <span className="text-sm text-slate-500">Página {page + 1} de {totalPages}</span>
+            <span className="text-sm text-muted-foreground">Página {page + 1} de {totalPages}</span>
             <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Siguiente</Button>
           </div>
         </div>
@@ -138,7 +138,7 @@ function TablaView({ pedidos, onRowClick }: { pedidos: Pedido[]; onRowClick: (p:
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500">
+            <tr className="bg-muted border-b border-border text-xs uppercase text-muted-foreground">
               <th className="px-4 py-3 text-left font-medium">Nº Pedido</th>
               <th className="px-4 py-3 text-left font-medium">Cliente</th>
               <th className="px-4 py-3 text-left font-medium">Producto</th>
@@ -150,13 +150,13 @@ function TablaView({ pedidos, onRowClick }: { pedidos: Pedido[]; onRowClick: (p:
               <th className="px-4 py-3 text-left font-medium">Entrega</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border">
             {pedidos.map(p => (
-              <tr key={p.id} onClick={() => onRowClick(p)} className="hover:bg-slate-50 cursor-pointer transition">
-                <td className="px-4 py-3 font-semibold text-slate-800">{p.numero}</td>
-                <td className="px-4 py-3 text-slate-600">{p.clienteNombre}</td>
-                <td className="px-4 py-3 text-slate-600">{p.productoNombre}</td>
-                <td className="px-4 py-3 text-right text-slate-600">{formatNumber(p.cantidad)}</td>
+              <tr key={p.id} onClick={() => onRowClick(p)} className="hover:bg-muted cursor-pointer transition">
+                <td className="px-4 py-3 font-semibold text-foreground">{p.numero}</td>
+                <td className="px-4 py-3 text-foreground">{p.clienteNombre}</td>
+                <td className="px-4 py-3 text-foreground">{p.productoNombre}</td>
+                <td className="px-4 py-3 text-right text-foreground">{formatNumber(p.cantidad)}</td>
                 <td className="px-4 py-3"><Badge className={PEDIDO_ESTADO_COLORS[p.estado]}>{PEDIDO_ESTADO_LABELS[p.estado]}</Badge></td>
                 <td className="px-4 py-3">
                   <PriorityBadge label={PRIORIDAD_LABELS[p.prioridad]} dotClass={PRIORIDAD_DOTS[p.prioridad]} colorClass={PRIORIDAD_COLORS[p.prioridad]} />
@@ -164,11 +164,11 @@ function TablaView({ pedidos, onRowClick }: { pedidos: Pedido[]; onRowClick: (p:
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Avatar name={p.responsableNombre} size="sm" />
-                    <span className="text-slate-600 hidden lg:inline">{p.responsableNombre}</span>
+                    <span className="text-foreground hidden lg:inline">{p.responsableNombre}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{p.maquinaNombre ?? '—'}</td>
-                <td className="px-4 py-3 text-slate-600">{formatDate(p.fechaComprometida)}</td>
+                <td className="px-4 py-3 text-foreground">{p.maquinaNombre ?? '—'}</td>
+                <td className="px-4 py-3 text-foreground">{formatDate(p.fechaComprometida)}</td>
               </tr>
             ))}
           </tbody>
@@ -197,9 +197,9 @@ function KanbanView({ pedidos, onDragEnd, onCardClick }: {
                     <span className={cn('text-xs font-semibold px-2 py-1 rounded-full border', PEDIDO_ESTADO_COLORS[estado])}>
                       {PEDIDO_ESTADO_LABELS[estado]}
                     </span>
-                    <span className="text-xs text-slate-400 font-medium">{items.length}</span>
+                    <span className="text-xs text-muted-foreground font-medium">{items.length}</span>
                   </div>
-                  <div className="space-y-2 min-h-[100px] bg-slate-100/50 rounded-lg p-1.5">
+                  <div className="space-y-2 min-h-[100px] bg-muted/50 rounded-lg p-1.5">
                     {items.map((p, index) => (
                       <Draggable key={p.id} draggableId={p.id} index={index}>
                         {(prov, snapshot) => (
@@ -208,20 +208,20 @@ function KanbanView({ pedidos, onDragEnd, onCardClick }: {
                             {...prov.draggableProps}
                             {...prov.dragHandleProps}
                             onClick={() => !snapshot.isDragging && onCardClick(p)}
-                            className="bg-white rounded-lg border border-slate-200 p-3 shadow-sm hover:shadow-card-hover hover:border-slate-300 cursor-grab active:cursor-grabbing transition"
+                            className="bg-card rounded-lg border border-border p-3 shadow-sm hover:shadow-card-hover hover:border-border cursor-grab active:cursor-grabbing transition"
                           >
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-bold text-slate-800">{p.numero}</span>
+                              <span className="text-sm font-bold text-foreground">{p.numero}</span>
                               <span className={cn('h-2.5 w-2.5 rounded-full', PRIORIDAD_DOTS[p.prioridad])} title={PRIORIDAD_LABELS[p.prioridad]} />
                             </div>
-                            <p className="text-xs text-slate-500 mb-1">{p.clienteNombre}</p>
-                            <p className="text-xs text-slate-600 mb-2">{p.productoNombre}</p>
-                            <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                            <p className="text-xs text-muted-foreground mb-1">{p.clienteNombre}</p>
+                            <p className="text-xs text-foreground mb-2">{p.productoNombre}</p>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                               <span>{formatNumber(p.cantidad)} un.</span>
                               <span>{formatDate(p.fechaComprometida)}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                              {p.maquinaNombre && <Badge className="bg-inplaz-50 text-inplaz-600 border-inplaz-200">{p.maquinaNombre}</Badge>}
+                              {p.maquinaNombre && <Badge className="bg-sidebar/10 text-sidebar-foreground border-sidebar/20">{p.maquinaNombre}</Badge>}
                               <div className="flex items-center gap-1 ml-auto">
                                 <Avatar name={p.responsableNombre} size="sm" />
                               </div>
@@ -241,7 +241,7 @@ function KanbanView({ pedidos, onDragEnd, onCardClick }: {
                     ))}
                     {provided.placeholder}
                     {items.length === 0 && (
-                      <p className="text-xs text-slate-400 text-center py-4">Sin pedidos</p>
+                      <p className="text-xs text-muted-foreground text-center py-4">Sin pedidos</p>
                     )}
                   </div>
                 </div>
