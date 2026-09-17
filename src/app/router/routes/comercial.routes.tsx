@@ -12,9 +12,12 @@ const ComercialPage = lazy(
 const ClientesPage = lazy(
     () => import("@/features/comercial/pages/ClientesPage")
 );
-
 const RequerimientosPage = lazy(
     () => import("@/features/comercial/pages/RequerimientosPage")
+);
+
+const RequerimientoListPage = lazy(
+    () => import("@/features/comercial/pages/RequerimientoListPage")
 );
 
 const ProduccionPage = lazy(
@@ -23,6 +26,10 @@ const ProduccionPage = lazy(
 
 const DetalleCliente = lazy(
     () => import("@/features/comercial/pages/DetalleClientePage")
+);
+
+const RequerimientoDetallePage = lazy(
+    () => import("@/features/comercial/pages/RequerimientoDetallePage")
 )
 
 export const comercialRoutes: AppRoute[] = [
@@ -39,8 +46,8 @@ export const comercialRoutes: AppRoute[] = [
                 element: <ClientesPage />
             },
             {
-                path: "requerimientos",
-                element: <RequerimientosPage />
+                path: "requerimientoListPage",
+                element: <RequerimientoListPage />
             },
             {
                 path: "produccion",
@@ -49,7 +56,16 @@ export const comercialRoutes: AppRoute[] = [
             {
                 path: "clientes/:id",
                 element: <DetalleCliente />,
+            },
+            {
+                path: "requerimientos/",
+                element: <RequerimientosPage/>
+            },
+            {
+                path: "requerimientos/:id",
+                element: <RequerimientoDetallePage/>
             }
+
         ]
     }
 ];

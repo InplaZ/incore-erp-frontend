@@ -39,6 +39,7 @@ import type {
   SolicitudComercialCreate,
   SolicitudComercialUpdate,
   EjecutivoComercial,
+  RequerimientoDetalle,
 } from "./comercial.types";
 
 // ============================================================
@@ -146,16 +147,16 @@ export const actividadesComercialesApi = {
 export const solicitudesComercialesApi = {
   list: async (
     params?: ApiQueryParams,
-  ): Promise<PaginatedResponse<SolicitudComercial>> => {
-    return api.get<PaginatedResponse<SolicitudComercial>>(
+  ): Promise<SolicitudComercial[]> => {
+    return api.get<SolicitudComercial[]>(
       "/comercial/solicitudes/",
       { params },
     );
   },
 
-  get: async (id: number): Promise<SolicitudComercial> => {
-    return api.get<SolicitudComercial>(
-      `/comercial/solicitudes/${id}/`,
+  get: async (id: number): Promise<RequerimientoDetalle> => {
+    return api.get<RequerimientoDetalle>(
+      `/comercial/solicitudes/${id}/detalle/`,
     );
   },
 
@@ -191,8 +192,8 @@ export const solicitudesComercialesApi = {
 export const especificacionesProductoApi = {
   list: async (
     params?: ApiQueryParams,
-  ): Promise<PaginatedResponse<EspecificacionProductoSolicitado>> => {
-    return api.get<PaginatedResponse<EspecificacionProductoSolicitado>>(
+  ): Promise<EspecificacionProductoSolicitado[]> => {
+    return api.get<EspecificacionProductoSolicitado[]>(
       "/comercial/especificacion-producto-solicitado/",
       { params },
     );
@@ -243,8 +244,8 @@ export const especificacionesProductoApi = {
 export const especificacionesBolsaApi = {
   list: async (
     params?: ApiQueryParams,
-  ): Promise<PaginatedResponse<EspecificacionBolsaSolicitada>> => {
-    return api.get<PaginatedResponse<EspecificacionBolsaSolicitada>>(
+  ): Promise<EspecificacionBolsaSolicitada[]> => {
+    return api.get<EspecificacionBolsaSolicitada[]>(
       "/comercial/especificacion-bolsa-solicitada/",
       { params },
     );
@@ -292,8 +293,8 @@ export const especificacionesBolsaApi = {
 export const especificacionesBobinaApi = {
   list: async (
     params?: ApiQueryParams,
-  ): Promise<PaginatedResponse<EspecificacionBobinaSolicitada>> => {
-    return api.get<PaginatedResponse<EspecificacionBobinaSolicitada>>(
+  ): Promise<EspecificacionBobinaSolicitada[]> => {
+    return api.get<EspecificacionBobinaSolicitada[]>(
       "/comercial/especificacion-bobina-solicitada/",
       { params },
     );

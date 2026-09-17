@@ -25,6 +25,10 @@ import type {
 import ActividadMenu from "@/features/comercial/components/ActividadMenu";
 
 import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
+
+import { useNavigate } from "react-router-dom";
+
+
 //FUNCINES
 function getClientName(client: {
   nombres: string;
@@ -97,6 +101,7 @@ type AgendaTab = "hoy" | "proximos" | "completadas";
 
 export default function AgendaComercialPage() {
 
+  const navigate = useNavigate();
   //Contenido
   const [showNuevaActividad, setShowNuevaActividad] = useState(false);
   const [activeTab, setActiveTab] = useState<AgendaTab>("hoy");
@@ -193,9 +198,11 @@ export default function AgendaComercialPage() {
           </p>
         </div>
 
-        <button className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+        <button 
+          onClick={() => navigate("/comercial/requerimientos")}
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
           <ClipboardList className="h-4 w-4" />
-          Nuevo requerimiento
+          Nuevo Requerimiento
         </button>
       </div>
 

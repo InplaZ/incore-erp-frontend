@@ -20,7 +20,7 @@ const comercialNavigation = [
   },
   {
     label: "Requerimientos",
-    href: "/comercial/requerimientos",
+    href: "/comercial/requerimientoListPage",
     icon: ClipboardList,
   },
   {

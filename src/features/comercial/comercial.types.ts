@@ -145,6 +145,13 @@ export type ActividadComercialUpdate = {
   resultado?: string | null;
 }
 
+export interface RequerimientoDetalle {
+  solicitud: SolicitudComercial;
+  especificacionProducto: EspecificacionProductoSolicitado | null;
+  especificacionBolsa: EspecificacionBolsaSolicitada | null;
+  especificacionBobina: EspecificacionBobinaSolicitada | null;
+}
+
 // ============================================================
 // SOLICITUDES COMERCIALES
 // ============================================================

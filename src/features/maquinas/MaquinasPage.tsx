@@ -33,12 +33,12 @@ export function MaquinasPage() {
               <CardBody>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className={cn('h-11 w-11 rounded-lg flex items-center justify-center', m.estado === 'disponible' ? 'bg-brand-100' : m.estado === 'en_produccion' ? 'bg-inplaz-100' : m.estado === 'mantenimiento' ? 'bg-amber-100' : 'bg-danger-100')}>
-                      <Cpu className={cn('h-5 w-5', m.estado === 'disponible' ? 'text-brand-600' : m.estado === 'en_produccion' ? 'text-inplaz-600' : m.estado === 'mantenimiento' ? 'text-amber-600' : 'text-danger-600')} />
+                    <div className={cn('h-11 w-11 rounded-lg flex items-center justify-center', m.estado === 'disponible' ? 'bg-accent' : m.estado === 'en_produccion' ? 'bg-sidebar/10' : m.estado === 'mantenimiento' ? 'bg-warning/10' : 'bg-destructive/10')}>
+                      <Cpu className={cn('h-5 w-5', m.estado === 'disponible' ? 'text-accent-foreground' : m.estado === 'en_produccion' ? 'text-sidebar-foreground' : m.estado === 'mantenimiento' ? 'text-warning' : 'text-destructive')} />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-800">{m.codigo}</p>
-                      <p className="text-xs text-slate-500">{m.tipo}</p>
+                      <p className="font-bold text-foreground">{m.codigo}</p>
+                      <p className="text-xs text-muted-foreground">{m.tipo}</p>
                     </div>
                   </div>
                   <Badge className={MAQUINA_ESTADO_COLORS[m.estado as MaquinaEstado]}>
@@ -47,31 +47,31 @@ export function MaquinasPage() {
                   </Badge>
                 </div>
 
-                <p className="text-sm text-slate-600 mb-2">{m.nombre}</p>
+                <p className="text-sm text-foreground mb-2">{m.nombre}</p>
 
                 {m.pedidoActual && (
-                  <div className="mb-3 p-2 rounded-lg bg-inplaz-50 border border-inplaz-100">
-                    <p className="text-xs text-inplaz-700">Pedido actual: <span className="font-semibold">{m.pedidoActual}</span></p>
+                  <div className="mb-3 p-2 rounded-lg bg-sidebar/10 border border-sidebar/20">
+                    <p className="text-xs text-sidebar-foreground">Pedido actual: <span className="font-semibold">{m.pedidoActual}</span></p>
                   </div>
                 )}
 
                 {m.mantenimiento && (
-                  <div className="mb-3 p-2 rounded-lg bg-amber-50 border border-amber-100 flex items-start gap-2">
-                    <Wrench className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-700">{m.mantenimiento}</p>
+                  <div className="mb-3 p-2 rounded-lg bg-warning/10 border border-warning/20 flex items-start gap-2">
+                    <Wrench className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                    <p className="text-xs text-warning">{m.mantenimiento}</p>
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>Capacidad actual</span>
-                    <span className="font-medium text-slate-700">{m.capacidadActual}%</span>
+                    <span className="font-medium text-foreground">{m.capacidadActual}%</span>
                   </div>
-                  <ProgressBar value={m.capacidadActual} colorClass={m.capacidadActual > 80 ? 'bg-danger-500' : m.capacidadActual > 50 ? 'bg-amber-500' : 'bg-brand-500'} />
-                  <p className="text-xs text-slate-500">Pedidos compatibles: <span className="font-medium text-slate-700">{m.productosCompatibles.filter(p => p.compatible).length}</span></p>
+                  <ProgressBar value={m.capacidadActual} colorClass={m.capacidadActual > 80 ? 'bg-destructive' : m.capacidadActual > 50 ? 'bg-warning' : 'bg-success'} />
+                  <p className="text-xs text-muted-foreground">Pedidos compatibles: <span className="font-medium text-foreground">{m.productosCompatibles.filter(p => p.compatible).length}</span></p>
                 </div>
 
-                <button onClick={(e) => { e.stopPropagation(); navigate(`/maquinas/${m.id}`); }} className="w-full mt-4 flex items-center justify-center gap-1 text-sm text-brand-600 hover:text-brand-700 font-medium transition">
+                <button onClick={(e) => { e.stopPropagation(); navigate(`/maquinas/${m.id}`); }} className="w-full mt-4 flex items-center justify-center gap-1 text-sm text-success hover:text-success/90 font-medium transition">
                   Ver máquina <ArrowRight className="h-4 w-4" />
                 </button>
               </CardBody>
