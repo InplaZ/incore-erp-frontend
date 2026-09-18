@@ -9,12 +9,14 @@ import {
     X,
 } from "lucide-react";
 
-import { useUpdateActividadComercial } from "../comercial.hooks";
+import { useUpdateActividadComercial } from "../../comercial.hooks";
 
 import type {
     ActividadComercial,
     EstadoActividad,
-} from "../comercial.types";
+} from "../../comercial.types";
+
+import  CompletarActividadModal  from "../actividades/CompletarActividadModal"
 
 interface ActividadMenuProps {
     actividad: ActividadComercial;
@@ -30,6 +32,9 @@ export default function ActividadMenu({
     onRegistrarComunicacion,
 }: ActividadMenuProps) {
     const [open, setOpen] = useState(false);
+
+    //Completar actividad
+    const [mostrarCompletar, setMostrarCompletar] = useState(false);
 
     const updateActividad = useUpdateActividadComercial();
 
@@ -116,16 +121,17 @@ export default function ActividadMenu({
 
                             <button
                                 type="button"
-                                onClick={() =>
-                                    actualizarEstado("completada", true)
-                                }
+                                onClick={() => {
+                                    setOpen(false);
+                                    setMostrarCompletar(true);
+                                }}
                                 className="
-                  flex w-full items-center gap-2
-                  rounded-md px-3 py-2
-                  text-left text-sm
-                  text-foreground
-                  hover:bg-secondary
-                "
+                                        flex w-full items-center gap-2
+                                        rounded-md px-3 py-2
+                                        text-left text-sm
+                                        text-foreground
+                                        hover:bg-secondary
+                                    "
                             >
                                 <Check className="h-4 w-4" />
                                 Marcar como completada
@@ -227,6 +233,11 @@ export default function ActividadMenu({
                     </button>
                 </div>
             )}
+            <CompletarActividadModal
+                open={mostrarCompletar}
+                actividad={actividad}
+                onClose={() => setMostrarCompletar(false)}
+            />
         </div>
     );
 }

@@ -25,7 +25,7 @@ export default function RegistrarComunicacionModal({
   const { data: solicitudesData, isLoading: solicitudesLoading } =
     useSolicitudesComerciales();
 
-  const solicitudes = solicitudesData?.results ?? [];
+  const solicitudes = solicitudesData ?? [];
 
   const [solicitudComercial, setSolicitudComercial] = useState(
     solicitudInicial ? String(solicitudInicial) : "",

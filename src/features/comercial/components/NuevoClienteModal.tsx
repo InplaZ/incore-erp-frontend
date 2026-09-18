@@ -16,12 +16,14 @@ import type {
 
 
 interface NuevoClienteModalProps {
+  open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess?: () => void;
   client?: CuentaComercial;
 }
 
 export default function NuevoClienteModal({
+  open,
   onClose,
   onSuccess,
   client,
@@ -80,7 +82,8 @@ export default function NuevoClienteModal({
         await createCuenta.mutateAsync(form);
       }
 
-      onSuccess();
+      onSuccess?.();
+      onClose();
     } catch (error) {
       console.error(
         isEditing
@@ -90,6 +93,9 @@ export default function NuevoClienteModal({
       );
     }
   };
+   if(!open){
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

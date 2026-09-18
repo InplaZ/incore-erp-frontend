@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Check,
   ChevronDown,
-  Eye,
   Plus,
   Search,
 } from "lucide-react";
@@ -236,11 +235,11 @@ function RequerimientoRow({
 }: {
   requerimiento: SolicitudComercial;
   cuentas: ReturnType<typeof useCuentasComerciales>["data"] extends infer T
-    ? NonNullable<T>
-    : never;
+  ? NonNullable<T>
+  : never;
   ejecutivos: ReturnType<typeof useEjecutivosComerciales>["data"] extends infer T
-    ? NonNullable<T>
-    : never;
+  ? NonNullable<T>
+  : never;
   onView: () => void;
 }) {
   const cuenta = cuentas.find(
@@ -250,17 +249,16 @@ function RequerimientoRow({
 
   const ejecutivo = cuenta
     ? ejecutivos.find(
-        (item) =>
-          item.id === cuenta.ejecutivo_asignado,
-      )
+      (item) =>
+        item.id === cuenta.ejecutivo_asignado,
+    )
     : undefined;
 
   const nombreCliente = cuenta
     ? cuenta.razon_social ||
-      `${cuenta.nombres ?? ""} ${
-        cuenta.apellido_paterno ?? ""
+    `${cuenta.nombres ?? ""} ${cuenta.apellido_paterno ?? ""
       }`.trim() ||
-      "Sin nombre"
+    "Sin nombre"
     : "Cliente no encontrado";
 
   const nombreEjecutivo = ejecutivo
@@ -268,16 +266,23 @@ function RequerimientoRow({
     : "Sin asignar";
 
   return (
-    <div className="grid grid-cols-[70px_2fr_2fr_1fr_1.2fr_1.2fr_1.5fr_1fr_60px] items-center gap-4 border-b border-border px-5 py-4 transition-colors hover:bg-secondary/40">
-      {/* Número */}
+    <div className="grid grid-cols-[70px_2fr_2fr_1fr_1.2fr_1.2fr_1.5fr_1fr_60px] items-center gap-4 border-b border-border px-5 py-4 hover:bg-secondary/100">
 
-      <p className="text-sm font-semibold text-foreground">
+      {/* N.º */}
+      <button
+        type="button"
+        onClick={onView}
+        className="text-left text-sm font-semibold text-foreground"
+      >
         REQ-{String(requerimiento.id).padStart(3, "0")}
-      </p>
+      </button>
 
       {/* Cliente */}
-
-      <div className="min-w-0">
+      <button
+        type="button"
+        onClick={onView}
+        className="min-w-0 text-left"
+      >
         <p className="truncate text-sm font-semibold text-foreground">
           {nombreCliente}
         </p>
@@ -285,18 +290,23 @@ function RequerimientoRow({
         <p className="mt-1 text-xs text-muted-foreground">
           ID cliente: {requerimiento.cuenta_comercial}
         </p>
-      </div>
+      </button>
 
       {/* Descripción */}
-
-      <p className="truncate text-sm text-foreground">
-        {requerimiento.descripcion ||
-          "Sin descripción"}
-      </p>
+      <button
+        type="button"
+        onClick={onView}
+        className="truncate text-left text-sm text-foreground"
+      >
+        {requerimiento.descripcion || "Sin descripción"}
+      </button>
 
       {/* Cantidad */}
-
-      <div>
+      <button
+        type="button"
+        onClick={onView}
+        className="text-left"
+      >
         {requerimiento.cantidad_unidades ? (
           <span className="text-sm font-medium text-foreground">
             {requerimiento.cantidad_unidades}
@@ -310,46 +320,27 @@ function RequerimientoRow({
             —
           </span>
         )}
-      </div>
+      </button>
 
       {/* Estado */}
-
       <EstadoSelector
         requerimiento={requerimiento}
       />
 
       {/* Prioridad */}
-
       <PrioridadBadge
         prioridad={requerimiento.prioridad}
       />
 
       {/* Responsable */}
-
       <p className="truncate text-sm font-medium text-foreground">
         {nombreEjecutivo}
       </p>
 
       {/* Entrega */}
-
       <p className="text-sm text-foreground">
-        {formatearFecha(
-          requerimiento.fecha_entrega,
-        )}
+        {formatearFecha(requerimiento.fecha_entrega)}
       </p>
-
-      {/* Ver */}
-
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={onView}
-          title="Ver requerimiento"
-          className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-        >
-          <Eye className="h-4 w-4" />
-        </button>
-      </div>
     </div>
   );
 }
@@ -364,56 +355,56 @@ const ESTADOS: {
   className: string;
   dotClass: string;
 }[] = [
-  {
-    value: "recibida",
-    label: "Recibida",
-    className:
-      "bg-blue-500/10 text-blue-700 dark:text-blue-400",
-    dotClass: "bg-blue-500",
-  },
-  {
-    value: "en_negociacion",
-    label: "En negociación",
-    className:
-      "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
-    dotClass: "bg-yellow-500",
-  },
-  {
-    value: "en_viabilidad",
-    label: "En viabilidad",
-    className:
-      "bg-secondary text-secondary-foreground",
-    dotClass: "bg-secondary",
-  },
-  {
-    value: "aprobada",
-    label: "Aprobada",
-    className:
-      "bg-success/10 text-success",
-    dotClass: "bg-success",
-  },
-  {
-    value: "rechazada",
-    label: "Rechazada",
-    className:
-      "bg-destructive/10 text-destructive",
-    dotClass: "bg-destructive",
-  },
-  {
-    value: "convertida",
-    label: "Convertida",
-    className:
-      "bg-sidebar/10 text-sidebar-foreground",
-    dotClass: "bg-sidebar-active",
-  },
-  {
-    value: "cancelada",
-    label: "Cancelada",
-    className:
-      "bg-gray-500/10 text-gray-600 dark:text-gray-400",
-    dotClass: "bg-gray-500",
-  },
-];
+    {
+      value: "recibida",
+      label: "Recibida",
+      className:
+        "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+      dotClass: "bg-blue-500",
+    },
+    {
+      value: "en_negociacion",
+      label: "En negociación",
+      className:
+        "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+      dotClass: "bg-yellow-500",
+    },
+    {
+      value: "en_viabilidad",
+      label: "En viabilidad",
+      className:
+        "bg-secondary text-secondary-foreground",
+      dotClass: "bg-secondary",
+    },
+    {
+      value: "aprobada",
+      label: "Aprobada",
+      className:
+        "bg-success/10 text-success",
+      dotClass: "bg-success",
+    },
+    {
+      value: "rechazada",
+      label: "Rechazada",
+      className:
+        "bg-destructive/10 text-destructive",
+      dotClass: "bg-destructive",
+    },
+    {
+      value: "convertida",
+      label: "Convertida",
+      className:
+        "bg-sidebar/10 text-sidebar-foreground",
+      dotClass: "bg-sidebar-active",
+    },
+    {
+      value: "cancelada",
+      label: "Cancelada",
+      className:
+        "bg-gray-500/10 text-gray-600 dark:text-gray-400",
+      dotClass: "bg-gray-500",
+    },
+  ];
 
 function EstadoSelector({
   requerimiento,
@@ -483,11 +474,10 @@ function EstadoSelector({
                 onClick={() =>
                   cambiarEstado(estado.value)
                 }
-                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs transition-colors hover:bg-secondary ${
-                  seleccionado
+                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs transition-colors hover:bg-secondary ${seleccionado
                     ? "bg-secondary"
                     : ""
-                }`}
+                  }`}
               >
                 <span className="flex items-center gap-2">
                   <span

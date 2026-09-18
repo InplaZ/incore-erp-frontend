@@ -9,20 +9,18 @@ import {
 } from "lucide-react";
 
 import {
-  useCreateActividadComercial,
-} from "../comercial.hooks";
-
-import {
+  useUpdateActividadComercial,
   useCuentasComerciales,
-} from "../comercial.hooks";
+} from "../../comercial.hooks";
 
 import type {
-  ActividadComercialCreate,
+  ActividadComercial,
   TipoActividad,
-} from "../comercial.types";
+} from "../../comercial.types";
 
-interface NuevaActividadModalProps {
+interface EditarActividadModalProps {
   open: boolean;
+  actividad: ActividadComercial | null;
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -75,21 +73,25 @@ function getClientName(
     .join(" ");
 }
 
-function getCurrentDateTime() {
-  const now = new Date();
+function formatDateTimeLocal(date: string) {
+  const parsedDate = new Date(date);
 
-  const offset = now.getTimezoneOffset();
-  const localDate = new Date(now.getTime() - offset * 60 * 1000);
+  const offset = parsedDate.getTimezoneOffset();
+
+  const localDate = new Date(
+    parsedDate.getTime() - offset * 60 * 1000,
+  );
 
   return localDate.toISOString().slice(0, 16);
 }
 
-export default function NuevaActividadModal({
+export default function EditarActividadModal({
   open,
+  actividad,
   onClose,
   onSuccess,
-}: NuevaActividadModalProps) {
-  const createActividad = useCreateActividadComercial();
+}: EditarActividadModalProps) {
+  const updateActividad = useUpdateActividadComercial();
 
   const {
     data: clientes = [],
@@ -106,20 +108,24 @@ export default function NuevaActividadModal({
     useState("");
 
   const [fechaProgramada, setFechaProgramada] =
-    useState(getCurrentDateTime());
+    useState("");
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !actividad) {
+      return;
+    }
 
-    setCuentaComercial("");
-    setTipo("llamada");
-    setDescripcion("");
-    setFechaProgramada(getCurrentDateTime());
+    setCuentaComercial(actividad.cuenta_comercial);
+    setTipo(actividad.tipo);
+    setDescripcion(actividad.descripcion);
+    setFechaProgramada(
+      formatDateTimeLocal(actividad.fecha_programada),
+    );
 
-    createActividad.reset();
-  }, [open]);
+    updateActividad.reset();
+  }, [open, actividad]);
 
-  if (!open) {
+  if (!open || !actividad) {
     return null;
   }
 
@@ -140,23 +146,24 @@ export default function NuevaActividadModal({
       return;
     }
 
-    const data: ActividadComercialCreate = {
-      cuenta_comercial: Number(cuentaComercial),
-      tipo,
-      descripcion: descripcion.trim(),
-      fecha_programada: new Date(
-        fechaProgramada,
-      ).toISOString(),
-    };
-
     try {
-      await createActividad.mutateAsync(data);
+      await updateActividad.mutateAsync({
+        id: actividad.id,
+        data: {
+          cuenta_comercial: Number(cuentaComercial),
+          tipo,
+          descripcion: descripcion.trim(),
+          fecha_programada: new Date(
+            fechaProgramada,
+          ).toISOString(),
+        },
+      });
 
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error(
-        "Error al crear actividad comercial:",
+        "Error al actualizar actividad comercial:",
         error,
       );
     }
@@ -164,16 +171,8 @@ export default function NuevaActividadModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div
-        className="
-          w-full max-w-lg
-          overflow-hidden
-          rounded-xl
-          border border-border
-          bg-card
-          shadow-2xl
-        "
-      >
+      <div className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+
         {/* HEADER */}
         <div className="flex items-start justify-between border-b border-border px-6 py-5">
           <div className="flex items-center gap-3">
@@ -183,11 +182,11 @@ export default function NuevaActividadModal({
 
             <div>
               <h2 className="text-lg font-semibold text-foreground">
-                Nueva actividad comercial
+                Editar actividad comercial
               </h2>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                Programa una nueva actividad con un cliente.
+                Modifica los datos de la actividad.
               </p>
             </div>
           </div>
@@ -195,7 +194,7 @@ export default function NuevaActividadModal({
           <button
             type="button"
             onClick={onClose}
-            disabled={createActividad.isPending}
+            disabled={updateActividad.isPending}
             className="
               rounded-md p-1.5
               text-muted-foreground
@@ -205,6 +204,7 @@ export default function NuevaActividadModal({
               disabled:cursor-not-allowed
               disabled:opacity-50
             "
+            aria-label="Cerrar"
           >
             <X className="h-5 w-5" />
           </button>
@@ -217,7 +217,7 @@ export default function NuevaActividadModal({
             {/* CLIENTE */}
             <div>
               <label
-                htmlFor="cuenta-comercial"
+                htmlFor="editar-cuenta-comercial"
                 className="mb-2 block text-sm font-medium text-foreground"
               >
                 Cliente
@@ -227,7 +227,7 @@ export default function NuevaActividadModal({
                 <Users className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
                 <select
-                  id="cuenta-comercial"
+                  id="editar-cuenta-comercial"
                   value={cuentaComercial}
                   onChange={(event) =>
                     setCuentaComercial(
@@ -238,7 +238,7 @@ export default function NuevaActividadModal({
                   }
                   disabled={
                     loadingClientes ||
-                    createActividad.isPending
+                    updateActividad.isPending
                   }
                   className="
                     h-11 w-full
@@ -279,10 +279,7 @@ export default function NuevaActividadModal({
 
             {/* TIPO */}
             <div>
-              <label
-                htmlFor="tipo-actividad"
-                className="mb-2 block text-sm font-medium text-foreground"
-              >
+              <label className="mb-2 block text-sm font-medium text-foreground">
                 Tipo de actividad
               </label>
 
@@ -295,7 +292,7 @@ export default function NuevaActividadModal({
                       key={item.value}
                       type="button"
                       onClick={() => setTipo(item.value)}
-                      disabled={createActividad.isPending}
+                      disabled={updateActividad.isPending}
                       className={`
                         rounded-lg
                         border
@@ -320,7 +317,7 @@ export default function NuevaActividadModal({
             {/* DESCRIPCIÓN */}
             <div>
               <label
-                htmlFor="descripcion"
+                htmlFor="editar-descripcion"
                 className="mb-2 block text-sm font-medium text-foreground"
               >
                 Descripción
@@ -330,14 +327,14 @@ export default function NuevaActividadModal({
                 <FileText className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 
                 <textarea
-                  id="descripcion"
+                  id="editar-descripcion"
                   value={descripcion}
                   onChange={(event) =>
                     setDescripcion(event.target.value)
                   }
                   placeholder="Describe el motivo de la actividad..."
                   rows={4}
-                  disabled={createActividad.isPending}
+                  disabled={updateActividad.isPending}
                   className="
                     w-full
                     resize-none
@@ -361,10 +358,10 @@ export default function NuevaActividadModal({
               </div>
             </div>
 
-            {/* FECHA Y HORA */}
+            {/* FECHA */}
             <div>
               <label
-                htmlFor="fecha-programada"
+                htmlFor="editar-fecha-programada"
                 className="mb-2 block text-sm font-medium text-foreground"
               >
                 Fecha y hora
@@ -374,15 +371,13 @@ export default function NuevaActividadModal({
                 <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
                 <input
-                  id="fecha-programada"
+                  id="editar-fecha-programada"
                   type="datetime-local"
                   value={fechaProgramada}
                   onChange={(event) =>
-                    setFechaProgramada(
-                      event.target.value,
-                    )
+                    setFechaProgramada(event.target.value)
                   }
-                  disabled={createActividad.isPending}
+                  disabled={updateActividad.isPending}
                   className="
                     h-11 w-full
                     rounded-lg
@@ -405,9 +400,9 @@ export default function NuevaActividadModal({
             </div>
 
             {/* ERROR */}
-            {createActividad.isError && (
+            {updateActividad.isError && (
               <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                No se pudo crear la actividad.
+                No se pudo actualizar la actividad.
                 Verifica los datos e inténtalo nuevamente.
               </div>
             )}
@@ -418,7 +413,7 @@ export default function NuevaActividadModal({
             <button
               type="button"
               onClick={onClose}
-              disabled={createActividad.isPending}
+              disabled={updateActividad.isPending}
               className="
                 rounded-lg
                 border border-border
@@ -439,9 +434,10 @@ export default function NuevaActividadModal({
             <button
               type="submit"
               disabled={
-                createActividad.isPending ||
+                updateActividad.isPending ||
                 !cuentaComercial ||
-                !descripcion.trim()
+                !descripcion.trim() ||
+                !fechaProgramada
               }
               className="
                 inline-flex
@@ -461,9 +457,9 @@ export default function NuevaActividadModal({
             >
               <CheckCircle2 className="h-4 w-4" />
 
-              {createActividad.isPending
-                ? "Creando..."
-                : "Crear actividad"}
+              {updateActividad.isPending
+                ? "Guardando..."
+                : "Guardar cambios"}
             </button>
           </div>
         </form>

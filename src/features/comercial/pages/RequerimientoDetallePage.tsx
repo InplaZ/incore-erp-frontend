@@ -22,7 +22,7 @@ export default function RequerimientoDetallePage() {
     const { data, isLoading, isError } =
         useSolicitudComercial(solicitudId);
 
-        console.log("DATA DETALLE:", data);
+    console.log("DATA DETALLE:", data);
 
     const { data: categorias } = useProductosCategorias();
 
@@ -61,6 +61,7 @@ export default function RequerimientoDetallePage() {
 
     const {
         solicitud,
+        cuentaComercial,
         especificacionProducto,
         especificacionBolsa,
         especificacionBobina,
@@ -115,22 +116,35 @@ export default function RequerimientoDetallePage() {
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         <InfoItem
                             label="Cliente"
-                            value={`Cuenta #${solicitud.cuenta_comercial}`}
+                            value={
+                                cuentaComercial?.tipo_persona === "juridica"
+                                    ? cuentaComercial.razon_social
+                                    : [
+                                        cuentaComercial.nombres,
+                                        cuentaComercial.apellido_paterno,
+                                        cuentaComercial.apellido_materno,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(" ")
+                            }
                         />
 
                         <InfoItem
                             label="Documento"
-                            value="—"
+                            value={
+                                cuentaComercial?.numero_documento ||
+                                cuentaComercial?.documento_identidad
+                            }
                         />
 
                         <InfoItem
                             label="Teléfono"
-                            value="—"
+                            value={cuentaComercial?.telefono}
                         />
 
                         <InfoItem
                             label="Correo"
-                            value="—"
+                            value={cuentaComercial?.correo}
                         />
                     </div>
                 </InfoGroup>
@@ -821,9 +835,9 @@ function getTroquelLabel(value: string) {
         cierre_facil: "Cierre fácil",
     };
 
-   return labels[value] ?? (value || "—");
+    return labels[value] ?? (value || "—");
 
-    }
+}
 
 function getSelloLabel(value: string) {
     const labels: Record<string, string> = {

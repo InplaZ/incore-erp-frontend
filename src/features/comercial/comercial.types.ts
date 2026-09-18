@@ -147,6 +147,7 @@ export type ActividadComercialUpdate = {
 
 export interface RequerimientoDetalle {
   solicitud: SolicitudComercial;
+  cuentaComercial: CuentaComercial;
   especificacionProducto: EspecificacionProductoSolicitado | null;
   especificacionBolsa: EspecificacionBolsaSolicitada | null;
   especificacionBobina: EspecificacionBobinaSolicitada | null;

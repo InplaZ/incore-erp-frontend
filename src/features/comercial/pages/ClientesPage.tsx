@@ -264,6 +264,7 @@ export default function ClientesPage() {
       {/* Nuevo cliente */}
       {showNewClient && (
         <NuevoClienteModal
+          open={showNewClient}
           onClose={() => setShowNewClient(false)}
           onSuccess={() => setShowNewClient(false)}
         />
@@ -272,6 +273,7 @@ export default function ClientesPage() {
       {/* Editar cliente */}
       {selectedCliente && (
         <NuevoClienteModal
+          open={!!selectedCliente}
           client={selectedCliente}
           onClose={() => setSelectedClient(null)}
           onSuccess={() => setSelectedClient(null)}

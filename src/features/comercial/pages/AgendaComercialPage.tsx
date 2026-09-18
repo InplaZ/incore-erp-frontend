@@ -12,19 +12,24 @@ import {
 } from "lucide-react";
 
 import { useMemo, useState } from "react";
-import NuevaActividadModal from "@/features/comercial/components/NuevaActividadModal";
+import NuevaActividadModal from "@/features/comercial/components/actividades/NuevaActividadModal";
 import {
   useActividadesComerciales,
   useCuentasComerciales,
+  useDeleteActividadComercial,
 } from "@/features/comercial/comercial.hooks";
+
+import  ConfirmDialog from  "../../../components/feedback/ConfirmDialog";
 
 import type {
   TipoActividad,
+  ActividadComercial,
 } from "@/features/comercial/comercial.types";
 
-import ActividadMenu from "@/features/comercial/components/ActividadMenu";
-
+import ActividadMenu from "@/features/comercial/components/actividades/ActividadMenu";
+import NuevoClienteModal from "@/features/comercial/components/NuevoClienteModal";
 import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
+import EditarActividadModal from "@/features/comercial/components/actividades/EditarActividadModal"
 
 import { useNavigate } from "react-router-dom";
 
@@ -104,6 +109,14 @@ export default function AgendaComercialPage() {
   const navigate = useNavigate();
   //Contenido
   const [showNuevaActividad, setShowNuevaActividad] = useState(false);
+  //Nuevo Cliente modal
+  const [showNuevoClienteOpen, setShowNuevoClienteOpen] = useState(false);
+
+  //EDITAR
+  const [actividadEditar, setActividadEditar] = useState<ActividadComercial | null>(null);
+
+  //Eliminar
+  const [actividadEliminar, setActividadEliminar] = useState<ActividadComercial | null>(null);
   const [activeTab, setActiveTab] = useState<AgendaTab>("hoy");
   const {
     data: actividades = [],
@@ -115,6 +128,9 @@ export default function AgendaComercialPage() {
     data: clientes = [],
     isLoading: loadingClientes,
   } = useCuentasComerciales();
+
+  //Eliminar
+  const deleteActividad = useDeleteActividadComercial();
 
   const actividadesConCliente = useMemo(() => {
     return actividades.map((actividad) => {
@@ -140,7 +156,9 @@ export default function AgendaComercialPage() {
       return (
         fecha.getFullYear() === ahora.getFullYear() &&
         fecha.getMonth() === ahora.getMonth() &&
-        fecha.getDate() === ahora.getDate()
+        fecha.getDate() === ahora.getDate() &&
+        actividad.estado !== "completada" &&
+        actividad.estado !== "cancelada"
       );
     });
   }, [actividadesConCliente]);
@@ -176,6 +194,17 @@ export default function AgendaComercialPage() {
         : actividadesCompletadas;
 
   const [showRegistrarComunicacion, setShowRegistrarComunicacion] = useState(false)
+
+  const handleEliminarActividad = async () => {
+    if (!actividadEliminar) return;
+
+    try {
+      await deleteActividad.mutateAsync(actividadEliminar.id);
+      setActividadEliminar(null);
+    } catch (error) {
+      console.error("Error al eliminar actividad:", error);
+    }
+  };
   return (
     <div className="space-y-6">
       {/* Encabezado */}
@@ -198,7 +227,7 @@ export default function AgendaComercialPage() {
           </p>
         </div>
 
-        <button 
+        <button
           onClick={() => navigate("/comercial/requerimientos")}
           className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
           <ClipboardList className="h-4 w-4" />
@@ -360,6 +389,8 @@ export default function AgendaComercialPage() {
 
                     <ActividadMenu
                       actividad={activity}
+                      onEdit={() => setActividadEditar(activity)}
+                      onDelete={() => setActividadEliminar(activity)}
                       onRegistrarComunicacion={() =>
                         setShowRegistrarComunicacion(true)
                       }
@@ -396,11 +427,12 @@ export default function AgendaComercialPage() {
             <QuickAction
               icon={ClipboardList}
               label="Nuevo requerimiento"
+              onClick={() => navigate("/comercial/requerimientos")}
             />
-
             <QuickAction
               icon={UserRound}
               label="Registrar nuevo cliente"
+              onClick={() => setShowNuevoClienteOpen(true)}
             />
 
             <QuickAction
@@ -520,10 +552,33 @@ export default function AgendaComercialPage() {
         open={showNuevaActividad}
         onClose={() => setShowNuevaActividad(false)}
       />
+      <EditarActividadModal
+        open={actividadEditar !== null}
+        actividad={actividadEditar}
+        onClose={() => setActividadEditar(null)}
+      />
+      <ConfirmDialog
+        open={actividadEliminar !== null}
+        title="Eliminar actividad"
+        description={
+          actividadEliminar
+            ? `¿Estás seguro de eliminar la actividad "${actividadEliminar.descripcion}"? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        loading={deleteActividad.isPending}
+        onConfirm={handleEliminarActividad}
+        onCancel={() => setActividadEliminar(null)}
+      />
 
       <RegistrarComunicacionModal
         open={showRegistrarComunicacion}
         onClose={() => setShowRegistrarComunicacion(false)}
+      />
+      <NuevoClienteModal
+        open={showNuevoClienteOpen}
+        onClose={() => setShowNuevoClienteOpen(false)}
       />
     </div>
   );
