@@ -46,7 +46,7 @@ export default function RequerimientoStepCliente({
         {/* Título y acción */}
         <div className="mb-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/90">
               <UserRound className="h-5 w-5 text-primary" />
             </div>
 

@@ -79,6 +79,18 @@ export const cuentasComercialesApi = {
     );
   },
 
+  desactivar: async (id: number): Promise<CuentaComercial> => {
+    return api.patch<CuentaComercial>(
+      `/comercial/cuentas-comerciales/${id}/desactivar/`,
+    );
+  },
+
+  activar: async (id: number): Promise<CuentaComercial> => {
+  return api.patch<CuentaComercial>(
+    `/comercial/cuentas-comerciales/${id}/activar/`,
+  );
+},
+
   remove: async (id: number): Promise<void> => {
     await api.delete(`/comercial/cuentas-comerciales/${id}/`);
   },

@@ -39,6 +39,7 @@ export interface CuentaComercial {
     id: number;
     usuario: number | null;
     ejecutivo_asignado: number | null; 
+    ejecutivo_nombre: string | null; 
 
     nombres: string;
     apellido_paterno: string;

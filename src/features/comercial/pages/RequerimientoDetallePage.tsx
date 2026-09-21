@@ -22,38 +22,46 @@ export default function RequerimientoDetallePage() {
     const { data, isLoading, isError } =
         useSolicitudComercial(solicitudId);
 
-    console.log("DATA DETALLE:", data);
-
     const { data: categorias } = useProductosCategorias();
+
+    /* ============================================================
+       ESTADOS DE CARGA / ERROR
+       ============================================================ */
 
     if (isLoading) {
         return (
-            <div className="flex min-h-[300px] items-center justify-center">
-                <p className="text-sm text-muted-foreground">
-                    Cargando requerimiento...
-                </p>
+            <div className="flex min-h-[60vh] items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-700" />
+
+                    <p className="text-sm font-medium text-slate-500">
+                        Cargando información…
+                    </p>
+                </div>
             </div>
         );
     }
 
     if (isError || !data) {
         return (
-            <div className="space-y-4">
-                <button
-                    type="button"
-                    onClick={() =>
-                        navigate("/comercial/requerimientos")
-                    }
-                    className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Volver a requerimientos
-                </button>
-
-                <div className="rounded-xl border border-border bg-card p-8 text-center">
-                    <p className="font-medium">
-                        No se pudo encontrar el requerimiento.
+            <div className="flex min-h-[60vh] items-center justify-center px-4">
+                <div className="w-full max-w-md rounded-2xl border border-red-100 bg-red-50 p-8 text-center shadow-sm">
+                    <p className="text-base font-semibold text-red-700">
+                        No se pudo cargar la solicitud
                     </p>
+
+                    <p className="mt-1 text-sm text-red-500">
+                        Intenta nuevamente o regresa al listado.
+                    </p>
+
+                    <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        Volver
+                    </button>
                 </div>
             </div>
         );
@@ -68,52 +76,50 @@ export default function RequerimientoDetallePage() {
     } = data;
 
     return (
-        <div className="mx-auto max-w-5xl space-y-5">
-            {/* ENCABEZADO */}
+        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+            {/* ============================================================
+                HEADER
+               ============================================================ */}
 
-            <div className="rounded-xl border border-border bg-card p-5">
-                <button
-                    type="button"
-                    onClick={() =>
-                        navigate("/comercial/requerimientos")
-                    }
-                    className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Volver a requerimientos
-                </button>
+            <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                    <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground"
+                        aria-label="Volver"
+                    >
+                        <ArrowLeft className="h-5 w-5" />
+                    </button>
 
-                <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                            <Check className="h-5 w-5 text-primary" />
-                        </div>
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Solicitud #{solicitud.id}
+                        </p>
 
-                        <div>
-                            <h1 className="text-xl font-semibold text-foreground">
-                                Requerimiento #{solicitud.id}
-                            </h1>
-
-                            <p className="mt-1 text-sm text-muted-foreground">
-                                Detalle del requerimiento comercial
-                            </p>
-                        </div>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                            Detalle del Requerimiento
+                        </h1>
                     </div>
-
-                    <EstadoBadge estado={solicitud.estado} />
                 </div>
-            </div>
 
-            {/* FICHA PRINCIPAL */}
+                <EstadoBadge estado={solicitud.estado} />
+            </header>
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-                {/* CLIENTE */}
+            {/* ============================================================
+                GRID PRINCIPAL
+               ============================================================ */}
 
-                <InfoGroup
-                    icon={<UserRound className="h-4 w-4" />}
-                    title="Cliente"
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {/* ========================================================
+                    CLIENTE
+                   ======================================================== */}
+
+                <InfoCard
+                    icon={<UserRound className="h-5 w-5" />}
+                    title="Información del Cliente"
                 >
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                         <InfoItem
                             label="Cliente"
                             value={
@@ -147,15 +153,17 @@ export default function RequerimientoDetallePage() {
                             value={cuentaComercial?.correo}
                         />
                     </div>
-                </InfoGroup>
+                </InfoCard>
 
-                {/* SOLICITUD */}
+                {/* ========================================================
+                    SOLICITUD
+                   ======================================================== */}
 
-                <InfoGroup
-                    icon={<Package className="h-4 w-4" />}
-                    title="Solicitud"
+                <InfoCard
+                    icon={<FileText className="h-5 w-5" />}
+                    title="Datos de la Solicitud"
                 >
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                    <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                         <InfoItem
                             label="Producto"
                             value={
@@ -195,209 +203,216 @@ export default function RequerimientoDetallePage() {
                             value={formatDate(solicitud.fecha)}
                         />
                     </div>
-                </InfoGroup>
+                </InfoCard>
 
-                {/* ESPECIFICACIONES */}
+                {/* ========================================================
+                    PRODUCTO
+                   ======================================================== */}
 
                 {especificacionProducto && (
-                    <InfoGroup
-                        icon={<Palette className="h-4 w-4" />}
-                        title="Especificaciones técnicas"
+                    <InfoCard
+                        icon={<Package className="h-5 w-5" />}
+                        title="Producto"
                     >
-                        <div className="space-y-6">
-                            {/* MATERIAL */}
+                        <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                            <InfoItem
+                                label="Material"
+                                value={getMaterialLabel(
+                                    especificacionProducto.material,
+                                )}
+                            />
 
-                            <div>
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Material y apariencia
-                                </p>
+                            <InfoItem
+                                label="Apto para alimentos"
+                                value={
+                                    especificacionProducto.apto_alimento
+                                        ? "Sí"
+                                        : "No"
+                                }
+                            />
 
-                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                                    <InfoItem
-                                        label="Material"
-                                        value={getMaterialLabel(
-                                            especificacionProducto.material,
-                                        )}
-                                    />
+                            <InfoItem
+                                label="Micraje"
+                                value={
+                                    especificacionProducto.micraje
+                                        ? `${especificacionProducto.micraje} micras`
+                                        : "—"
+                                }
+                            />
 
-                                    <InfoItem
-                                        label="Apto para alimentos"
-                                        value={
-                                            especificacionProducto.apto_alimento
-                                                ? "Sí"
-                                                : "No"
-                                        }
-                                    />
+                            <InfoItem
+                                label="Color"
+                                value={especificacionProducto.color_bolsa}
+                            />
 
-                                    <InfoItem
-                                        label="Micraje"
-                                        value={
-                                            especificacionProducto.micraje
-                                                ? `${especificacionProducto.micraje} micras`
-                                                : "—"
-                                        }
-                                    />
+                            <InfoItem
+                                label="Opacidad"
+                                value={getOpacidadLabel(
+                                    especificacionProducto.opacidad,
+                                )}
+                            />
+                        </div>
+                    </InfoCard>
+                )}
 
-                                    <InfoItem
-                                        label="Color"
-                                        value={
-                                            especificacionProducto.color_bolsa
-                                        }
-                                    />
+                {/* ========================================================
+                    ESPECIFICACIONES
+                   ======================================================== */}
 
-                                    <InfoItem
-                                        label="Opacidad"
-                                        value={
-                                            getOpacidadLabel(
-                                                especificacionProducto.opacidad,
-                                            )
-                                        }
-                                    />
-                                </div>
-                            </div>
-
-                            {/* DIMENSIONES DE BOLSA */}
+                {especificacionProducto && (
+                    <InfoCard
+                        icon={<Palette className="h-5 w-5" />}
+                        title="Especificaciones"
+                    >
+                        <div className="space-y-7">
+                            {/* =================================================
+                                DIMENSIONES DE BOLSA
+                               ================================================= */}
 
                             {especificacionBolsa && (
-                                <>
-                                    <div>
-                                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                            Dimensiones
-                                        </p>
+                                <div>
+                                    <SectionTitle>
+                                        Dimensiones
+                                    </SectionTitle>
 
-                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                                            <InfoItem
-                                                label="Ancho doblado"
-                                                value={
-                                                    especificacionBolsa.ancho_doblado
-                                                        ? `${especificacionBolsa.ancho_doblado} cm`
-                                                        : "—"
-                                                }
-                                            />
+                                    <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                                        <InfoItem
+                                            label="Ancho doblado"
+                                            value={
+                                                especificacionBolsa.ancho_doblado
+                                                    ? `${especificacionBolsa.ancho_doblado} cm`
+                                                    : "—"
+                                            }
+                                        />
 
-                                            <InfoItem
-                                                label="Ancho desdoblado"
-                                                value={
-                                                    especificacionBolsa.ancho_desdoblado
-                                                        ? `${especificacionBolsa.ancho_desdoblado} cm`
-                                                        : "—"
-                                                }
-                                            />
+                                        <InfoItem
+                                            label="Ancho desdoblado"
+                                            value={
+                                                especificacionBolsa.ancho_desdoblado
+                                                    ? `${especificacionBolsa.ancho_desdoblado} cm`
+                                                    : "—"
+                                            }
+                                        />
 
-                                            <InfoItem
-                                                label="Largo doblado"
-                                                value={
-                                                    especificacionBolsa.largo_doblado
-                                                        ? `${especificacionBolsa.largo_doblado} cm`
-                                                        : "—"
-                                                }
-                                            />
+                                        <InfoItem
+                                            label="Largo doblado"
+                                            value={
+                                                especificacionBolsa.largo_doblado
+                                                    ? `${especificacionBolsa.largo_doblado} cm`
+                                                    : "—"
+                                            }
+                                        />
 
-                                            <InfoItem
-                                                label="Largo desdoblado"
-                                                value={
-                                                    especificacionBolsa.largo_desdoblado
-                                                        ? `${especificacionBolsa.largo_desdoblado} cm`
-                                                        : "—"
-                                                }
-                                            />
-                                        </div>
+                                        <InfoItem
+                                            label="Largo desdoblado"
+                                            value={
+                                                especificacionBolsa.largo_desdoblado
+                                                    ? `${especificacionBolsa.largo_desdoblado} cm`
+                                                    : "—"
+                                            }
+                                        />
                                     </div>
-
-                                    {/* FUELLE */}
-
-                                    <div>
-                                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                            Fuelle
-                                        </p>
-
-                                        {especificacionBolsa.fuelle ? (
-                                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                                                <InfoItem
-                                                    label="Izquierdo"
-                                                    value={
-                                                        especificacionBolsa.fuelle_izquierdo
-                                                            ? `${especificacionBolsa.fuelle_izquierdo} cm`
-                                                            : "—"
-                                                    }
-                                                />
-
-                                                <InfoItem
-                                                    label="Derecho"
-                                                    value={
-                                                        especificacionBolsa.fuelle_derecho
-                                                            ? `${especificacionBolsa.fuelle_derecho} cm`
-                                                            : "—"
-                                                    }
-                                                />
-
-                                                <InfoItem
-                                                    label="Inferior"
-                                                    value={
-                                                        especificacionBolsa.fuelle_inferior
-                                                            ? `${especificacionBolsa.fuelle_inferior} cm`
-                                                            : "—"
-                                                    }
-                                                />
-
-                                                <InfoItem
-                                                    label="Superior"
-                                                    value={
-                                                        especificacionBolsa.fuelle_superior
-                                                            ? `${especificacionBolsa.fuelle_superior} cm`
-                                                            : "—"
-                                                    }
-                                                />
-                                            </div>
-                                        ) : (
-                                            <p className="text-sm text-muted-foreground">
-                                                Sin fuelle
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* CONFIGURACIÓN DE BOLSA */}
-
-                                    <div>
-                                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                            Configuración de bolsa
-                                        </p>
-
-                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                            <InfoItem
-                                                label="Troquel"
-                                                value={getTroquelLabel(
-                                                    especificacionBolsa.tipo_troquel,
-                                                )}
-                                            />
-
-                                            <InfoItem
-                                                label="Sello"
-                                                value={getSelloLabel(
-                                                    especificacionBolsa.tipo_sello,
-                                                )}
-                                            />
-
-                                            <InfoItem
-                                                label="Pestaña"
-                                                value={
-                                                    especificacionBolsa.pestana
-                                                }
-                                            />
-                                        </div>
-                                    </div>
-                                </>
+                                </div>
                             )}
 
-                            {/* BOBINA */}
+                            {/* =================================================
+                                FUELLE
+                               ================================================= */}
+
+                            {especificacionBolsa && (
+                                <div>
+                                    <SectionTitle>Fuelle</SectionTitle>
+
+                                    {especificacionBolsa.fuelle ? (
+                                        <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                                            <InfoItem
+                                                label="Izquierdo"
+                                                value={
+                                                    especificacionBolsa.fuelle_izquierdo
+                                                        ? `${especificacionBolsa.fuelle_izquierdo} cm`
+                                                        : "—"
+                                                }
+                                            />
+
+                                            <InfoItem
+                                                label="Derecho"
+                                                value={
+                                                    especificacionBolsa.fuelle_derecho
+                                                        ? `${especificacionBolsa.fuelle_derecho} cm`
+                                                        : "—"
+                                                }
+                                            />
+
+                                            <InfoItem
+                                                label="Inferior"
+                                                value={
+                                                    especificacionBolsa.fuelle_inferior
+                                                        ? `${especificacionBolsa.fuelle_inferior} cm`
+                                                        : "—"
+                                                }
+                                            />
+
+                                            <InfoItem
+                                                label="Superior"
+                                                value={
+                                                    especificacionBolsa.fuelle_superior
+                                                        ? `${especificacionBolsa.fuelle_superior} cm`
+                                                        : "—"
+                                                }
+                                            />
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">
+                                            Sin fuelle
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* =================================================
+                                CONFIGURACIÓN DE BOLSA
+                               ================================================= */}
+
+                            {especificacionBolsa && (
+                                <div>
+                                    <SectionTitle>
+                                        Configuración de bolsa
+                                    </SectionTitle>
+
+                                    <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                                        <InfoItem
+                                            label="Troquel"
+                                            value={getTroquelLabel(
+                                                especificacionBolsa.tipo_troquel,
+                                            )}
+                                        />
+
+                                        <InfoItem
+                                            label="Sello"
+                                            value={getSelloLabel(
+                                                especificacionBolsa.tipo_sello,
+                                            )}
+                                        />
+
+                                        <InfoItem
+                                            label="Pestaña"
+                                            value={especificacionBolsa.pestana}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* =================================================
+                                BOBINA
+                               ================================================= */}
 
                             {especificacionBobina && (
                                 <div>
-                                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    <SectionTitle>
                                         Características de bobina
-                                    </p>
+                                    </SectionTitle>
 
-                                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                                         <InfoItem
                                             label="Ancho"
                                             value={
@@ -437,19 +452,19 @@ export default function RequerimientoDetallePage() {
                                 </div>
                             )}
 
-                            {/* IMPRESIÓN */}
+                            {/* =================================================
+                                IMPRESIÓN
+                               ================================================= */}
 
                             <div>
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Impresión
-                                </p>
+                                <SectionTitle>Impresión</SectionTitle>
 
                                 {!especificacionProducto.impresion ? (
                                     <p className="text-sm text-muted-foreground">
                                         Sin impresión
                                     </p>
                                 ) : (
-                                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                                         <InfoItem
                                             label="Impresión"
                                             value="Sí"
@@ -484,8 +499,7 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Distancia superior"
                                             value={
-                                                especificacionProducto
-                                                    .distancia_impresion_superior
+                                                especificacionProducto.distancia_impresion_superior
                                                     ? `${especificacionProducto.distancia_impresion_superior} cm`
                                                     : "—"
                                             }
@@ -494,8 +508,7 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Distancia inferior"
                                             value={
-                                                especificacionProducto
-                                                    .distancia_impresion_inferior
+                                                especificacionProducto.distancia_impresion_inferior
                                                     ? `${especificacionProducto.distancia_impresion_inferior} cm`
                                                     : "—"
                                             }
@@ -504,8 +517,7 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Distancia izquierda"
                                             value={
-                                                especificacionProducto
-                                                    .distancia_impresion_izquierda
+                                                especificacionProducto.distancia_impresion_izquierda
                                                     ? `${especificacionProducto.distancia_impresion_izquierda} cm`
                                                     : "—"
                                             }
@@ -514,8 +526,7 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Distancia derecha"
                                             value={
-                                                especificacionProducto
-                                                    .distancia_impresion_derecha
+                                                especificacionProducto.distancia_impresion_derecha
                                                     ? `${especificacionProducto.distancia_impresion_derecha} cm`
                                                     : "—"
                                             }
@@ -524,18 +535,22 @@ export default function RequerimientoDetallePage() {
                                 )}
                             </div>
 
-                            {/* TRATAMIENTOS */}
+                            {/* =================================================
+                                TRATAMIENTOS
+                               ================================================= */}
 
                             {especificacionProducto
                                 .tratamientos_acabados_especiales?.length >
                                 0 && (
                                     <div>
-                                        <div className="mb-3 flex items-center gap-2">
+                                        <div className="mb-4 flex items-center gap-3">
                                             <Sparkles className="h-4 w-4 text-primary" />
 
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                                 Tratamientos y acabados
                                             </p>
+
+                                            <div className="h-px flex-1 bg-border" />
                                         </div>
 
                                         <div className="flex flex-wrap gap-2">
@@ -555,7 +570,9 @@ export default function RequerimientoDetallePage() {
                                     </div>
                                 )}
 
-                            {/* OTRAS CARACTERÍSTICAS */}
+                            {/* =================================================
+                                OTRAS CARACTERÍSTICAS
+                               ================================================= */}
 
                             {especificacionProducto.otras_caracteristicas && (
                                 <InfoText
@@ -566,39 +583,41 @@ export default function RequerimientoDetallePage() {
                                 />
                             )}
                         </div>
-                    </InfoGroup>
+                    </InfoCard>
                 )}
 
-                {/* ENTREGA */}
+                {/* ========================================================
+                    ENTREGA
+                   ======================================================== */}
 
-                <InfoGroup
-                    icon={<Truck className="h-4 w-4" />}
+                <InfoCard
+                    icon={<Truck className="h-5 w-5" />}
                     title="Entrega"
+                    className="lg:col-span-2"
                 >
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
                         <InfoItem
                             label="Fecha solicitada"
-                            value={formatDate(
-                                solicitud.fecha_entrega,
-                            )}
+                            value={formatDate(solicitud.fecha_entrega)}
                         />
 
                         <InfoItem
                             label="Lugar de entrega"
-                            value={
-                                solicitud.lugar_entrega || "—"
-                            }
+                            value={solicitud.lugar_entrega || "—"}
                         />
                     </div>
-                </InfoGroup>
+                </InfoCard>
 
-                {/* INFORMACIÓN ADICIONAL */}
+                {/* ========================================================
+                    INFORMACIÓN ADICIONAL
+                   ======================================================== */}
 
-                <InfoGroup
-                    icon={<FileText className="h-4 w-4" />}
+                <InfoCard
+                    icon={<FileText className="h-5 w-5" />}
                     title="Información adicional"
+                    className="lg:col-span-2"
                 >
-                    <div className="space-y-4">
+                    <div className="grid gap-6 lg:grid-cols-2">
                         <InfoText
                             label="Descripción"
                             value={solicitud.descripcion}
@@ -609,35 +628,52 @@ export default function RequerimientoDetallePage() {
                             value={solicitud.observaciones}
                         />
                     </div>
-                </InfoGroup>
+                </InfoCard>
             </div>
+
+            {/* ============================================================
+                FOOTER
+               ============================================================ */}
+
+            <footer className="mt-10 flex flex-col-reverse items-stretch gap-3 border-t border-border pt-6 sm:flex-row sm:justify-end">
+                <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Regresar
+                </button>
+            </footer>
         </div>
     );
 }
 
-/* =====================================================
-   COMPONENTES VISUALES
-===================================================== */
+/* ============================================================
+   COMPONENTES AUXILIARES
+   ============================================================ */
 
-interface InfoGroupProps {
-    icon: React.ReactNode;
-    title: string;
-    children: React.ReactNode;
-}
-
-function InfoGroup({
+function InfoCard({
     icon,
     title,
     children,
-}: InfoGroupProps) {
+    className = "",
+}: {
+    icon: React.ReactNode;
+    title: string;
+    children: React.ReactNode;
+    className?: string;
+}) {
     return (
-        <section className="border-b border-border px-5 py-5 last:border-b-0">
-            <div className="mb-4 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <section
+            className={`rounded-2xl border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md ${className}`}
+        >
+            <div className="mb-5 flex items-center gap-3 border-b border-border pb-4">
+                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
                     {icon}
-                </div>
+                </span>
 
-                <h2 className="text-sm font-semibold text-foreground">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
                     {title}
                 </h2>
             </div>
@@ -658,31 +694,29 @@ function InfoItem({
 }: InfoItemProps) {
     return (
         <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 {label}
             </p>
 
-            <p className="mt-1 break-words text-sm font-medium text-foreground">
+            <p className="mt-1.5 min-h-5 break-words text-sm font-medium leading-5 text-foreground">
                 {value || "—"}
             </p>
         </div>
     );
 }
 
-interface InfoTextProps {
-    label: string;
-    value?: string | null;
-}
-
 function InfoText({
     label,
     value,
-}: InfoTextProps) {
+}: {
+    label: string;
+    value?: string | null;
+}) {
     if (!value) return null;
 
     return (
         <div>
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 {label}
             </p>
 
@@ -693,9 +727,25 @@ function InfoText({
     );
 }
 
-/* =====================================================
+function SectionTitle({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="mb-4 flex items-center gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {children}
+            </p>
+
+            <div className="h-px flex-1 bg-border" />
+        </div>
+    );
+}
+
+/* ============================================================
    ESTADO
-===================================================== */
+   ============================================================ */
 
 function EstadoBadge({
     estado,
@@ -704,38 +754,45 @@ function EstadoBadge({
 }) {
     const estados: Record<
         string,
-        { label: string; className: string }
+        {
+            label: string;
+            className: string;
+        }
     > = {
         recibida: {
             label: "Recibida",
             className:
                 "bg-blue-500/10 text-blue-700 dark:text-blue-400",
         },
+
         en_negociacion: {
             label: "En negociación",
-            className:
-                "bg-warning/10 text-warning",
+            className: "bg-warning/10 text-warning",
         },
+
         en_viabilidad: {
             label: "En viabilidad",
             className:
                 "bg-secondary text-secondary-foreground",
         },
+
         aprobada: {
             label: "Aprobada",
-            className:
-                "bg-success/10 text-success",
+            className: "bg-success/10 text-success",
         },
+
         rechazada: {
             label: "Rechazada",
             className:
                 "bg-destructive/10 text-destructive",
         },
+
         convertida: {
             label: "Convertida",
             className:
                 "bg-sidebar/10 text-sidebar-foreground",
         },
+
         cancelada: {
             label: "Cancelada",
             className:
@@ -750,16 +807,17 @@ function EstadoBadge({
 
     return (
         <span
-            className={`inline-flex rounded-full px-3 py-1.5 text-sm font-medium ${config.className}`}
+            className={`inline-flex w-fit items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wide ${config.className}`}
         >
+            <Check className="h-3.5 w-3.5" />
             {config.label}
         </span>
     );
 }
 
-/* =====================================================
+/* ============================================================
    LABELS
-===================================================== */
+   ============================================================ */
 
 function getPrioridadLabel(value: string) {
     const labels: Record<string, string> = {
@@ -836,7 +894,6 @@ function getTroquelLabel(value: string) {
     };
 
     return labels[value] ?? (value || "—");
-
 }
 
 function getSelloLabel(value: string) {
@@ -859,4 +916,4 @@ function formatDate(value?: string | null) {
     }
 
     return value;
-};
+}

@@ -198,7 +198,44 @@ export function useUpdateCuentaComercial() {
     },
   });
 }
+export function useDesactivarCuentaComercial() {
+  const queryClient = useQueryClient();
 
+  return useMutation({
+    mutationFn: (id: number) =>
+      cuentasComercialesApi.desactivar(id),
+
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: comercialQueryKeys.cuentas(),
+      });
+
+      queryClient.setQueryData(
+        comercialQueryKeys.cuenta(data.id),
+        data,
+      );
+    },
+  });
+}
+export function useActivarCuentaComercial() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) =>
+      cuentasComercialesApi.activar(id),
+
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: comercialQueryKeys.cuentas(),
+      });
+
+      queryClient.setQueryData(
+        comercialQueryKeys.cuenta(data.id),
+        data,
+      );
+    },
+  });
+}
 export function useDeleteCuentaComercial() {
   const queryClient = useQueryClient();
 
