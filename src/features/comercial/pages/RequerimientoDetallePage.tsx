@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { useState } from "react";
 import {
     ArrowLeft,
     Check,
@@ -8,16 +9,22 @@ import {
     Sparkles,
     Truck,
     UserRound,
+    MessageCircle,
 } from "lucide-react";
 
 import { useSolicitudComercial } from "../comercial.hooks";
 import { useProductosCategorias } from "@/features/productos/productos.hook";
+import ComunicacionesModal from "@/features/comercial/components/ComunicacionModal";
 
 export default function RequerimientoDetallePage() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
 
     const solicitudId = Number(id);
+
+    //MOSTRAR COMUNICACIÓN
+    const [showComunicaciones, setShowComunicaciones] = useState(false);
+
 
     const { data, isLoading, isError } =
         useSolicitudComercial(solicitudId);
@@ -103,7 +110,18 @@ export default function RequerimientoDetallePage() {
                     </div>
                 </div>
 
-                <EstadoBadge estado={solicitud.estado} />
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setShowComunicaciones(true)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted"
+                    >
+                        <MessageCircle className="h-4 w-4" />
+                        Ver comunicaciones
+                    </button>
+
+                    <EstadoBadge estado={solicitud.estado} />
+                </div>
             </header>
 
             {/* ============================================================
@@ -645,6 +663,15 @@ export default function RequerimientoDetallePage() {
                     Regresar
                 </button>
             </footer>
+
+            {showComunicaciones && (
+                <ComunicacionesModal
+                    open={showComunicaciones}
+                    solicitudId={solicitudId}
+                    onClose={() => setShowComunicaciones(false)}
+
+                />
+            )}
         </div>
     );
 }

@@ -202,6 +202,7 @@ export default function RequerimientoStepCliente({
       )}
       {showNuevoCliente && (
         <NuevoClienteModal
+          open={showNuevoCliente}
           onClose={() => setMostrarModal(false)}
           onSuccess={() => setMostrarModal(false)}
         />

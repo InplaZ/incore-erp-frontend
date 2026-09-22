@@ -113,6 +113,8 @@ export interface ActividadComercial {
   id: number;
 
   cuenta_comercial: number;
+  solicitud_comercial: number | null;
+
   usuario: number;
   ejecutivo_asignado: string;
 
@@ -131,6 +133,7 @@ export interface ActividadComercial {
 
 export interface ActividadComercialCreate {
   cuenta_comercial: number;
+  solicitud_comercial?: number | null;
   tipo: TipoActividad;
   descripcion: string;
   fecha_programada: string;
@@ -438,14 +441,24 @@ export type EspecificacionBobinaSolicitadaUpdate =
 // ============================================================
 
 export type TipoComunicacion = 
-  | "enviado"
-  | "recibido";
+  | "llamada"
+  | "correo"
+  | "mensaje"
+  | "reunion"
+  | "visita"
+  | "otro";
 
 export type MedioComunicacion =
-  | "llamada"
+  | "telefono"
+  | "email"
   | "whatsapp"
-  | "correo"
-  | "reunion";
+  | "presencial"
+  | "videollamada"
+  | "otro";
+
+export type DireccionComunicacion =
+  | "saliente"
+  | "entrante";
 
 export interface Comunicacion {
   id: number;
@@ -453,6 +466,7 @@ export interface Comunicacion {
   usuario: number;
   tipo: string;
   medio: string;
+  direccion: DireccionComunicacion | null;
   asunto: string | null;
   contenido: string;
   created_at: string;
@@ -461,10 +475,9 @@ export interface Comunicacion {
 
 export interface ComunicacionCreate {
   solicitud_comercial: number;
-
   tipo: string;
   medio: string;
-
+  direccion: DireccionComunicacion;
   asunto?: string | null;
   contenido: string;
 }
@@ -473,6 +486,7 @@ export type ComunicacionUpdate = {
   solicitud_comercial?: number;
   tipo?: TipoComunicacion;
   medio?: MedioComunicacion;
+  direccion?: DireccionComunicacion;
   asunto?: string | null;
   contenido?: string;
 }

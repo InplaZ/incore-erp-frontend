@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import Toast from "@/components/ui/Toast";
 import {
   useCuentasComerciales,
 } from "../comercial.hooks";
@@ -168,6 +169,8 @@ export default function RequerimientosPage() {
   const [observaciones, setObservaciones] =
     useState("");
 
+  //TOAST
+  const [toast, setToast] = useState(false);
   /*
    * Cliente seleccionado
    *
@@ -312,11 +315,8 @@ export default function RequerimientosPage() {
 
       const formData: RequerimientoFormData = {
         cuentaComercialId,
-
         product,
-
-        categoriaProductoId:
-          categoriaSeleccionada.id,
+        categoriaProductoId: categoriaSeleccionada.id,
 
         descripcion,
         material,
@@ -362,15 +362,21 @@ export default function RequerimientosPage() {
         observaciones,
       };
 
-      const resultado =
-        await crearRequerimiento(formData);
+      const resultado = await crearRequerimiento(formData);
 
       console.log(
         "Requerimiento creado correctamente:",
         resultado,
       );
 
-      navigate("/comercial");
+      // Mostrar confirmación
+      setToast(true);
+
+      // Dar tiempo para visualizar el Toast
+      setTimeout(() => {
+        navigate("/comercial");
+      }, 1500);
+
     } catch (error) {
       console.error(
         "Error al registrar requerimiento:",
@@ -638,6 +644,12 @@ export default function RequerimientosPage() {
         onPrevious={previousStep}
         onCancel={resetWizard}
         onSubmit={handleSubmit}
+      />
+      <Toast
+        open={toast}
+        title="Requerimiento registrado"
+        description="Se registró automáticamente la actividad de seguimiento."
+        onClose={() => setToast(false)}
       />
     </div>
   );

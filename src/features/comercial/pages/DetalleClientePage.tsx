@@ -3,7 +3,6 @@ import { useState, type ReactNode } from "react";
 
 import {
   ArrowLeft,
-  Building2,
   CalendarDays,
   CalendarClock,
   CheckCircle2,
@@ -15,6 +14,7 @@ import {
   Phone,
   ShoppingCart,
   User,
+  MessageCircle,
 } from "lucide-react";
 
 import {
@@ -32,7 +32,7 @@ import type {
 } from "../comercial.types";
 
 import NuevoClienteModal from "@/features/comercial/components/NuevoClienteModal";
-
+import ComunicacionesModal from "@/features/comercial/components/ComunicacionModal";
 type DetailTab =
   | "resumen"
   | "actividades"
@@ -120,6 +120,12 @@ function DetallesCliente() {
    * Pestaña activa dentro del detalle del cliente.
    */
   const [activeTab, setActiveTab] = useState<DetailTab>("resumen");
+
+  /**
+   * Pestaña para ver historial comunicaciones
+   */
+  const [solicitudComunicacionId, setSolicitudComunicacionId] =
+    useState<number | null>(null);
 
   /*
    * ============================================================
@@ -350,6 +356,7 @@ function DetallesCliente() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+
             <button
               type="button"
               onClick={() => setShowEdit(true)}
@@ -661,6 +668,9 @@ function DetallesCliente() {
                       key={solicitud.id}
                       solicitud={solicitud}
                       last={index === array.length - 1}
+                      onViewComunicaciones={(solicitud) => {
+                        setSolicitudComunicacionId(solicitud.id);
+                      }}
                     />
                   ))}
               </div>
@@ -737,6 +747,18 @@ function DetallesCliente() {
           client={cliente}
           onClose={() => setShowEdit(false)}
           onSuccess={() => setShowEdit(false)}
+        />
+      )}
+      {/* ======================================================
+          MODAL COMUNICACIONES
+      ======================================================= */}
+      {solicitudComunicacionId !== null && (
+        <ComunicacionesModal
+          open={true}
+          solicitudId={solicitudComunicacionId}
+          titulo="Historial de comunicaciones"
+          subtitulo={`Solicitud #${solicitudComunicacionId}`}
+          onClose={() => setSolicitudComunicacionId(null)}
         />
       )}
     </div>
@@ -980,74 +1002,81 @@ function ActivityRow({
 function SolicitudRow({
   solicitud,
   last,
+  onViewComunicaciones,
 }: {
   solicitud: SolicitudComercial;
   last: boolean;
+  onViewComunicaciones: (solicitud: SolicitudComercial) => void;
 }) {
   return (
-    <Link
-      to={`/comercial/requerimientos/${solicitud.id}`}
-      className={`block transition-colors hover:bg-secondary/40 ${!last ? "border-b border-border" : ""
+    <div
+      className={`flex gap-4 px-6 py-4 transition-colors hover:bg-secondary/40 ${!last ? "border-b border-border" : ""
         }`}
     >
-      <div className="flex gap-4 px-6 py-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <ClipboardList className="h-4 w-4" />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                Solicitud #{solicitud.id}
-              </p>
-
-              <p className="mt-1 text-sm text-muted-foreground">
-                {solicitud.descripcion ||
-                  "Sin descripción"}
-              </p>
-            </div>
-
-            <EstadoSolicitudBadge
-              estado={solicitud.estado}
-            />
-          </div>
-
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <span>
-              {formatDate(solicitud.fecha)}
-            </span>
-
-            {solicitud.cantidad_unidades && (
-              <span>
-                {formatNumber(
-                  solicitud.cantidad_unidades,
-                )}{" "}
-                unidades
-              </span>
-            )}
-
-            {solicitud.cantidad_kg && (
-              <span>
-                {formatNumber(
-                  solicitud.cantidad_kg,
-                )}{" "}
-                kg
-              </span>
-            )}
-
-            {solicitud.fecha_entrega && (
-              <span>
-                Entrega:{" "}
-                {formatDate(
-                  solicitud.fecha_entrega,
-                )}
-              </span>
-            )}
-          </div>
-        </div>
+      {/* Icono */}
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <ClipboardList className="h-4 w-4" />
       </div>
-    </Link>
+
+      {/* Información de la solicitud */}
+      <Link
+        to={`/comercial/requerimientos/${solicitud.id}`}
+        className="min-w-0 flex-1"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Solicitud #{solicitud.id}
+            </p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              {solicitud.descripcion || "Sin descripción"}
+            </p>
+          </div>
+
+          <EstadoSolicitudBadge
+            estado={solicitud.estado}
+          />
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>
+            {formatDate(solicitud.fecha)}
+          </span>
+
+          {solicitud.cantidad_unidades && (
+            <span>
+              {formatNumber(solicitud.cantidad_unidades)} unidades
+            </span>
+          )}
+
+          {solicitud.cantidad_kg && (
+            <span>
+              {formatNumber(solicitud.cantidad_kg)} kg
+            </span>
+          )}
+
+          {solicitud.fecha_entrega && (
+            <span>
+              Entrega: {formatDate(solicitud.fecha_entrega)}
+            </span>
+          )}
+        </div>
+      </Link>
+
+      {/* Acción de comunicaciones */}
+      <div className="flex shrink-0 items-center">
+        <button
+          type="button"
+          onClick={() => onViewComunicaciones(solicitud)}
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+          title={`Ver comunicaciones de la solicitud #${solicitud.id}`}
+        >
+          <MessageCircle className="h-4 w-4" />
+          <span className="hidden sm:inline">Comunicaciones</span>
+        </button>
+      </div>
+    </div>
   );
 }
 

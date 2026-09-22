@@ -354,8 +354,8 @@ export const especificacionesBobinaApi = {
 export const comunicacionesApi = {
   list: async (
     params?: ApiQueryParams,
-  ): Promise<PaginatedResponse<Comunicacion>> => {
-    return api.get<PaginatedResponse<Comunicacion>>(
+  ): Promise<Comunicacion[]> => {      /*Promise<PaginatedResponse<Comunicacion>> => {*/
+     return api.get<Comunicacion[]>(   /*return api.get<PaginatedResponse<Comunicacion>>(*/
       "/comercial/comunicaciones/",
       { params },
     );
