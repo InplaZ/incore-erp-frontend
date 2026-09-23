@@ -224,8 +224,8 @@ export default function RequerimientoDetallePage() {
                 </InfoCard>
 
                 {/* ========================================================
-                    PRODUCTO
-                   ======================================================== */}
+    PRODUCTO
+   ======================================================== */}
 
                 {especificacionProducto && (
                     <InfoCard
@@ -260,7 +260,9 @@ export default function RequerimientoDetallePage() {
 
                             <InfoItem
                                 label="Color"
-                                value={especificacionProducto.color_bolsa}
+                                value={
+                                    especificacionProducto.color_bolsa || "—"
+                                }
                             />
 
                             <InfoItem
@@ -269,7 +271,57 @@ export default function RequerimientoDetallePage() {
                                     especificacionProducto.opacidad,
                                 )}
                             />
+
+                            <InfoItem
+                                label="Cara impresión"
+                                value={getCaraImpresionLabel(
+                                    especificacionProducto.cara_impresion,
+                                )}
+                            />
                         </div>
+
+                        {/* ========================================================
+            COLORES Y CANTIDADES
+           ======================================================== */}
+
+                        {especificacionProducto.variantes_color?.length > 0 && (
+                            <div className="mt-6 border-t border-border pt-5">
+                                <div className="mb-4">
+                                    <h4 className="text-sm font-semibold">
+                                        Colores y cantidades
+                                    </h4>
+
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        Colores solicitados y cantidad correspondiente.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {especificacionProducto.variantes_color.map(
+                                        (variante, index) => (
+                                            <div
+                                                key={variante.id ?? index}
+                                                className="rounded-xl border border-border bg-muted/20 p-4"
+                                            >
+                                                <div className="grid gap-4 sm:grid-cols-2">
+                                                    <InfoItem
+                                                        label={`Color ${index + 1}`}
+                                                        value={variante.color || "—"}
+                                                    />
+
+                                                    <InfoItem
+                                                        label="Cantidad"
+                                                        value={getColorCantidadLabel(
+                                                            variante.cantidad,
+                                                        )}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ),
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </InfoCard>
                 )}
 
@@ -424,15 +476,16 @@ export default function RequerimientoDetallePage() {
                                 BOBINA
                                ================================================= */}
 
+                            {/* BOBINA */}
                             {especificacionBobina && (
                                 <div>
-                                    <SectionTitle>
+                                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                         Características de bobina
-                                    </SectionTitle>
+                                    </p>
 
-                                    <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                         <InfoItem
-                                            label="Ancho"
+                                            label="Ancho de bobina"
                                             value={
                                                 especificacionBobina.ancho
                                                     ? `${especificacionBobina.ancho} cm`
@@ -441,19 +494,10 @@ export default function RequerimientoDetallePage() {
                                         />
 
                                         <InfoItem
-                                            label="Diámetro"
+                                            label="Longitud"
                                             value={
-                                                especificacionBobina.diametro
-                                                    ? `${especificacionBobina.diametro} cm`
-                                                    : "—"
-                                            }
-                                        />
-
-                                        <InfoItem
-                                            label="Diámetro núcleo"
-                                            value={
-                                                especificacionBobina.diametro_nucleo
-                                                    ? `${especificacionBobina.diametro_nucleo} cm`
+                                                especificacionBobina.longitud
+                                                    ? `${especificacionBobina.longitud} m`
                                                     : "—"
                                             }
                                         />
@@ -856,6 +900,11 @@ function getPrioridadLabel(value: string) {
 
     return labels[value] ?? value;
 }
+function getColorCantidadLabel(cantidad: string) {
+    if (!cantidad) return "—";
+
+    return `${cantidad} unidades`;
+}
 
 function getMaterialLabel(value: string) {
     const labels: Record<string, string> = {
@@ -883,6 +932,15 @@ function getTipoImpresionLabel(value: string) {
     const labels: Record<string, string> = {
         corrida: "Corrida",
         dimensionada: "Dimensionada",
+    };
+
+    return labels[value] ?? value;
+}
+function getCaraImpresionLabel(value: string) {
+    const labels: Record<string, string> = {
+        anverso: "Anverso",
+        reverso: "Reverso",
+        ambos: "Ambos",
     };
 
     return labels[value] ?? value;

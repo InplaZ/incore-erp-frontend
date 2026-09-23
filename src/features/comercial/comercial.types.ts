@@ -217,7 +217,26 @@ export interface SolicitudComercialCreate {
 
 export type SolicitudComercialUpdate =
   Partial<SolicitudComercialCreate>;
+// ============================================================
+// VARIANTE DE COLOR SOLICITADA
+// ============================================================
 
+export interface VarianteColorSolicitada {
+  id: number;
+  especificacion_producto_solicitado: number;
+  color: string;
+  cantidad: string;
+  created_at: string;
+  updated_at: string;
+}
+export interface VarianteColorSolicitadaCreate {
+  id?: number;
+  especificacion_producto_solicitado?: number;
+  color: string;
+  cantidad: string;
+  created_at?: string;
+  updated_at?: string;
+}
 // ============================================================
 // Categoria Producto 
 // ============================================================
@@ -226,6 +245,7 @@ export type ProductType =
   | "roll"
   | "other"
   | null;
+  
 // ============================================================
 // ESPECIFICACIÓN DE PRODUCTO SOLICITADO
 // ============================================================
@@ -275,6 +295,7 @@ export interface EspecificacionProductoSolicitado {
 
   solicitud_comercial: number;
   categoria_producto: number;
+  cara_impresion: CaraImpresion;
   material: MaterialProducto;
   apto_alimento: boolean;
   micraje: string | null;
@@ -288,8 +309,10 @@ export interface EspecificacionProductoSolicitado {
   distancia_impresion_izquierda: string | null;
   distancia_impresion_derecha: string | null;
   otras_caracteristicas: string;
+  variantes_color: VarianteColorSolicitada[];
   opacidad: Opacidad;
   tratamientos_acabados_especiales: TratamientoAcabadoEspecial[]; 
+  tipo_capa: TipoCapa;
   created_at: string;
   updated_at: string;
 }
@@ -298,6 +321,7 @@ export interface EspecificacionProductoSolicitadoCreate {
   solicitud_comercial: number;
   categoria_producto: number;
   material: MaterialProducto;
+  tipo_capa: TipoCapa;
   apto_alimento: boolean;
   micraje?: string | null;
   color_bolsa: string;
@@ -310,7 +334,10 @@ export interface EspecificacionProductoSolicitadoCreate {
   distancia_impresion_izquierda?: string | null;
   distancia_impresion_derecha?: string | null;
   otras_caracteristicas?: string;
+  cara_impresion?: CaraImpresion;
+  opacidad?: Opacidad;
   tratamientos_acabados_especiales?: TratamientoAcabadoEspecial[]; 
+  variantes_color?: VarianteColorSolicitadaCreate[];
 }
 
 export type EspecificacionProductoSolicitadoUpdate =
@@ -399,13 +426,11 @@ export type EspecificacionBolsaSolicitadaUpdate =
 
 export interface EspecificacionBobinaSolicitada {
   id: number;
-
   especificacion_producto_solicitado: number;
-
   ancho: string;
-
   diametro: string | null;
   diametro_nucleo: string | null;
+  longitud: string | null;
 
   tipo_nucleo: string;
 
@@ -424,6 +449,7 @@ export interface EspecificacionBobinaSolicitadaCreate {
 
   diametro?: string | null;
   diametro_nucleo?: string | null;
+  longitud?: string | null;
 
   tipo_nucleo: string;
 

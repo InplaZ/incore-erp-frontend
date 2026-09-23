@@ -1,3 +1,7 @@
+/////////////////////////
+//Interfaz + interfaccion
+//Recibe valores y sus setters.
+/////////////////////////
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
@@ -20,6 +24,9 @@ import type {
   TipoSello,
   TipoTroquel,
   PosicionImpresion,
+  VarianteColorSolicitadaCreate,
+  TipoCapa,
+  CaraImpresion,
 } from "../../comercial.types";
 
 import type { ProductType } from "./RequerimientoStepProducto";
@@ -43,6 +50,10 @@ interface RequerimientoStepDetallesProps {
   setMicraje: (value: string) => void;
   colorBolsa: string;
   setColorBolsa: (value: string) => void;
+  variantesColor: VarianteColorSolicitadaCreate[];
+  setVariantesColor: (
+    value: VarianteColorSolicitadaCreate[],
+  ) => void;
   opacidad: Opacidad;
   setOpacidad: (value: Opacidad) => void;
   aptoAlimento: boolean;
@@ -75,6 +86,8 @@ interface RequerimientoStepDetallesProps {
   setTratamientoImpresion: (value: TratamientoImpresion) => void;
   otrasCaracteristicas: string;
   setOtrasCaracteristicas: (value: string) => void;
+  caraImpresion: CaraImpresion | "";
+  setCaraImpresion: (value: CaraImpresion | "") => void;
 
   // Dimensiones
   anchoDoblado: string;
@@ -98,6 +111,9 @@ interface RequerimientoStepDetallesProps {
   fuelleSuperior: string;
   setFuelleSuperior: (value: string) => void;
 
+  tipoCapa: TipoCapa | "";
+  setTipoCapa: (value: TipoCapa | "") => void;
+
   // Bolsa
   tipoTroquel: TipoTroquel | "";
   setTipoTroquel: (value: TipoTroquel | "") => void;
@@ -105,6 +121,26 @@ interface RequerimientoStepDetallesProps {
   setTipoSello: (value: TipoSello) => void;
   pestana: string;
   setPestana: (value: string) => void;
+
+  //Bobina
+  anchoBobina: string;
+  setAnchoBobina: (value: string) => void;
+
+  diametro: string;
+  setDiametro: (value: string) => void;
+
+  diametroNucleo: string;
+  setDiametroNucleo: (value: string) => void;
+
+  tipoNucleo: string;
+  setTipoNucleo: (value: string) => void;
+
+  peso: string;
+  setPeso: (value: string) => void;
+
+  longitud: string;
+  setLongitud: (value: string) => void;
+
 }
 
 const tratamientosDisponibles: {
@@ -244,8 +280,8 @@ export default function RequerimientoStepDetalles(
     setMaterial,
     micraje,
     setMicraje,
-    colorBolsa,
-    setColorBolsa,
+    variantesColor,
+    setVariantesColor,
     opacidad,
     setOpacidad,
     tratamientosAcabadosEspeciales,
@@ -296,6 +332,15 @@ export default function RequerimientoStepDetalles(
     setPestana,
     aptoAlimento,
     setAptoAlimento,
+    //Bobina
+    anchoBobina,
+    setAnchoBobina,
+    longitud,
+    setLongitud,
+    tipoCapa,
+    setTipoCapa,
+    caraImpresion,
+    setCaraImpresion,
   } = props;
 
   const [fuelleDerechoEditado, setFuelleDerechoEditado] = useState(false);
@@ -387,6 +432,37 @@ export default function RequerimientoStepDetalles(
       ]);
     }
   };
+  const agregarVarianteColor = () => {
+    setVariantesColor([
+      ...variantesColor,
+      {
+        color: "",
+        cantidad: "",
+      },
+    ]);
+  };
+
+  const actualizarVarianteColor = (
+    index: number,
+    campo: keyof VarianteColorSolicitadaCreate,
+    value: string,
+  ) => {
+    const nuevasVariantes = [...variantesColor];
+
+    nuevasVariantes[index] = {
+      ...nuevasVariantes[index],
+      [campo]: value,
+    };
+
+    setVariantesColor(nuevasVariantes);
+  };
+
+  const eliminarVarianteColor = (index: number) => {
+    setVariantesColor(
+      variantesColor.filter((_, i) => i !== index),
+    );
+  };
+
 
   const ancho = Number(anchoDoblado) || 0;
   const izquierdo = fuelle
@@ -484,38 +560,77 @@ export default function RequerimientoStepDetalles(
       </Section>
 
       {/* 2. INFORMACIÓN */}
+      
       <Section
         icon={Palette}
-        title="Material y apariencia"
-        description="Características básicas que definen el producto."
+        title="Características generales"
+        description="Información básica del material y su apariencia."
       >
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
           <Field
             label="Material"
             value={material}
-            onChange={(v) => setMaterial(v as MaterialProducto)}
+            onChange={(v) =>
+              setMaterial(
+                v as MaterialProducto,
+              )
+            }
             type="select"
             options={[
-              { value: "PEAD", label: "PEAD" },
-              { value: "PEBD", label: "PEBD" },
-              { value: "PP", label: "PP" },
-              { value: "BOPP", label: "BOPP" },
-              { value: "OTRO", label: "Otro" },
+              {
+                value: "PEAD",
+                label: "PEAD",
+              },
+              {
+                value: "PEBD",
+                label: "PEBD",
+              },
+              {
+                value: "PP",
+                label: "PP",
+              },
+              {
+                value: "BOPP",
+                label: "BOPP",
+              },
+              {
+                value: "OTRO",
+                label: "Otro",
+              },
             ]}
           />
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Apto para alimentos
-            </label>
 
-            <Select
-              value={aptoAlimento ? "Sí" : "No"}
-              onChange={(e) => setAptoAlimento(e.target.value === "Sí")}
-            >
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-            </Select>
-          </div>
+          <Field
+            label="Tipo de capa"
+            value={tipoCapa}
+            onChange={(v) =>
+              setTipoCapa(
+                v as TipoCapa | "",
+              )
+            }
+            type="select"
+            options={[
+              {
+                value: "",
+                label: "Seleccionar",
+              },
+              {
+                value: "monocapa",
+                label: "Monocapa",
+              },
+              {
+                value: "bicapa",
+                label: "Bicapa",
+              },
+              {
+                value: "tricapa",
+                label: "Tricapa",
+              },
+            ]}
+          />
+
           <Field
             label="Micraje"
             value={micraje}
@@ -524,24 +639,178 @@ export default function RequerimientoStepDetalles(
             suffix="µm"
             type="number"
           />
-          <Field
-            label="Color"
-            value={colorBolsa}
-            onChange={setColorBolsa}
-            placeholder="Ej. transparente"
-          />
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">
+              Apto para alimentos
+            </label>
+
+            <Select
+              value={
+                aptoAlimento
+                  ? "Sí"
+                  : "No"
+              }
+              onChange={(e) =>
+                setAptoAlimento(
+                  e.target.value === "Sí",
+                )
+              }
+            >
+              <option value="Sí">
+                Sí
+              </option>
+
+              <option value="No">
+                No
+              </option>
+            </Select>
+          </div>
+
+        </div>
+
+        {/* ==================================================
+            COLORES
+        ================================================== */}
+
+        <div className="mt-5 border-t border-border pt-5">
+
+          <div className="mb-3 flex items-center justify-between gap-3">
+
+            <div>
+              <label className="block text-sm font-medium">
+                Colores y cantidades
+              </label>
+
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Define cada color solicitado y la
+                cantidad correspondiente.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={agregarVarianteColor}
+              className="shrink-0 rounded-lg border border-border px-3 py-2 text-xs font-medium transition hover:bg-muted/40"
+            >
+              + Agregar color
+            </button>
+
+          </div>
+
+          <div className="space-y-3">
+
+            {variantesColor.map(
+              (variante, index) => (
+                <div
+                  key={index}
+                  className="grid gap-3 rounded-xl border border-border bg-muted/20 p-3 sm:grid-cols-[1fr_180px_auto]"
+                >
+
+                  <Field
+                    label="Color"
+                    value={
+                      variante.color
+                    }
+                    onChange={(value) =>
+                      actualizarVarianteColor(
+                        index,
+                        "color",
+                        value,
+                      )
+                    }
+                    placeholder="Ej. Rojo"
+                  />
+
+                  <Field
+                    label="Cantidad"
+                    value={
+                      variante.cantidad
+                    }
+                    onChange={(value) =>
+                      actualizarVarianteColor(
+                        index,
+                        "cantidad",
+                        value,
+                      )
+                    }
+                    placeholder="Ej. 2000"
+                    type="number"
+                    suffix={
+                      product === "roll"
+                        ? "bob."
+                        : "unid."
+                    }
+                  />
+
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        eliminarVarianteColor(
+                          index,
+                        )
+                      }
+                      className="h-10 rounded-lg border border-border px-3 text-xs font-medium text-destructive transition hover:bg-destructive/10"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+
+                </div>
+              ),
+            )}
+
+          </div>
+
+          {variantesColor.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-5 text-center">
+
+              <Palette className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
+
+              <p className="text-xs text-muted-foreground">
+                Todavía no se han agregado colores.
+              </p>
+
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Puedes agregarlos cuando conozcas
+                la distribución solicitada.
+              </p>
+
+            </div>
+          )}
+
+        </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+
           <Field
             label="Opacidad"
             value={opacidad}
-            onChange={(v) => setOpacidad(v as Opacidad)}
+            onChange={(v) =>
+              setOpacidad(
+                v as Opacidad,
+              )
+            }
             type="select"
             options={[
-              { value: "alta", label: "Alta" },
-              { value: "media", label: "Media" },
-              { value: "baja", label: "Baja" },
+              {
+                value: "alta",
+                label: "Alta",
+              },
+              {
+                value: "media",
+                label: "Media",
+              },
+              {
+                value: "baja",
+                label: "Baja",
+              },
             ]}
           />
+
         </div>
+
       </Section>
 
       {/* 3. DIMENSIONES */}
@@ -584,7 +853,36 @@ export default function RequerimientoStepDetalles(
           </div>
         </Section>
       )}
+      {/* 3B. CARACTERÍSTICAS DE BOBINA */}
+      {product === "roll" && (
+        <Section
+          icon={Ruler}
+          title="Características de la bobina"
+          description="Indica las medidas principales solicitadas por el cliente."
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Ancho de bobina"
+              value={anchoBobina}
+              onChange={setAnchoBobina}
+              placeholder="Ej. 200"
+              suffix="cm"
+              type="number"
+              hint="Ancho solicitado para la bobina."
+            />
 
+            <Field
+              label="Longitud"
+              value={longitud}
+              onChange={setLongitud}
+              placeholder="Ej. 5000"
+              suffix="m"
+              type="number"
+              hint="Longitud solicitada para la bobina."
+            />
+          </div>
+        </Section>
+      )}
       {/* 4. FUELLE */}
       {product === "bag" && (
         <Section
@@ -775,6 +1073,17 @@ export default function RequerimientoStepDetalles(
                 { value: "dimensionada", label: "Dimensionada" },
               ]}
             />
+            <Field
+                  label="Cara Impresion"
+                  value={caraImpresion}
+                  onChange={(v) => setCaraImpresion(v as CaraImpresion)}
+                  type="select"
+                  options={[
+                    { value: "anverso", label: "Anverso" },
+                    { value: "reverso", label: "Reverso" },
+                    { value: "ambos", label: "Ambos" },
+                  ]}
+                />
             <div className="sm:col-span-2">
               <Field
                 label="Tratamiento de impresión"
@@ -839,6 +1148,7 @@ export default function RequerimientoStepDetalles(
                   suffix="cm"
                   type="number"
                 />
+                
               </div>
             )}
           </div>

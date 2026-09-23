@@ -40,6 +40,8 @@ import type {
   SolicitudComercialUpdate,
   EjecutivoComercial,
   RequerimientoDetalle,
+  VarianteColorSolicitada,
+  VarianteColorSolicitadaCreate,
 } from "./comercial.types";
 
 // ============================================================
@@ -244,6 +246,22 @@ export const especificacionesProductoApi = {
   remove: async (id: number): Promise<void> => {
     await api.delete(
       `/comercial/especificacion-producto-solicitado/${id}/`,
+    );
+  },
+};
+
+
+// ============================================================
+// VARIANTES DE COLOR SOLICITADAS
+// ============================================================
+
+export const variantesColorApi = {
+  create: async (
+    data: VarianteColorSolicitadaCreate,
+  ): Promise<VarianteColorSolicitada> => {
+    return api.post<VarianteColorSolicitada>(
+      "/comercial/variante-color-solicitada/",
+      data,
     );
   },
 };

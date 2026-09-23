@@ -1,3 +1,8 @@
+///////////////////////////////////////////
+// Toma los datos y los convierte en el 
+// formato que espera el backend
+///////////////////////////////////////////
+
 import type {
   EspecificacionBolsaSolicitadaCreate,
   EspecificacionBobinaSolicitadaCreate,
@@ -12,6 +17,9 @@ import type {
   TratamientoAcabadoEspecial,
   TratamientoImpresion,
   PosicionImpresion,
+  TipoCapa,
+  CaraImpresion,
+  VarianteColorSolicitadaCreate,
 } from "../../comercial.types";
 
 import type { ProductType } from "./RequerimientoStepProducto";
@@ -20,6 +28,7 @@ import {
   especificacionesProductoApi,
   especificacionesBolsaApi,
   especificacionesBobinaApi,
+  variantesColorApi,
 } from "@/features/comercial/comercial.api"
 /**
  * Datos completos que provienen del formulario
@@ -41,6 +50,10 @@ export interface RequerimientoFormData {
   opacidad: Opacidad;
   aptoAlimento: boolean;
   tratamientosAcabadosEspeciales: TratamientoAcabadoEspecial[];
+  tipoCapa: TipoCapa | "";
+  variantesColor: VarianteColorSolicitadaCreate[];
+
+  caraImpresion: CaraImpresion | "";
 
   // Impresión
   impresion: boolean;
@@ -67,6 +80,14 @@ export interface RequerimientoFormData {
   tipoTroquel: TipoTroquel | "";
   tipoSello: TipoSello;
   pestana: string;
+
+  //Bobina
+  anchoBobina:string;
+  diametro: string;
+  diametroNucleo: string;
+  tipoNucleo: string;
+  peso: string;
+  longitud: string;
 
   // Solicitud
   cantidadUnidades: string;
@@ -168,6 +189,9 @@ export function construirEspecificacionProducto(
       "Debe seleccionar una categoría de producto",
     )
   }
+  if (!data.tipoCapa) {
+    throw new Error("Debe seleccionar el tipo de capa.");
+  }
   return {
     categoria_producto: data.categoriaProductoId,
     material: data.material,
@@ -230,8 +254,16 @@ export function construirEspecificacionProducto(
     otras_caracteristicas:
       data.otrasCaracteristicas,
 
+    cara_impresion:
+        data.caraImpresion || undefined,
+
+    opacidad:
+        data.opacidad,
+
     tratamientos_acabados_especiales:
       data.tratamientosAcabadosEspeciales,
+
+    tipo_capa: data.tipoCapa || undefined,
   };
 }
 
@@ -297,14 +329,29 @@ export function construirEspecificacionBolsa(
  * el flujo de bobina.
  */
 export function construirEspecificacionBobina(
-  _data: RequerimientoFormData,
+  data: RequerimientoFormData,
 ): Omit<
   EspecificacionBobinaSolicitadaCreate,
   "especificacion_producto_solicitado"
 > {
-  throw new Error(
-    "La especificación de bobina todavía no está implementada en este formulario.",
-  );
+  return {
+    ancho: data.anchoBobina,
+
+    diametro: valorDecimal(data.diametro),
+
+    diametro_nucleo: valorDecimal(
+      data.diametroNucleo,
+    ),
+
+    tipo_nucleo: data.tipoNucleo,
+
+    peso: valorDecimal(data.peso),
+
+    longitud: valorDecimal(data.longitud),
+
+    otras_caracteristicas:
+      data.otrasCaracteristicas,
+  };
 }
 
 /**
@@ -361,10 +408,21 @@ export async function crearRequerimiento(
       });
   }
 
+  // 4. Crear variantes de color
+  const variantesColor = await Promise.all(
+    data.variantesColor.map((variante) =>
+      variantesColorApi.create({
+        ...variante,
+        especificacion_producto_solicitado: especificacionProducto.id,
+      })
+    )
+  );
+
   return {
     solicitud,
     especificacionProducto,
     especificacionBolsa,
     especificacionBobina,
+    variantesColor,
   };
 }

@@ -1,3 +1,8 @@
+//////////////////////////
+//COMPONENTE PADRE
+//Guarda todos los datos del formulario
+//Decide que paso mostrar step1, ....
+/////////////////////////
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -16,6 +21,9 @@ import type {
   TipoSello,
   TipoTroquel,
   PosicionImpresion,
+  VarianteColorSolicitadaCreate,
+  TipoCapa,
+  CaraImpresion,
 } from "../comercial.types";
 import { useProductosCategorias } from "@/features/productos/productos.hook";
 import RequerimientoSteps from "../components/requerimientos/RequerimientoSteps";
@@ -65,6 +73,9 @@ export default function RequerimientosPage() {
   const [colorBolsa, setColorBolsa] =
     useState("");
 
+  const [variantesColor, setVariantesColor] =
+    useState<VarianteColorSolicitadaCreate[]>([]);
+
   const [opacidad, setOpacidad] =
     useState<Opacidad>("media");
 
@@ -105,6 +116,12 @@ export default function RequerimientosPage() {
 
   const [otrasCaracteristicas, setOtrasCaracteristicas] =
     useState("");
+  
+  const [caraImpresion, setCaraImpresion] =
+    useState<CaraImpresion | "">("");
+  
+  const [tipoCapa, setTipoCapa] =
+    useState<TipoCapa | "">("");
 
   /*
    * Características de bolsa
@@ -148,6 +165,16 @@ export default function RequerimientosPage() {
   const [aptoAlimento, setAptoAlimento] =
     useState(false);
 
+  /**
+   * CARACTERISTICAS DE LA BOBINA
+   * 
+   *  */
+  const [anchoBobina, setAnchoBobina] = useState("");
+  const [diametro, setDiametro] = useState("");
+  const [diametroNucleo, setDiametroNucleo] = useState("");
+  const [tipoNucleo, setTipoNucleo] = useState("");
+  const [peso, setPeso] = useState("");
+  const [longitud, setLongitud] = useState("");
   /*
    * Entrega
    */
@@ -257,6 +284,7 @@ export default function RequerimientosPage() {
     setDistanciaImpresionInferior("");
     setDistanciaImpresionIzquierda("");
     setDistanciaImpresionDerecha("");
+    setCaraImpresion("");
 
     setOtrasCaracteristicas("");
 
@@ -277,6 +305,15 @@ export default function RequerimientosPage() {
     setTipoTroquel("");
     setTipoSello("fondo");
     setPestana("");
+    setTipoCapa("");
+
+    //Caracteristicas de bobina
+    setAnchoBobina("");
+    setDiametro("");
+    setDiametroNucleo("");
+    setTipoNucleo("");
+    setPeso("");
+    setLongitud("");
 
     /*
      * Entrega
@@ -325,12 +362,14 @@ export default function RequerimientosPage() {
         opacidad,
         aptoAlimento,
         tratamientosAcabadosEspeciales,
+        variantesColor,
 
         impresion,
         colorImpresion,
         tipoImpresion,
         tratamientoImpresion,
         posicionImpresion,
+        caraImpresion,
 
         distanciaImpresionSuperior,
         distanciaImpresionInferior,
@@ -352,6 +391,7 @@ export default function RequerimientosPage() {
 
         tipoTroquel,
         tipoSello,
+        tipoCapa,
         pestana,
 
         cantidadUnidades,
@@ -360,6 +400,14 @@ export default function RequerimientosPage() {
         fechaEntrega,
         lugarEntrega,
         observaciones,
+
+        //BOBINA
+        anchoBobina,
+        diametro,
+        diametroNucleo,
+        tipoNucleo,
+        peso,
+        longitud,
       };
 
       const resultado = await crearRequerimiento(formData);
@@ -443,6 +491,9 @@ export default function RequerimientosPage() {
             colorBolsa={colorBolsa}
             setColorBolsa={setColorBolsa}
 
+            variantesColor={variantesColor}
+            setVariantesColor={setVariantesColor}
+
             opacidad={opacidad}
             setOpacidad={setOpacidad}
 
@@ -491,6 +542,8 @@ export default function RequerimientosPage() {
             distanciaImpresionDerecha={distanciaImpresionDerecha}
             setDistanciaImpresionDerecha={setDistanciaImpresionDerecha}
 
+            caraImpresion={caraImpresion}
+            setCaraImpresion={setCaraImpresion}
 
             otrasCaracteristicas={
               otrasCaracteristicas
@@ -498,7 +551,6 @@ export default function RequerimientosPage() {
             setOtrasCaracteristicas={
               setOtrasCaracteristicas
             }
-
             /*
              * Dimensiones de bolsa
              */
@@ -546,6 +598,9 @@ export default function RequerimientosPage() {
               setFuelleSuperior
             }
 
+            tipoCapa={tipoCapa}
+            setTipoCapa={setTipoCapa}
+
             /*
              * Terminaciones de bolsa
              */
@@ -557,6 +612,25 @@ export default function RequerimientosPage() {
 
             pestana={pestana}
             setPestana={setPestana}
+
+            // Características de bobina
+            anchoBobina={anchoBobina}
+            setAnchoBobina={setAnchoBobina}
+
+            diametro={diametro}
+            setDiametro={setDiametro}
+
+            diametroNucleo={diametroNucleo}
+            setDiametroNucleo={setDiametroNucleo}
+
+            tipoNucleo={tipoNucleo}
+            setTipoNucleo={setTipoNucleo}
+
+            peso={peso}
+            setPeso={setPeso}
+
+            longitud={longitud}
+            setLongitud={setLongitud}
           />
         )}
 
