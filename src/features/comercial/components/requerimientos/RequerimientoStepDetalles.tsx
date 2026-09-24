@@ -27,6 +27,7 @@ import type {
   VarianteColorSolicitadaCreate,
   TipoCapa,
   CaraImpresion,
+  TipoPestana,
 } from "../../comercial.types";
 
 import type { ProductType } from "./RequerimientoStepProducto";
@@ -111,16 +112,16 @@ interface RequerimientoStepDetallesProps {
   fuelleSuperior: string;
   setFuelleSuperior: (value: string) => void;
 
-  tipoCapa: TipoCapa | "";
-  setTipoCapa: (value: TipoCapa | "") => void;
+  capas: TipoCapa | "";
+  setCapas: (value: TipoCapa | "") => void;
 
   // Bolsa
   tipoTroquel: TipoTroquel | "";
   setTipoTroquel: (value: TipoTroquel | "") => void;
   tipoSello: TipoSello;
   setTipoSello: (value: TipoSello) => void;
-  pestana: string;
-  setPestana: (value: string) => void;
+  tipoPestana: TipoPestana | "";
+  setTipoPestana: (value: TipoPestana | "") => void;
 
   //Bobina
   anchoBobina: string;
@@ -328,8 +329,8 @@ export default function RequerimientoStepDetalles(
     setTipoTroquel,
     tipoSello,
     setTipoSello,
-    pestana,
-    setPestana,
+    tipoPestana,
+    setTipoPestana,
     aptoAlimento,
     setAptoAlimento,
     //Bobina
@@ -337,8 +338,8 @@ export default function RequerimientoStepDetalles(
     setAnchoBobina,
     longitud,
     setLongitud,
-    tipoCapa,
-    setTipoCapa,
+    capas,
+    setCapas,
     caraImpresion,
     setCaraImpresion,
   } = props;
@@ -437,7 +438,7 @@ export default function RequerimientoStepDetalles(
       ...variantesColor,
       {
         color: "",
-        cantidad: "",
+        cantidad: cantidadUnidades || "",
       },
     ]);
   };
@@ -604,9 +605,9 @@ export default function RequerimientoStepDetalles(
 
           <Field
             label="Tipo de capa"
-            value={tipoCapa}
+            value={capas}
             onChange={(v) =>
-              setTipoCapa(
+              setCapas(
                 v as TipoCapa | "",
               )
             }
@@ -1011,10 +1012,15 @@ export default function RequerimientoStepDetalles(
             />
             <Field
               label="Pestaña"
-              value={pestana}
-              onChange={setPestana}
-              placeholder="Opcional"
-              type="text"
+              value={tipoPestana}
+              onChange={(v) => setTipoPestana(v as TipoPestana | "")}
+              type="select"
+              options={[
+                { value: "sin_pestana", label: "Sin pestaña" },
+                { value: "superior", label: "Superior" },
+                { value: "inferior", label: "Inferior" },
+                { value: "ambas", label: "Ambas" }
+              ]}
             />
           </div>
         </Section>
@@ -1076,12 +1082,13 @@ export default function RequerimientoStepDetalles(
             <Field
                   label="Cara Impresion"
                   value={caraImpresion}
-                  onChange={(v) => setCaraImpresion(v as CaraImpresion)}
+                  onChange={(v) => setCaraImpresion(v as CaraImpresion | "")}
                   type="select"
                   options={[
+                    { value: "", label: "Seleccionar" },
                     { value: "anverso", label: "Anverso" },
                     { value: "reverso", label: "Reverso" },
-                    { value: "ambos", label: "Ambos" },
+                    { value: "ambas", label: "Ambas" },
                   ]}
                 />
             <div className="sm:col-span-2">

@@ -20,6 +20,7 @@ import type {
   TipoCapa,
   CaraImpresion,
   VarianteColorSolicitadaCreate,
+  TipoPestana,
 } from "../../comercial.types";
 
 import type { ProductType } from "./RequerimientoStepProducto";
@@ -50,7 +51,7 @@ export interface RequerimientoFormData {
   opacidad: Opacidad;
   aptoAlimento: boolean;
   tratamientosAcabadosEspeciales: TratamientoAcabadoEspecial[];
-  tipoCapa: TipoCapa | "";
+  capas: TipoCapa | "";
   variantesColor: VarianteColorSolicitadaCreate[];
 
   caraImpresion: CaraImpresion | "";
@@ -79,7 +80,7 @@ export interface RequerimientoFormData {
   fuelleSuperior: string;
   tipoTroquel: TipoTroquel | "";
   tipoSello: TipoSello;
-  pestana: string;
+  tipoPestana: TipoPestana | "";
 
   //Bobina
   anchoBobina:string;
@@ -189,7 +190,7 @@ export function construirEspecificacionProducto(
       "Debe seleccionar una categoría de producto",
     )
   }
-  if (!data.tipoCapa) {
+  if (!data.capas) {
     throw new Error("Debe seleccionar el tipo de capa.");
   }
   return {
@@ -255,7 +256,7 @@ export function construirEspecificacionProducto(
       data.otrasCaracteristicas,
 
     cara_impresion:
-        data.caraImpresion || undefined,
+        data.caraImpresion || "",
 
     opacidad:
         data.opacidad,
@@ -263,7 +264,7 @@ export function construirEspecificacionProducto(
     tratamientos_acabados_especiales:
       data.tratamientosAcabadosEspeciales,
 
-    tipo_capa: data.tipoCapa || undefined,
+    tipo_capa: data.tipoCapa || "",
   };
 }
 
@@ -315,7 +316,7 @@ export function construirEspecificacionBolsa(
       data.tipoSello,
 
     pestana:
-      data.pestana,
+      data.tipoPestana || "sin_pestana",
   };
 }
 

@@ -159,15 +159,21 @@ export default function RequerimientoStepCliente({
                 : "Selecciona un cliente"}
             </option>
 
-            {cuentas?.map((cuenta: CuentaComercial) => (
-              <option
-                key={cuenta.id}
-                value={cuenta.id}
-              >
-                {cuenta.razon_social ||
-                  `${cuenta.nombres} ${cuenta.apellido_paterno} ${cuenta.apellido_materno}`}
-              </option>
-            ))}
+            {cuentas?.map((cuenta: CuentaComercial) => {
+              const nombreCompleto = `${cuenta.nombres} ${cuenta.apellido_paterno} ${cuenta.apellido_materno}`.trim();
+              const nombreMostrar = cuenta.razon_social && nombreCompleto
+                ? `${cuenta.razon_social} - ${nombreCompleto}`
+                : cuenta.razon_social || nombreCompleto;
+
+              return (
+                <option
+                  key={cuenta.id}
+                  value={cuenta.id}
+                >
+                  {nombreMostrar}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>
@@ -186,8 +192,12 @@ export default function RequerimientoStepCliente({
               </p>
 
               <p className="mt-1 truncate text-sm font-semibold text-foreground">
-                {cuentaSeleccionada.razon_social ||
-                  `${cuentaSeleccionada.nombres} ${cuentaSeleccionada.apellido_paterno}`}
+                {(() => {
+                  const nombreCompleto = `${cuentaSeleccionada.nombres} ${cuentaSeleccionada.apellido_paterno} ${cuentaSeleccionada.apellido_materno}`.trim();
+                  return cuentaSeleccionada.razon_social && nombreCompleto
+                    ? `${cuentaSeleccionada.razon_social} - ${nombreCompleto}`
+                    : cuentaSeleccionada.razon_social || nombreCompleto;
+                })()}
               </p>
 
               {cuentaSeleccionada.numero_documento && (

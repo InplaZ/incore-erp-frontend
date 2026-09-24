@@ -42,6 +42,7 @@ import type {
   RequerimientoDetalle,
   VarianteColorSolicitada,
   VarianteColorSolicitadaCreate,
+  VarianteColorSolicitadaUpdate, 
 } from "./comercial.types";
 
 // ============================================================
@@ -262,6 +263,22 @@ export const variantesColorApi = {
     return api.post<VarianteColorSolicitada>(
       "/comercial/variante-color-solicitada/",
       data,
+    );
+  },
+
+  update: async (
+    id: number,
+    data: VarianteColorSolicitadaUpdate,
+  ): Promise<VarianteColorSolicitada> => {
+    return api.patch<VarianteColorSolicitada>(
+      `/comercial/variante-color-solicitada/${id}/`,
+      data,
+    );
+  },
+
+  remove: async (id: number): Promise<void> => {
+    await api.delete(
+      `/comercial/variante-color-solicitada/${id}/`,
     );
   },
 };

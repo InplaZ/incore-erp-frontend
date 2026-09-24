@@ -171,12 +171,11 @@ export default function NuevoClienteModal({
               {/* Número de documento */}
               <div>
                 <label className="mb-1.5 block text-sm font-medium">
-                  Número de documento *
+                  Número de documento
                 </label>
 
                 <input
                   type="text"
-                  required
                   value={form.numero_documento ?? ""}
                   onChange={(e) =>
                     handleChange(

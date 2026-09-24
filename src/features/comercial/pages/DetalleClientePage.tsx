@@ -276,17 +276,14 @@ function DetallesCliente() {
    * ============================================================
    *
    * Buscamos la primera actividad pendiente/en proceso
-   * cuya fecha todavía no ha pasado.
+   * sin importar si la fecha ya pasó.
    */
-
-  const ahora = new Date();
 
   const proximaActividad = [...actividades]
     .filter(
       (actividad) =>
         actividad.estado !== "completada" &&
-        actividad.estado !== "cancelada" &&
-        new Date(actividad.fecha_programada) >= ahora,
+        actividad.estado !== "cancelada",
     )
     .sort(
       (a, b) =>

@@ -24,6 +24,7 @@ import type {
   VarianteColorSolicitadaCreate,
   TipoCapa,
   CaraImpresion,
+  TipoPestana,
 } from "../comercial.types";
 import { useProductosCategorias } from "@/features/productos/productos.hook";
 import RequerimientoSteps from "../components/requerimientos/RequerimientoSteps";
@@ -116,11 +117,11 @@ export default function RequerimientosPage() {
 
   const [otrasCaracteristicas, setOtrasCaracteristicas] =
     useState("");
-  
+
   const [caraImpresion, setCaraImpresion] =
     useState<CaraImpresion | "">("");
-  
-  const [tipoCapa, setTipoCapa] =
+
+  const [capas, setCapas] =
     useState<TipoCapa | "">("");
 
   /*
@@ -159,8 +160,8 @@ export default function RequerimientosPage() {
   const [tipoSello, setTipoSello] =
     useState<TipoSello>("fondo");
 
-  const [pestana, setPestana] =
-    useState("");
+  const [tipoPestana, setTipoPestana] =
+    useState<TipoPestana | "">("sin_pestana")
 
   const [aptoAlimento, setAptoAlimento] =
     useState(false);
@@ -304,8 +305,8 @@ export default function RequerimientosPage() {
 
     setTipoTroquel("");
     setTipoSello("fondo");
-    setPestana("");
-    setTipoCapa("");
+    setTipoPestana("sin_pestana");
+    setCapas("");
 
     //Caracteristicas de bobina
     setAnchoBobina("");
@@ -353,7 +354,8 @@ export default function RequerimientosPage() {
       const formData: RequerimientoFormData = {
         cuentaComercialId,
         product,
-        categoriaProductoId: categoriaSeleccionada.id,
+        categoriaProductoId:
+          categoriaSeleccionada.id,
 
         descripcion,
         material,
@@ -391,8 +393,8 @@ export default function RequerimientosPage() {
 
         tipoTroquel,
         tipoSello,
-        tipoCapa,
-        pestana,
+        capas,
+        tipoPestana,
 
         cantidadUnidades,
         cantidadKg,
@@ -401,7 +403,6 @@ export default function RequerimientosPage() {
         lugarEntrega,
         observaciones,
 
-        //BOBINA
         anchoBobina,
         diametro,
         diametroNucleo,
@@ -417,10 +418,8 @@ export default function RequerimientosPage() {
         resultado,
       );
 
-      // Mostrar confirmación
       setToast(true);
 
-      // Dar tiempo para visualizar el Toast
       setTimeout(() => {
         navigate("/comercial");
       }, 1500);
@@ -432,7 +431,6 @@ export default function RequerimientosPage() {
       );
     }
   };
-
   return (
     <div className="space-y-6">
       {/* Encabezado */}
@@ -598,8 +596,8 @@ export default function RequerimientosPage() {
               setFuelleSuperior
             }
 
-            tipoCapa={tipoCapa}
-            setTipoCapa={setTipoCapa}
+            capas={capas}
+            setCapas={setCapas}
 
             /*
              * Terminaciones de bolsa
@@ -610,8 +608,8 @@ export default function RequerimientosPage() {
             tipoSello={tipoSello}
             setTipoSello={setTipoSello}
 
-            pestana={pestana}
-            setPestana={setPestana}
+            tipoPestana={tipoPestana}
+            setTipoPestana={setTipoPestana}
 
             // Características de bobina
             anchoBobina={anchoBobina}
@@ -681,6 +679,9 @@ export default function RequerimientosPage() {
             micraje={micraje}
             colorBolsa={colorBolsa}
             opacidad={opacidad}
+            capas={capas}
+
+            variantesColor={variantesColor}
 
             tratamientosAcabadosEspeciales={
               tratamientosAcabadosEspeciales
@@ -690,6 +691,12 @@ export default function RequerimientosPage() {
             colorImpresion={colorImpresion}
             tipoImpresion={tipoImpresion}
             tratamientoImpresion={tratamientoImpresion}
+            caraImpresion={caraImpresion}
+            posicionImpresion={posicionImpresion}
+            distanciaImpresionSuperior={distanciaImpresionSuperior}
+            distanciaImpresionInferior={distanciaImpresionInferior}
+            distanciaImpresionIzquierda={distanciaImpresionIzquierda}
+            distanciaImpresionDerecha={distanciaImpresionDerecha}
 
             otrasCaracteristicas={otrasCaracteristicas}
 
@@ -706,7 +713,15 @@ export default function RequerimientosPage() {
 
             tipoTroquel={tipoTroquel}
             tipoSello={tipoSello}
-            pestana={pestana}
+            tipoPestana={tipoPestana}
+
+            // Bobina
+            anchoBobina={anchoBobina}
+            diametro={diametro}
+            diametroNucleo={diametroNucleo}
+            tipoNucleo={tipoNucleo}
+            peso={peso}
+            longitud={longitud}
           />
         )}
       </div>

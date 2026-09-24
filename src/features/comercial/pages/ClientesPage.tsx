@@ -347,7 +347,7 @@ export default function ClientesPage() {
           RESUMEN
           ======================================================== */}
 
-      <div className="grid overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-3">
+      <div className="grid overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-2">
         <SummaryItem
           label="Clientes activos"
           value={String(summary.activos)}
@@ -360,11 +360,6 @@ export default function ClientesPage() {
           detail="Registros cargados"
         />
 
-        <SummaryItem
-          label="Total de cuentas"
-          value={String(data?.length ?? 0)}
-          detail="Según API"
-        />
       </div>
 
       {/* ========================================================

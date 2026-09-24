@@ -273,6 +273,13 @@ export default function RequerimientoDetallePage() {
                             />
 
                             <InfoItem
+                                label="Tipo de capa"
+                                value={getCapasLabel(
+                                    especificacionProducto.capas,
+                                )}
+                            />
+
+                            <InfoItem
                                 label="Cara impresión"
                                 value={getCaraImpresionLabel(
                                     especificacionProducto.cara_impresion,
@@ -510,6 +517,29 @@ export default function RequerimientoDetallePage() {
                                                     : "—"
                                             }
                                         />
+
+                                        <InfoItem
+                                            label="Diámetro"
+                                            value={
+                                                especificacionBobina.diametro
+                                                    ? `${especificacionBobina.diametro} cm`
+                                                    : "—"
+                                            }
+                                        />
+
+                                        <InfoItem
+                                            label="Diámetro núcleo"
+                                            value={
+                                                especificacionBobina.diametro_nucleo
+                                                    ? `${especificacionBobina.diametro_nucleo} cm`
+                                                    : "—"
+                                            }
+                                        />
+
+                                        <InfoItem
+                                            label="Tipo núcleo"
+                                            value={especificacionBobina.tipo_nucleo || "—"}
+                                        />
                                     </div>
                                 </div>
                             )}
@@ -548,6 +578,13 @@ export default function RequerimientoDetallePage() {
                                             label="Tipo"
                                             value={getTipoImpresionLabel(
                                                 especificacionProducto.tipo_impresion,
+                                            )}
+                                        />
+
+                                        <InfoItem
+                                            label="Tratamiento"
+                                            value={getTratamientoImpresionLabel(
+                                                especificacionProducto.tratamiento_impresion,
                                             )}
                                         />
 
@@ -936,6 +973,16 @@ function getTipoImpresionLabel(value: string) {
 
     return labels[value] ?? value;
 }
+
+function getTratamientoImpresionLabel(value: string) {
+    const labels: Record<string, string> = {
+        solido: "Sólido",
+        degradado: "Degradado",
+        trameado: "Trameado",
+    };
+
+    return labels[value] ?? (value || "—");
+}
 function getCaraImpresionLabel(value: string) {
     const labels: Record<string, string> = {
         anverso: "Anverso",
@@ -944,6 +991,16 @@ function getCaraImpresionLabel(value: string) {
     };
 
     return labels[value] ?? value;
+}
+
+function getCapasLabel(value: string) {
+    const labels: Record<string, string> = {
+        monocapa: "Monocapa",
+        bicapa: "Bicapa",
+        tricapa: "Tricapa",
+    };
+
+    return labels[value] ?? (value || "—");
 }
 
 function getPosicionLabel(value: string) {

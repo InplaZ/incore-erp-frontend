@@ -36,6 +36,9 @@ interface RequerimientoStepConfirmacionProps {
   micraje: string;
   colorBolsa: string;
   opacidad: string;
+  capas: string;
+
+  variantesColor: { color: string; cantidad: string }[];
 
   tratamientosAcabadosEspeciales: string[];
 
@@ -43,6 +46,12 @@ interface RequerimientoStepConfirmacionProps {
   colorImpresion: string;
   tipoImpresion: string;
   tratamientoImpresion: string;
+  caraImpresion: string;
+  posicionImpresion: string;
+  distanciaImpresionSuperior: string;
+  distanciaImpresionInferior: string;
+  distanciaImpresionIzquierda: string;
+  distanciaImpresionDerecha: string;
 
   otrasCaracteristicas: string;
 
@@ -59,7 +68,15 @@ interface RequerimientoStepConfirmacionProps {
 
   tipoTroquel: string;
   tipoSello: string;
-  pestana: string;
+  tipoPestana: string;
+
+  // Bobina
+  anchoBobina: string;
+  diametro: string;
+  diametroNucleo: string;
+  tipoNucleo: string;
+  peso: string;
+  longitud: string;
 }
 
 export default function RequerimientoStepConfirmacion({
@@ -78,6 +95,9 @@ export default function RequerimientoStepConfirmacion({
   micraje,
   colorBolsa,
   opacidad,
+  capas,
+
+  variantesColor = [],
 
   tratamientosAcabadosEspeciales = [],
 
@@ -85,6 +105,12 @@ export default function RequerimientoStepConfirmacion({
   colorImpresion,
   tipoImpresion,
   tratamientoImpresion,
+  caraImpresion,
+  posicionImpresion,
+  distanciaImpresionSuperior,
+  distanciaImpresionInferior,
+  distanciaImpresionIzquierda,
+  distanciaImpresionDerecha,
 
   otrasCaracteristicas,
 
@@ -101,7 +127,15 @@ export default function RequerimientoStepConfirmacion({
 
   tipoTroquel,
   tipoSello,
-  pestana,
+  tipoPestana,
+
+  // Bobina
+  anchoBobina,
+  diametro,
+  diametroNucleo,
+  tipoNucleo,
+  peso,
+  longitud,
 }: RequerimientoStepConfirmacionProps) {
   const nombreCliente = cuentaSeleccionada
     ? cuentaSeleccionada.razon_social ||
@@ -171,6 +205,30 @@ export default function RequerimientoStepConfirmacion({
     lateral: "Lateral",
     fondo: "Fondo",
     ninguno: "Ninguno",
+  };
+
+  const tipoPestanaLabels: Record<string, string> = {
+    sin_pestana: "Sin pestaña",
+    superior: "Superior",
+    inferior: "Inferior",
+    ambas: "Ambas",
+  };
+
+  const capasLabels: Record<string, string> = {
+    monocapa: "Monocapa",
+    bicapa: "Bicapa",
+    tricapa: "Tricapa",
+  };
+
+  const caraImpresionLabels: Record<string, string> = {
+    anverso: "Anverso",
+    reverso: "Reverso",
+    ambas: "Ambas",
+  };
+
+  const posicionImpresionLabels: Record<string, string> = {
+    centrada: "Centrada",
+    personalizada: "Personalizada",
   };
 
   
@@ -315,6 +373,14 @@ export default function RequerimientoStepConfirmacion({
                 />
 
                 <InfoItem
+                  label="Tipo de capa"
+                  value={getLabel(
+                    capas,
+                    capasLabels,
+                  )}
+                />
+
+                <InfoItem
                   label="Apto para alimentos"
                   value={aptoAlimento ? "Sí" : "No"}
                 />
@@ -341,6 +407,36 @@ export default function RequerimientoStepConfirmacion({
                   )}
                 />
               </div>
+
+              {/* COLORES Y CANTIDADES */}
+              {variantesColor.length > 0 && (
+                <div className="mt-5 border-t border-border pt-5">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Colores y cantidades
+                  </p>
+                  <div className="space-y-3">
+                    {variantesColor.map((variante, index) => (
+                      <div
+                        key={index}
+                        className="grid gap-4 sm:grid-cols-2 rounded-xl border border-border bg-muted/20 p-3"
+                      >
+                        <InfoItem
+                          label={`Color ${index + 1}`}
+                          value={variante.color}
+                        />
+                        <InfoItem
+                          label="Cantidad"
+                          value={
+                            variante.cantidad
+                              ? `${variante.cantidad} ${product === "roll" ? "bob." : "unid."}`
+                              : "—"
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* DIMENSIONES */}
@@ -445,9 +541,9 @@ export default function RequerimientoStepConfirmacion({
             </div>
 
             {/* CONFIGURACIÓN DE BOLSA */}
-            {(tipoTroquel ||
+            {product === "bag" && (tipoTroquel ||
               tipoSello ||
-              pestana) && (
+              tipoPestana) && (
               <div>
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Configuración de bolsa
@@ -472,7 +568,71 @@ export default function RequerimientoStepConfirmacion({
 
                   <InfoItem
                     label="Pestaña"
-                    value={pestana}
+                    value={getLabel(
+                      tipoPestana,
+                      tipoPestanaLabels,
+                    )}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* CONFIGURACIÓN DE BOBINA */}
+            {product === "roll" && (anchoBobina || longitud || diametro || diametroNucleo || tipoNucleo || peso) && (
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Características de bobina
+                </p>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <InfoItem
+                    label="Ancho de bobina"
+                    value={
+                      anchoBobina
+                        ? `${anchoBobina} cm`
+                        : "—"
+                    }
+                  />
+
+                  <InfoItem
+                    label="Longitud"
+                    value={
+                      longitud
+                        ? `${longitud} m`
+                        : "—"
+                    }
+                  />
+
+                  <InfoItem
+                    label="Peso"
+                    value={
+                      peso
+                        ? `${peso} kg`
+                        : "—"
+                    }
+                  />
+
+                  <InfoItem
+                    label="Diámetro"
+                    value={
+                      diametro
+                        ? `${diametro} cm`
+                        : "—"
+                    }
+                  />
+
+                  <InfoItem
+                    label="Diámetro núcleo"
+                    value={
+                      diametroNucleo
+                        ? `${diametroNucleo} cm`
+                        : "—"
+                    }
+                  />
+
+                  <InfoItem
+                    label="Tipo núcleo"
+                    value={tipoNucleo || "—"}
                   />
                 </div>
               </div>
@@ -509,12 +669,68 @@ export default function RequerimientoStepConfirmacion({
                   />
 
                   <InfoItem
+                    label="Cara"
+                    value={getLabel(
+                      caraImpresion,
+                      caraImpresionLabels,
+                    )}
+                  />
+
+                  <InfoItem
                     label="Tratamiento"
                     value={getLabel(
                       tratamientoImpresion,
                       tratamientoImpresionLabels,
                     )}
                   />
+
+                  <InfoItem
+                    label="Posición"
+                    value={getLabel(
+                      posicionImpresion,
+                      posicionImpresionLabels,
+                    )}
+                  />
+
+                  {posicionImpresion === "personalizada" && (
+                    <>
+                      <InfoItem
+                        label="Distancia superior"
+                        value={
+                          distanciaImpresionSuperior
+                            ? `${distanciaImpresionSuperior} cm`
+                            : "—"
+                        }
+                      />
+
+                      <InfoItem
+                        label="Distancia inferior"
+                        value={
+                          distanciaImpresionInferior
+                            ? `${distanciaImpresionInferior} cm`
+                            : "—"
+                        }
+                      />
+
+                      <InfoItem
+                        label="Distancia izquierda"
+                        value={
+                          distanciaImpresionIzquierda
+                            ? `${distanciaImpresionIzquierda} cm`
+                            : "—"
+                        }
+                      />
+
+                      <InfoItem
+                        label="Distancia derecha"
+                        value={
+                          distanciaImpresionDerecha
+                            ? `${distanciaImpresionDerecha} cm`
+                            : "—"
+                        }
+                      />
+                    </>
+                  )}
                 </div>
               )}
             </div>
