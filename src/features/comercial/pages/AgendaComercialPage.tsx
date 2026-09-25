@@ -23,13 +23,13 @@ import  ConfirmDialog from  "../../../components/feedback/ConfirmDialog";
 
 import type {
   TipoActividad,
+  EstadoActividad,
   ActividadComercial,
 } from "@/features/comercial/comercial.types";
 
 import ActividadMenu from "@/features/comercial/components/actividades/ActividadMenu";
 import NuevoClienteModal from "@/features/comercial/components/NuevoClienteModal";
 import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
-import EditarActividadModal from "@/features/comercial/components/actividades/EditarActividadModal"
 
 import { useNavigate } from "react-router-dom";
 
@@ -65,6 +65,16 @@ function getActivityLabel(tipo: TipoActividad) {
   };
 
   return labels[tipo];
+}
+function getActivityEstadoLabel(estado: EstadoActividad) {
+  const labels: Record<EstadoActividad, string> = {
+    pendiente: "Pendiente",
+    en_proceso: "En proceso",
+    completada: "Completada",
+    cancelada: "Cancelada",
+  };
+
+  return labels[estado];
 }
 
 function getActivityIcon(tipo: TipoActividad) {
@@ -384,7 +394,7 @@ export default function AgendaComercialPage() {
                     </div>
 
                     <span className="hidden rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground md:block">
-                      {getActivityLabel(activity.tipo)}
+                      {getActivityEstadoLabel(activity.estado)}
                     </span>
 
                     <ActividadMenu
@@ -552,7 +562,7 @@ export default function AgendaComercialPage() {
         open={showNuevaActividad}
         onClose={() => setShowNuevaActividad(false)}
       />
-      <EditarActividadModal
+      <NuevaActividadModal
         open={actividadEditar !== null}
         actividad={actividadEditar}
         onClose={() => setActividadEditar(null)}

@@ -294,7 +294,6 @@ export type TratamientoAcabadoEspecial =
 
 export interface EspecificacionProductoSolicitado {
   id: number;
-
   solicitud_comercial: number;
   categoria_producto: number;
   cara_impresion: CaraImpresion | "";
@@ -305,6 +304,7 @@ export interface EspecificacionProductoSolicitado {
   impresion: boolean;
   color_impresion: string[];
   tipo_impresion: TipoImpresion;
+  tratamiento_impresion: TratamientoImpresion;
   posicion_impresion: PosicionImpresion;
   distancia_impresion_superior: string | null;
   distancia_impresion_inferior: string | null;
@@ -330,6 +330,7 @@ export interface EspecificacionProductoSolicitadoCreate {
   impresion: boolean;
   color_impresion: string[];
   tipo_impresion: TipoImpresion;
+  tratamiento_impresion: TratamientoImpresion;
   posicion_impresion?: PosicionImpresion;
   distancia_impresion_superior?: string | null;
   distancia_impresion_inferior?: string | null;

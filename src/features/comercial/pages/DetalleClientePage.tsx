@@ -22,6 +22,7 @@ import {
   useActividadesComerciales,
   useSolicitudesComerciales,
   usePedidos,
+  useDeleteActividadComercial,
 } from "../comercial.hooks";
 
 import type {
@@ -38,6 +39,11 @@ type DetailTab =
   | "actividades"
   | "solicitudes"
   | "pedidos";
+
+import NuevaActividadModal from "@/features/comercial/components/actividades/NuevaActividadModal";
+import ActividadMenu from "@/features/comercial/components/actividades/ActividadMenu";
+import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
+import ConfirmDialog from "../../../components/feedback/ConfirmDialog";
 
 function DetallesCliente() {
   const { id } = useParams<{ id: string }>();
@@ -121,6 +127,22 @@ function DetallesCliente() {
    */
   const [activeTab, setActiveTab] = useState<DetailTab>("resumen");
 
+  /**
+   * ESTADOS PARA ACCIONES DE LA ACTIVIDAD
+   */
+  const [actividadEditar, setActividadEditar] =
+    useState<ActividadComercial | null>(null);
+
+  const [actividadEliminar, setActividadEliminar] =
+    useState<ActividadComercial | null>(null);
+
+  const [showRegistrarComunicacion, setShowRegistrarComunicacion] =
+    useState(false);
+
+  /**
+   * HOOK PARA ELIMINAR
+   */
+  const deleteActividad = useDeleteActividadComercial();
   /**
    * Pestaña para ver historial comunicaciones
    */
@@ -616,6 +638,11 @@ function DetallesCliente() {
                       key={actividad.id}
                       actividad={actividad}
                       last={index === array.length - 1}
+                      onEdit={() => setActividadEditar(actividad)}
+                      onDelete={() => setActividadEliminar(actividad)}
+                      onRegistrarComunicacion={() =>
+                        setShowRegistrarComunicacion(true)
+                      }
                     />
                   ))}
               </div>
@@ -738,14 +765,51 @@ function DetallesCliente() {
           MODAL PARA EDITAR CLIENTE
       ======================================================= */}
 
-      {showEdit && cliente && (
-        <NuevoClienteModal
-          open={showEdit}
-          client={cliente}
-          onClose={() => setShowEdit(false)}
-          onSuccess={() => setShowEdit(false)}
-        />
-      )}
+      {/* MODAL EDITAR ACTIVIDAD */}
+      <NuevaActividadModal
+        open={actividadEditar !== null}
+        actividad={actividadEditar}
+        onClose={() => setActividadEditar(null)}
+      />
+
+      {/* CONFIRMAR ELIMINACIÓN */}
+      <ConfirmDialog
+        open={actividadEliminar !== null}
+        title="Eliminar actividad"
+        description={
+          actividadEliminar
+            ? `¿Estás seguro de eliminar la actividad "${actividadEliminar.descripcion}"? Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        loading={deleteActividad.isPending}
+        onConfirm={async () => {
+          if (!actividadEliminar) return;
+
+          try {
+            await deleteActividad.mutateAsync(
+              actividadEliminar.id,
+            );
+
+            setActividadEliminar(null);
+          } catch (error) {
+            console.error(
+              "Error al eliminar actividad:",
+              error,
+            );
+          }
+        }}
+        onCancel={() => setActividadEliminar(null)}
+      />
+
+      {/* REGISTRAR COMUNICACIÓN */}
+      <RegistrarComunicacionModal
+        open={showRegistrarComunicacion}
+        onClose={() =>
+          setShowRegistrarComunicacion(false)
+        }
+      />
       {/* ======================================================
           MODAL COMUNICACIONES
       ======================================================= */}
@@ -943,9 +1007,15 @@ function NextActivityCard({
 function ActivityRow({
   actividad,
   last,
+  onEdit,
+  onDelete,
+  onRegistrarComunicacion,
 }: {
   actividad: ActividadComercial;
   last: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onRegistrarComunicacion: () => void;
 }) {
   return (
     <div
@@ -992,6 +1062,13 @@ function ActivityRow({
           )}
         </div>
       </div>
+      {/*Acciones*/}
+      <ActividadMenu
+        actividad={actividad}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onRegistrarComunicacion={onRegistrarComunicacion}
+      />
     </div>
   );
 }

@@ -264,7 +264,10 @@ export function construirEspecificacionProducto(
     tratamientos_acabados_especiales:
       data.tratamientosAcabadosEspeciales,
 
-    tipo_capa: data.tipoCapa || "",
+    capas: data.capas || "",
+
+    tratamiento_impresion:
+        data.TratamientImpresion  !! ""
   };
 }
 

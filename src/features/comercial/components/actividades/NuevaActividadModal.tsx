@@ -10,14 +10,14 @@ import {
 
 import {
   useCreateActividadComercial,
-} from "../../comercial.hooks";
-
-import {
+  useUpdateActividadComercial,
   useCuentasComerciales,
 } from "../../comercial.hooks";
 
 import type {
+  ActividadComercial,
   ActividadComercialCreate,
+  ActividadComercialUpdate,
   TipoActividad,
 } from "../../comercial.types";
 
@@ -25,6 +25,7 @@ interface NuevaActividadModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  actividad?: ActividadComercial;
 }
 
 const tiposActividad: {
@@ -84,17 +85,33 @@ function getCurrentDateTime() {
   return localDate.toISOString().slice(0, 16);
 }
 
+function formatDateTimeLocal(date: string) {
+  const parsedDate = new Date(date);
+
+  const offset = parsedDate.getTimezoneOffset();
+
+  const localDate = new Date(
+    parsedDate.getTime() - offset * 60 * 1000,
+  );
+
+  return localDate.toISOString().slice(0, 16);
+}
+
 export default function NuevaActividadModal({
   open,
   onClose,
   onSuccess,
+  actividad,
 }: NuevaActividadModalProps) {
   const createActividad = useCreateActividadComercial();
+  const updateActividad = useUpdateActividadComercial();
 
   const {
     data: clientes = [],
     isLoading: loadingClientes,
   } = useCuentasComerciales();
+
+  const isEditing = !!actividad;
 
   const [cuentaComercial, setCuentaComercial] =
     useState<number | "">("");
@@ -111,17 +128,27 @@ export default function NuevaActividadModal({
   useEffect(() => {
     if (!open) return;
 
-    setCuentaComercial("");
-    setTipo("llamada");
-    setDescripcion("");
-    setFechaProgramada(getCurrentDateTime());
-
-    createActividad.reset();
-  }, [open]);
+    if (isEditing && actividad) {
+      setCuentaComercial(actividad.cuenta_comercial);
+      setTipo(actividad.tipo);
+      setDescripcion(actividad.descripcion);
+      setFechaProgramada(formatDateTimeLocal(actividad.fecha_programada));
+      updateActividad.reset();
+    } else {
+      setCuentaComercial("");
+      setTipo("llamada");
+      setDescripcion("");
+      setFechaProgramada(getCurrentDateTime());
+      createActividad.reset();
+    }
+  }, [open, isEditing, actividad]);
 
   if (!open) {
     return null;
   }
+
+  const isPending =
+    createActividad.isPending || updateActividad.isPending;
 
   const handleSubmit = async (
     event: React.FormEvent<HTMLFormElement>,
@@ -140,23 +167,41 @@ export default function NuevaActividadModal({
       return;
     }
 
-    const data: ActividadComercialCreate = {
-      cuenta_comercial: Number(cuentaComercial),
-      tipo,
-      descripcion: descripcion.trim(),
-      fecha_programada: new Date(
-        fechaProgramada,
-      ).toISOString(),
-    };
-
     try {
-      await createActividad.mutateAsync(data);
+      if (isEditing && actividad) {
+        const updateData: ActividadComercialUpdate = {
+          cuenta_comercial: Number(cuentaComercial),
+          tipo,
+          descripcion: descripcion.trim(),
+          fecha_programada: new Date(
+            fechaProgramada,
+          ).toISOString(),
+        };
+
+        await updateActividad.mutateAsync({
+          id: actividad.id,
+          data: updateData,
+        });
+      } else {
+        const data: ActividadComercialCreate = {
+          cuenta_comercial: Number(cuentaComercial),
+          tipo,
+          descripcion: descripcion.trim(),
+          fecha_programada: new Date(
+            fechaProgramada,
+          ).toISOString(),
+        };
+
+        await createActividad.mutateAsync(data);
+      }
 
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error(
-        "Error al crear actividad comercial:",
+        isEditing
+          ? "Error al actualizar actividad comercial:"
+          : "Error al crear actividad comercial:",
         error,
       );
     }
@@ -183,11 +228,13 @@ export default function NuevaActividadModal({
 
             <div>
               <h2 className="text-lg font-semibold text-foreground">
-                Nueva actividad comercial
+                {isEditing ? "Editar actividad comercial" : "Nueva actividad comercial"}
               </h2>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                Programa una nueva actividad con un cliente.
+                {isEditing
+                  ? "Modifica los datos de la actividad."
+                  : "Programa una nueva actividad con un cliente."}
               </p>
             </div>
           </div>
@@ -195,7 +242,7 @@ export default function NuevaActividadModal({
           <button
             type="button"
             onClick={onClose}
-            disabled={createActividad.isPending}
+            disabled={isPending}
             className="
               rounded-md p-1.5
               text-muted-foreground
@@ -238,7 +285,7 @@ export default function NuevaActividadModal({
                   }
                   disabled={
                     loadingClientes ||
-                    createActividad.isPending
+                    isPending
                   }
                   className="
                     h-11 w-full
@@ -295,7 +342,7 @@ export default function NuevaActividadModal({
                       key={item.value}
                       type="button"
                       onClick={() => setTipo(item.value)}
-                      disabled={createActividad.isPending}
+                      disabled={isPending}
                       className={`
                         rounded-lg
                         border
@@ -337,7 +384,7 @@ export default function NuevaActividadModal({
                   }
                   placeholder="Describe el motivo de la actividad..."
                   rows={4}
-                  disabled={createActividad.isPending}
+                  disabled={isPending}
                   className="
                     w-full
                     resize-none
@@ -382,7 +429,7 @@ export default function NuevaActividadModal({
                       event.target.value,
                     )
                   }
-                  disabled={createActividad.isPending}
+                  disabled={isPending}
                   className="
                     h-11 w-full
                     rounded-lg
@@ -405,10 +452,11 @@ export default function NuevaActividadModal({
             </div>
 
             {/* ERROR */}
-            {createActividad.isError && (
+            {(createActividad.isError || updateActividad.isError) && (
               <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                No se pudo crear la actividad.
-                Verifica los datos e inténtalo nuevamente.
+                {isEditing
+                  ? "No se pudo actualizar la actividad. Verifica los datos e inténtalo nuevamente."
+                  : "No se pudo crear la actividad. Verifica los datos e inténtalo nuevamente."}
               </div>
             )}
           </div>
@@ -418,7 +466,7 @@ export default function NuevaActividadModal({
             <button
               type="button"
               onClick={onClose}
-              disabled={createActividad.isPending}
+              disabled={isPending}
               className="
                 rounded-lg
                 border border-border
@@ -439,7 +487,7 @@ export default function NuevaActividadModal({
             <button
               type="submit"
               disabled={
-                createActividad.isPending ||
+                isPending ||
                 !cuentaComercial ||
                 !descripcion.trim()
               }
@@ -461,9 +509,11 @@ export default function NuevaActividadModal({
             >
               <CheckCircle2 className="h-4 w-4" />
 
-              {createActividad.isPending
-                ? "Creando..."
-                : "Crear actividad"}
+              {isPending
+                ? "Guardando..."
+                : isEditing
+                  ? "Guardar cambios"
+                  : "Crear actividad"}
             </button>
           </div>
         </form>

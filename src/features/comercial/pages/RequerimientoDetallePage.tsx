@@ -10,11 +10,13 @@ import {
     Truck,
     UserRound,
     MessageCircle,
+    Pencil,
 } from "lucide-react";
 
 import { useSolicitudComercial } from "../comercial.hooks";
-import { useProductosCategorias } from "@/features/productos/productos.hook";
+import { useProductosCategorias } from "@/features/productos/productos.hooks";
 import ComunicacionesModal from "@/features/comercial/components/ComunicacionModal";
+import EditarRequerimientoModal from "@/features/comercial/components/EditarRequerimientoModal";
 
 export default function RequerimientoDetallePage() {
     const navigate = useNavigate();
@@ -24,6 +26,9 @@ export default function RequerimientoDetallePage() {
 
     //MOSTRAR COMUNICACIÓN
     const [showComunicaciones, setShowComunicaciones] = useState(false);
+
+    //MOSTRAR EDICIÓN
+    const [showEditar, setShowEditar] = useState(false);
 
 
     const { data, isLoading, isError } =
@@ -101,9 +106,9 @@ export default function RequerimientoDetallePage() {
 
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            Solicitud #{solicitud.id}
+                            <span>Solicitud #{solicitud.id}  </span> 
+                            <EstadoBadge estado={solicitud.estado}/>
                         </p>
-
                         <h1 className="text-2xl font-bold tracking-tight text-foreground">
                             Detalle del Requerimiento
                         </h1>
@@ -113,6 +118,15 @@ export default function RequerimientoDetallePage() {
                 <div className="flex flex-wrap items-center gap-3">
                     <button
                         type="button"
+                        onClick={() => setShowEditar(true)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted"
+                    >
+                        <Pencil className="h-4 w-4" />
+                        Editar requerimiento
+                    </button>
+
+                    <button
+                        type="button"
                         onClick={() => setShowComunicaciones(true)}
                         className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted"
                     >
@@ -120,7 +134,6 @@ export default function RequerimientoDetallePage() {
                         Ver comunicaciones
                     </button>
 
-                    <EstadoBadge estado={solicitud.estado} />
                 </div>
             </header>
 
@@ -751,6 +764,19 @@ export default function RequerimientoDetallePage() {
                     solicitudId={solicitudId}
                     onClose={() => setShowComunicaciones(false)}
 
+                />
+            )}
+
+            {showEditar && (
+                <EditarRequerimientoModal
+                    open={showEditar}
+                    requerimientoId={solicitudId}
+                    onClose={() => setShowEditar(false)}
+                    onSuccess={() => {
+                        setShowEditar(false);
+                        // Recargar los datos después de editar
+                        window.location.reload();
+                    }}
                 />
             )}
         </div>

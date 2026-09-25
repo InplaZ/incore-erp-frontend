@@ -26,7 +26,7 @@ import type {
   CaraImpresion,
   TipoPestana,
 } from "../comercial.types";
-import { useProductosCategorias } from "@/features/productos/productos.hook";
+import { useProductosCategorias } from "@/features/productos/productos.hooks";
 import RequerimientoSteps from "../components/requerimientos/RequerimientoSteps";
 import RequerimientoStepCliente from "../components/requerimientos/RequerimientoStepCliente";
 import RequerimientoStepProducto, {
