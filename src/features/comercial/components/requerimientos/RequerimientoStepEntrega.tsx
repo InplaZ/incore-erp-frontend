@@ -15,9 +15,6 @@ interface RequerimientoStepEntregaProps {
 
   observaciones: string;
   setObservaciones: (value: string) => void;
-
-  cantidadKg: string;
-  setCantidadKg: (value: string) => void;
 }
 
 export default function RequerimientoStepEntrega({
@@ -31,8 +28,6 @@ export default function RequerimientoStepEntrega({
   setLugarEntrega,
   observaciones,
   setObservaciones,
-  cantidadKg,
-  setCantidadKg,
 }: RequerimientoStepEntregaProps) {
   return (
     <div className="mx-auto max-w-3xl space-y-6">

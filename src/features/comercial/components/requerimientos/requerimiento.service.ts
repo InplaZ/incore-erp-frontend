@@ -267,7 +267,7 @@ export function construirEspecificacionProducto(
     capas: data.capas || "",
 
     tratamiento_impresion:
-        data.TratamientImpresion  !! ""
+        data.tratamientoImpresion  || "",
   };
 }
 

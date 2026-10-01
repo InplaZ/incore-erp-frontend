@@ -28,21 +28,26 @@ import type {
 } from "../comercial.types";
 import { useProductosCategorias } from "@/features/productos/productos.hooks";
 import RequerimientoSteps from "../components/requerimientos/RequerimientoSteps";
-import RequerimientoStepCliente from "../components/requerimientos/RequerimientoStepCliente";
 import RequerimientoStepProducto, {
   type ProductType,
 } from "../components/requerimientos/RequerimientoStepProducto";
+import RequerimientoStepBusquedaProducto from "../components/requerimientos/RequerimientoStepBusquedaProducto";
 import RequerimientoStepDetalles from "../components/requerimientos/RequerimientoStepDetalles";
 import RequerimientoStepEntrega from "../components/requerimientos/RequerimientoStepEntrega";
 import RequerimientoStepConfirmacion from "../components/requerimientos/RequerimientoStepConfirmacion";
 import RequerimientoNavigation from "../components/requerimientos/RequerimientoNavigation";
+import ProductoConfirmacionModal from "../components/requerimientos/ProductoConfirmacionModal";
+
+import type {
+  ProductoBusquedaResultado,
+} from "../comercial.types";
 
 import {
   crearRequerimiento,
   type RequerimientoFormData,
 } from "@/features/comercial/components/requerimientos/requerimiento.service";
 
-export type RequirementStep = 1 | 2 | 3 | 4 | 5;
+export type RequirementStep = 1 | 2 | 3 | 4 | 5 ;
 
 export default function RequerimientosPage() {
   const navigate = useNavigate();
@@ -58,6 +63,18 @@ export default function RequerimientosPage() {
    */
   const [product, setProduct] =
     useState<ProductType>(null);
+
+  /*
+   * Selección de producto del catálogo
+   */
+  const [productoSeleccionado, setProductoSeleccionado] =
+    useState<ProductoBusquedaResultado | null>(null);
+
+  const [esProductoNuevo, setEsProductoNuevo] =
+    useState(false);
+
+  const [showConfirmacionModal, setShowConfirmacionModal] =
+    useState(false);
 
   /*
    * Características generales
@@ -236,7 +253,7 @@ export default function RequerimientosPage() {
       (current) =>
         Math.min(
           current + 1,
-          5,
+          6,
         ) as RequirementStep,
     );
   };
@@ -249,6 +266,116 @@ export default function RequerimientosPage() {
           1,
         ) as RequirementStep,
     );
+  };
+
+  /*
+   * Manejo de selección de producto
+   */
+  const handleProductoSelect = (producto: ProductoBusquedaResultado) => {
+    setProductoSeleccionado(producto);
+    setShowConfirmacionModal(true);
+  };
+  
+  const cargarProductoExistente = (
+    producto: ProductoBusquedaResultado
+  ) => {
+
+    setDescripcion(producto.producto_nombre);
+
+    setMaterial(producto.material);
+
+    setMicraje(
+      producto.micraje?.toString() || ""
+    );
+
+    setCapas(
+      producto.capas || ""
+    );
+
+    setImpresion(
+      producto.impresion
+    );
+
+
+    // Si es bolsa
+    if (
+      producto.especificacion_bolsa
+    ) {
+
+      const bolsa =
+        producto.especificacion_bolsa;
+
+      setAnchoDoblado(
+        bolsa.ancho_doblado?.toString() || ""
+      );
+
+      setLargoDoblado(
+        bolsa.largo_doblado?.toString() || ""
+      );
+
+      setTipoTroquel(
+        bolsa.tipo_troquel || ""
+      );
+
+      setTipoSello(
+        bolsa.tipo_sello || "fondo"
+      );
+    }
+
+
+    // Si es bobina
+    if (
+      producto.especificacion_bobina
+    ) {
+
+      const bobina =
+        producto.especificacion_bobina;
+
+      setAnchoBobina(
+        bobina.ancho?.toString() || ""
+      );
+
+      setDiametro(
+        bobina.diametro?.toString() || ""
+      );
+
+      setDiametroNucleo(
+        bobina.diametro_nucleo?.toString() || ""
+      );
+
+      setPeso(
+        bobina.peso?.toString() || ""
+      );
+
+      setLongitud(
+        bobina.longitud?.toString() || ""
+      );
+    }
+  };
+  
+  
+
+  /*
+  * CODIGO PARA NAVEGAR Y CONFIRMAR EL PRODUCTO EXISTENTE SELECCIONADO
+  */
+  const handleConfirmarProducto = () => {
+    if(productoSeleccionado){
+      setEsProductoNuevo(false)
+      cargarProductoExistente(productoSeleccionado);
+    }
+    setShowConfirmacionModal(false);
+    setStep(4); //CON setStep
+  };
+
+  const handleBuscarOtroProducto = () => {
+    setShowConfirmacionModal(false);
+    setProductoSeleccionado(null);
+  };
+
+  const handleCrearProductoNuevo = () => {
+    setEsProductoNuevo(true);
+    setProductoSeleccionado(null);
+    nextStep();
   };
 
   /*
@@ -449,6 +576,7 @@ export default function RequerimientosPage() {
 
       {/* Contenido del paso */}
       <div className="min-h-[500px] rounded-xl border border-border bg-card p-6">
+        {/*
         {step === 1 && (
           <RequerimientoStepCliente
             cuentaComercialId={cuentaComercialId}
@@ -457,14 +585,22 @@ export default function RequerimientosPage() {
             }
           />
         )}
-
-        {step === 2 && (
+      */}
+        {step === 1 && (
           <RequerimientoStepProducto
             product={product}
             setProduct={setProduct}
+            onNext={nextStep}
           />
         )}
 
+        {step === 2 && (
+          <RequerimientoStepBusquedaProducto
+            product={product}
+            onProductSelect={handleProductoSelect}
+            onCreateNew={handleCrearProductoNuevo}
+          />
+        )}
 
         {step === 3 && (
           <RequerimientoStepDetalles
@@ -734,6 +870,19 @@ export default function RequerimientosPage() {
         onCancel={resetWizard}
         onSubmit={handleSubmit}
       />
+
+      {/* Modal de confirmación de producto */}
+      {productoSeleccionado && (
+        <ProductoConfirmacionModal
+          open={showConfirmacionModal}
+          producto={productoSeleccionado}
+          productType={product}
+          onConfirm={handleConfirmarProducto}
+          onSearchAnother={handleBuscarOtroProducto}
+          onClose={handleBuscarOtroProducto}
+        />
+      )}
+
       <Toast
         open={toast}
         title="Requerimiento registrado"

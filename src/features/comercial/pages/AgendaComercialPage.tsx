@@ -19,7 +19,7 @@ import {
   useDeleteActividadComercial,
 } from "@/features/comercial/comercial.hooks";
 
-import  ConfirmDialog from  "../../../components/feedback/ConfirmDialog";
+import ConfirmDialog from "../../../components/feedback/ConfirmDialog";
 
 import type {
   TipoActividad,
@@ -203,6 +203,18 @@ export default function AgendaComercialPage() {
         ? actividadesProximas
         : actividadesCompletadas;
 
+  const clientesPorContactar = useMemo(() => {
+    const clientesIds = actividadesConCliente
+      .filter(
+        (actividad) =>
+          actividad.estado === "pendiente" ||
+          actividad.estado === "en_proceso"
+      )
+      .map((actividad) => actividad.cuenta_comercial);
+
+    return new Set(clientesIds).size;
+  }, [actividadesConCliente]);
+
   const [showRegistrarComunicacion, setShowRegistrarComunicacion] = useState(false)
 
   const handleEliminarActividad = async () => {
@@ -227,14 +239,6 @@ export default function AgendaComercialPage() {
           <h1 className="mt-1 text-2xl font-semibold text-foreground">
             Buenos días
           </h1>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Tienes{" "}
-            <strong>
-              {actividadesHoy.length} actividades
-            </strong>{" "}
-            para hoy. Aquí está el resumen de tu operación comercial.
-          </p>
         </div>
 
         <button
@@ -265,8 +269,8 @@ export default function AgendaComercialPage() {
         <MetricCard
           icon={UsersRound}
           label="Clientes por contactar"
-          value="12"
-          detail="+4 esta semana"
+          value={clientesPorContactar.toString()}
+          detail="Pendientes"
         />
 
         <MetricCard
@@ -564,7 +568,7 @@ export default function AgendaComercialPage() {
       />
       <NuevaActividadModal
         open={actividadEditar !== null}
-        actividad={actividadEditar}
+        actividad={actividadEditar ?? undefined}
         onClose={() => setActividadEditar(null)}
       />
       <ConfirmDialog

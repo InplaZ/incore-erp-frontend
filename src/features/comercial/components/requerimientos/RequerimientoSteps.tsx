@@ -1,14 +1,14 @@
 import { Check } from "lucide-react";
 
-export type RequirementStep = 1 | 2 | 3 | 4 | 5;
+export type RequirementStep = 1 | 2 | 3 | 4 | 5 ;
 
 interface RequerimientoStepsProps {
   step: RequirementStep;
 }
 
 const steps = [
-  { number: 1, label: "Cliente" },
-  { number: 2, label: "Producto" },
+  { number: 1, label: "Producto" },
+  { number: 2, label: "Búsqueda" },
   { number: 3, label: "Detalles" },
   { number: 4, label: "Entrega" },
   { number: 5, label: "Confirmación" },

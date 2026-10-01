@@ -346,6 +346,69 @@ export interface EspecificacionProductoSolicitadoCreate {
 export type EspecificacionProductoSolicitadoUpdate =
   Partial<EspecificacionProductoSolicitadoCreate>;
 
+// ============================================================
+// VERSIONES DE ESPECIFICACIÓN DE PRODUCTO SOLICITADO
+// ============================================================
+
+export interface EspecificacionProductoSolicitadoVersion {
+  id: number;
+  especificacion_producto_solicitado: number;
+  version: number;
+  categoria_producto: number;
+  cara_impresion: CaraImpresion | "";
+  material: MaterialProducto;
+  apto_alimento: boolean;
+  micraje: string | null;
+  color_bolsa: string;
+  impresion: boolean;
+  color_impresion: string[];
+  tipo_impresion: TipoImpresion;
+  tratamiento_impresion: TratamientoImpresion;
+  posicion_impresion: PosicionImpresion;
+  distancia_impresion_superior: string | null;
+  distancia_impresion_inferior: string | null;
+  distancia_impresion_izquierda: string | null;
+  distancia_impresion_derecha: string | null;
+  otras_caracteristicas: string;
+  opacidad: Opacidad;
+  tratamientos_acabados_especiales:
+    TratamientoAcabadoEspecial[];
+  capas: TipoCapa;
+  motivo_cambio: string | null;
+  fecha_version: string;
+  usuario: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EspecificacionProductoSolicitadoVersionCreate {
+  especificacion_producto_solicitado: number;
+  version: number;
+  categoria_producto: number;
+  material: MaterialProducto;
+  capas: TipoCapa;
+  apto_alimento: boolean;
+  micraje?: string | null;
+  color_bolsa: string;
+  impresion: boolean;
+  color_impresion: string[];
+  tipo_impresion: TipoImpresion;
+  tratamiento_impresion: TratamientoImpresion;
+  posicion_impresion?: PosicionImpresion;
+  distancia_impresion_superior?: string | null;
+  distancia_impresion_inferior?: string | null;
+  distancia_impresion_izquierda?: string | null;
+  distancia_impresion_derecha?: string | null;
+  otras_caracteristicas?: string;
+  cara_impresion?: CaraImpresion | "";
+  opacidad?: Opacidad;
+  tratamientos_acabados_especiales?:
+    TratamientoAcabadoEspecial[];
+  motivo_cambio?: string | null;
+}
+
+export type EspecificacionProductoSolicitadoVersionUpdate =
+  Partial<EspecificacionProductoSolicitadoVersionCreate>;
 
 // ============================================================
 // ESPECIFICACIÓN DE BOLSA SOLICITADA
@@ -427,7 +490,81 @@ export interface EspecificacionBolsaSolicitadaCreate {
 export type EspecificacionBolsaSolicitadaUpdate =
   Partial<EspecificacionBolsaSolicitadaCreate>;
 
+// ============================================================
+// VERSIONES DE ESPECIFICACIÓN DE BOLSA SOLICITADA
+// ============================================================
 
+export interface EspecificacionBolsaSolicitadaVersion {
+  id: number;
+  especificacion_producto_solicitado_version: number;
+  ancho_doblado: string;
+  ancho_desdoblado: string | null;
+  largo_doblado: string;
+  largo_desdoblado: string | null;
+  fuelle: boolean;
+  fuelle_izquierdo: string | null;
+  fuelle_derecho: string | null;
+  fuelle_inferior: string | null;
+  fuelle_superior: string | null;
+  tipo_troquel: TipoTroquel;
+  tipo_sello: TipoSello;
+  pestana: TipoPestana;
+  otras_caracteristicas: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EspecificacionBolsaSolicitadaVersionCreate {
+  especificacion_producto_solicitado_version: number;
+  ancho_doblado: string;
+  ancho_desdoblado?: string | null;
+  largo_doblado: string;
+  largo_desdoblado?: string | null;
+  fuelle: boolean;
+  fuelle_izquierdo?: string | null;
+  fuelle_derecho?: string | null;
+  fuelle_inferior?: string | null;
+  fuelle_superior?: string | null;
+  tipo_troquel: TipoTroquel;
+  tipo_sello: TipoSello;
+  pestana: TipoPestana;
+  otras_caracteristicas?: string;
+}
+
+export type EspecificacionBolsaSolicitadaVersionUpdate =
+  Partial<EspecificacionBolsaSolicitadaVersionCreate>;
+
+// ============================================================
+// VERSIONES DE ESPECIFICACIÓN DE BOBINA SOLICITADA
+// ============================================================
+
+export interface EspecificacionBobinaSolicitadaVersion {
+  id: number;
+  especificacion_producto_solicitado_version: number;
+  ancho: string;
+  diametro: string | null;
+  diametro_nucleo: string | null;
+  longitud: string | null;
+  tipo_nucleo: string;
+  peso: string | null;
+  otras_caracteristicas: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EspecificacionBobinaSolicitadaVersionCreate {
+  especificacion_producto_solicitado_version: number;
+  ancho: string;
+  diametro?: string | null;
+  diametro_nucleo?: string | null;
+  longitud?: string | null;
+  tipo_nucleo: string;
+  peso?: string | null;
+  otras_caracteristicas?: string;
+}
+
+export type EspecificacionBobinaSolicitadaVersionUpdate =
+  Partial<EspecificacionBobinaSolicitadaVersionCreate>;
 // ============================================================
 // ESPECIFICACIÓN DE BOBINA SOLICITADA
 // ============================================================
@@ -524,7 +661,53 @@ export type ComunicacionUpdate = {
   asunto?: string | null;
   contenido?: string;
 }
+// ============================================================
+// CATEGORÍAS DE PRODUCTOS
+// ============================================================
 
+export interface ProductoCategoria {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================
+// PRODUCTOS DEL CATÁLOGO
+// ============================================================
+
+export interface Producto {
+  id: number;
+  categoria_producto: number;
+  codigo: string;
+  nombre: string;
+  descripcion: string;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+// ============================================================
+// VERSIONES DE PRODUCTO
+// ============================================================
+
+export interface ProductoVersion {
+  id: number;
+  producto: number;
+  numero_version: number;
+  material: MaterialProducto;
+  capas: TipoCapa;
+  micraje: string | null;
+  impresion: boolean;
+  color_bolsa: string;
+  color_impresion: string[];
+  tipo_impresion: TipoImpresion;
+  opacidad: Opacidad;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
 // ============================================================
 // COTIZACIONES
 // ============================================================
@@ -620,22 +803,20 @@ export type CotizacionVersionUpdate =
 
 export interface CotizacionDetalle {
   id: number;
-
   cotizacion_version: number;
-  producto_version: number;
-
+  especificacion_producto_solicitado_version: number | null;
+  producto_version: number | null;
   cantidad: string;
   precio_unitario: string;
   precio_total: string;
-
   created_at: string;
   updated_at: string;
 }
 
 export interface CotizacionDetalleCreate {
   cotizacion_version: number;
-  producto_version: number;
-
+  especificacion_producto_solicitado_version?: number | null;
+  producto_version: number | null;
   cantidad: string;
   precio_unitario: string;
   precio_total: string;
@@ -700,16 +881,13 @@ export interface PedidoDetalle {
   id: number;
 
   pedido: number;
+  especificacion_producto_solicitado_version: number| null;
   producto_version: number;
-
   cantidad: string;
   precio_unitario: string;
   precio_total: string;
-
   fecha_entrega_comprometida: string;
-
   observaciones: string;
-
   created_at: string;
   updated_at: string;
 }
@@ -717,15 +895,113 @@ export interface PedidoDetalle {
 export interface PedidoDetalleCreate {
   pedido: number;
   producto_version: number;
-
+  especificacion_producto_solicitado_version?: number | null;
   cantidad: string;
   precio_unitario: string;
   precio_total: string;
-
   fecha_entrega_comprometida: string;
-
   observaciones?: string;
 }
 
 export type PedidoDetalleUpdate =
   Partial<PedidoDetalleCreate>;
+
+/// ============================================================
+// RESULTADO DE BÚSQUEDA DE PRODUCTOS
+// ============================================================
+
+export interface ProductoBusquedaResultado {
+  producto_id: number;
+  producto_codigo: string;
+  producto_nombre: string;
+  producto_descripcion: string;
+  categoria: string;
+
+  version_id: number;
+  version_numero: number;
+
+  material: MaterialProducto;
+  capas: TipoCapa | null;
+  micraje: string | number | null;
+
+  impresion: boolean;
+  color_bolsa: string;
+  tipo_impresion: TipoImpresion | "";
+
+  especificacion_bolsa?: EspecificacionBolsaCatalogo;
+  especificacion_bobina?: EspecificacionBobinaCatalogo;
+}
+
+export interface EspecificacionBobinaCatalogo {
+  id: number;
+  ancho: string | number;
+  diametro: string | number | null;
+  diametro_nucleo: string | number | null;
+  tipo_nucleo: string;
+  peso: string | number | null;
+  longitud: string | number | null;
+}
+
+export interface EspecificacionBolsaCatalogo {
+  id: number;
+  ancho_doblado: string | number;
+  ancho_desdoblado: string | number | null;
+  largo_doblado: string | number;
+  largo_desdoblado: string | number | null;
+
+  fuelle: boolean;
+
+  fuelle_izquierdo: string | number | null;
+  fuelle_derecho: string | number | null;
+  fuelle_inferior: string | number | null;
+  fuelle_superior: string | number | null;
+
+  tipo_troquel: TipoTroquel | "";
+  tipo_sello: TipoSello | "";
+  pestana: TipoPestana | "";
+
+  acabado_especial?: string;
+}
+
+// ============================================================
+// RESPUESTA DE BÚSQUEDA DE CATÁLOGO
+// ============================================================
+
+export interface BuscarCatalogoResponse {
+  exito: boolean;
+  productos: ProductoBusquedaResultado[];
+  cantidad: number;
+}
+
+// ============================================================
+// PRODUCTOS SIMILARES
+// ============================================================
+
+export interface DiferenciaProductoSimilar {
+  campo: string;
+  especificacion: string | number | null;
+  version: string | number | null;
+}
+
+export interface ProductoSimilar {
+  producto_id: number;
+  producto_codigo: string;
+  producto_nombre: string;
+
+  version_id: number;
+  version_numero: number;
+
+  porcentaje_coincidencia: number;
+
+  diferencias: DiferenciaProductoSimilar[];
+}
+
+// ============================================================
+// RESPUESTA DE BÚSQUEDA DE PRODUCTOS SIMILARES
+// ============================================================
+
+export interface BuscarSimilaresResponse {
+  exito: boolean;
+  productos_similares: ProductoSimilar[];
+  cantidad: number;
+}

@@ -1,3 +1,5 @@
+//ESTE ARCHIVO DEFINE SI ES BOBINA O BOLSA//
+
 import { ArrowRight, Package, Plus } from "lucide-react";
 
 export type ProductType = "bag" | "roll" | "other" | null;
@@ -5,11 +7,13 @@ export type ProductType = "bag" | "roll" | "other" | null;
 interface RequerimientoStepProductoProps {
   product: ProductType;
   setProduct: (product: ProductType) => void;
+  onNext?: () => void;
 }
 
 export default function RequerimientoStepProducto({
   product,
   setProduct,
+  onNext,
 }: RequerimientoStepProductoProps) {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -27,7 +31,10 @@ export default function RequerimientoStepProducto({
         {/* Bolsas */}
         <button
           type="button"
-          onClick={() => setProduct("bag")}
+          onClick={() => {
+            setProduct("bag");
+            if (onNext) onNext();
+          }}
           className={[
             "group relative rounded-xl border p-4 text-left transition-all",
             product === "bag"
@@ -71,7 +78,10 @@ export default function RequerimientoStepProducto({
         {/* Bobinas */}
         <button
           type="button"
-          onClick={() => setProduct("roll")}
+          onClick={() => {
+            setProduct("roll");
+            if (onNext) onNext();
+          }}
           className={[
             "group relative rounded-xl border p-4 text-left transition-all",
             product === "roll"
