@@ -359,12 +359,13 @@ export default function RequerimientosPage() {
   * CODIGO PARA NAVEGAR Y CONFIRMAR EL PRODUCTO EXISTENTE SELECCIONADO
   */
   const handleConfirmarProducto = () => {
-    if(productoSeleccionado){
-      setEsProductoNuevo(false)
+    if (productoSeleccionado) {
+      setEsProductoNuevo(false);
       cargarProductoExistente(productoSeleccionado);
     }
+
     setShowConfirmacionModal(false);
-    setStep(4); //CON setStep
+    setStep(4);
   };
 
   const handleBuscarOtroProducto = () => {
@@ -605,6 +606,9 @@ export default function RequerimientosPage() {
         {step === 3 && (
           <RequerimientoStepDetalles
             product={product}
+            esProductoNuevo={esProductoNuevo}
+            cuentaComercialId={cuentaComercialId}
+            setCuentaComercialId={setCuentaComercialId}
             cantidadUnidades={cantidadUnidades}
             setCantidadUnidades={setCantidadUnidades}
             cantidadKg={cantidadKg}
@@ -770,9 +774,10 @@ export default function RequerimientosPage() {
 
         {step === 4 && (
           <RequerimientoStepEntrega
-            cantidadUnidades={
-              cantidadUnidades
-            }
+            cuentaComercialId={cuentaComercialId}
+            setCuentaComercialId={setCuentaComercialId}
+            productoSeleccionado={productoSeleccionado}
+            cantidadUnidades={cantidadUnidades}
             setCantidadUnidades={
               setCantidadUnidades
             }

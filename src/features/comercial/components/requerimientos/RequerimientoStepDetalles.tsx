@@ -32,9 +32,15 @@ import type {
 
 import type { ProductType } from "./RequerimientoStepProducto";
 import { Select } from "@/components/ui";
+import { useCuentasComerciales } from "@/features/comercial/comercial.hooks";
 
 interface RequerimientoStepDetallesProps {
   product: ProductType;
+
+  // Cliente
+  esProductoNuevo: boolean;
+  cuentaComercialId: number | null;
+  setCuentaComercialId: (value: number | null) => void;
 
   // Cantidad solicitada
   cantidadUnidades: string;
@@ -271,6 +277,9 @@ export default function RequerimientoStepDetalles(
 ) {
   const {
     product,
+    esProductoNuevo,
+    cuentaComercialId,
+    setCuentaComercialId,
     cantidadUnidades,
     setCantidadUnidades,
     cantidadKg,
@@ -344,6 +353,7 @@ export default function RequerimientoStepDetalles(
     setCaraImpresion,
   } = props;
 
+  const { data: cuentas = [] } = useCuentasComerciales();
   const [fuelleDerechoEditado, setFuelleDerechoEditado] = useState(false);
   const [mostrarAvanzado, setMostrarAvanzado] = useState(false);
   const [mostrarOtras, setMostrarOtras] = useState(false);
@@ -531,6 +541,62 @@ export default function RequerimientoStepDetalles(
           del producto. Solo completa lo que conozcas.
         </p>
       </div>
+      {esProductoNuevo && (
+        <Section
+          icon={Package}
+          title="Cliente"
+          description="Selecciona el cliente para quien se está creando este requerimiento."
+        >
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              Cliente
+            </label>
+
+            <select
+              value={cuentaComercialId ?? ""}
+              onChange={(event) => {
+                const value = event.target.value;
+
+                setCuentaComercialId(
+                  value ? Number(value) : null
+                );
+              }}
+              className={inputClass}
+            >
+              <option value="">
+                Seleccionar cliente
+              </option>
+
+              {cuentas.map((cuenta) => (
+              <option
+                key={cuenta.id}
+                value={cuenta.id}
+              >
+                {cuenta.razon_social
+                  ? `${cuenta.razon_social} — ${cuenta.nombres ?? ""} ${cuenta.apellido_paterno ?? ""}`.trim()
+                  : `${cuenta.nombres ?? ""} ${cuenta.apellido_paterno ?? ""}`.trim()}
+              </option>
+            ))}
+            </select>
+
+            <button
+              type="button"
+              className="
+          mt-3 inline-flex items-center
+          rounded-lg border border-border
+          px-3 py-2
+          text-sm font-medium
+          hover:bg-muted/40 
+        "
+              onClick={() => {
+                // TODO: conectar modal Nuevo Cliente
+              }}
+            >
+              + Nuevo cliente
+            </button>
+          </div>
+        </Section>
+      )}
 
       {/* 1. CANTIDAD */}
       <Section
@@ -561,7 +627,7 @@ export default function RequerimientoStepDetalles(
       </Section>
 
       {/* 2. INFORMACIÓN */}
-      
+
       <Section
         icon={Palette}
         title="Características generales"
@@ -1080,17 +1146,17 @@ export default function RequerimientoStepDetalles(
               ]}
             />
             <Field
-                  label="Cara Impresion"
-                  value={caraImpresion}
-                  onChange={(v) => setCaraImpresion(v as CaraImpresion | "")}
-                  type="select"
-                  options={[
-                    { value: "", label: "Seleccionar" },
-                    { value: "anverso", label: "Anverso" },
-                    { value: "reverso", label: "Reverso" },
-                    { value: "ambas", label: "Ambas" },
-                  ]}
-                />
+              label="Cara Impresion"
+              value={caraImpresion}
+              onChange={(v) => setCaraImpresion(v as CaraImpresion | "")}
+              type="select"
+              options={[
+                { value: "", label: "Seleccionar" },
+                { value: "anverso", label: "Anverso" },
+                { value: "reverso", label: "Reverso" },
+                { value: "ambas", label: "Ambas" },
+              ]}
+            />
             <div className="sm:col-span-2">
               <Field
                 label="Tratamiento de impresión"
@@ -1155,7 +1221,7 @@ export default function RequerimientoStepDetalles(
                   suffix="cm"
                   type="number"
                 />
-                
+
               </div>
             )}
           </div>

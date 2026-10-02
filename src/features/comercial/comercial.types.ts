@@ -48,7 +48,7 @@ export interface CuentaComercial {
     tipo_persona: TipoPersona;
     razon_social: string
 
-    identificacion: number;
+    codigo_cliente: number;
     documento_identidad: DocumentoIdentidad | null;
     numero_documento: string;
 
