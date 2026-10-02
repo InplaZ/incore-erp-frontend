@@ -287,6 +287,12 @@ export const createApiClient = (options: ApiClientOptions = {}): ApiClient => {
 
       const apiError = normalizeApiError(error, {
         status,
+        message: axios.isAxiosError(error)
+          ? error.response?.data?.mensaje
+          : undefined,
+        details: axios.isAxiosError(error)
+          ? error.response?.data
+          : undefined,
       });
 
       if (isDev) {

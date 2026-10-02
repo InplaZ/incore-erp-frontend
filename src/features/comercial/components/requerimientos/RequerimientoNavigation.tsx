@@ -67,8 +67,8 @@ export default function RequerimientoNavigation({
             <Check className="h-4 w-4" />
 
             {submitting
-              ? "Registrando..."
-              : "Registrar requerimiento"}
+              ? "Analizando..."
+              : "Analizar viabilidad"}
           </button>
         )}
       </div>

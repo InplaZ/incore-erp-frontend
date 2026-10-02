@@ -4,8 +4,6 @@
 //Decide que paso mostrar step1, ....
 /////////////////////////
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-
 import Toast from "@/components/ui/Toast";
 import {
   useCuentasComerciales,
@@ -42,21 +40,24 @@ import type {
   ProductoBusquedaResultado,
 } from "../comercial.types";
 
-import {
-  crearRequerimiento,
-  type RequerimientoFormData,
-} from "@/features/comercial/components/requerimientos/requerimiento.service";
+import type { EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
+import { useEvaluarViabilidad } from "@/features/viabilidad/viabilidad.hook";
 
 export type RequirementStep = 1 | 2 | 3 | 4 | 5 ;
 
 export default function RequerimientosPage() {
-  const navigate = useNavigate();
   const [step, setStep] = useState<RequirementStep>(1);
   /*
    * Cliente
    */
   const [cuentaComercialId, setCuentaComercialId] =
     useState<number | null>(null);
+
+  /**
+   * Viabilidad
+   */
+  const [resultadoViabilidad, setResultadoViabilidad] =
+    useState<EvaluarViabilidadResponse | null>(null)
 
   /*
    * Producto
@@ -75,7 +76,15 @@ export default function RequerimientosPage() {
 
   const [showConfirmacionModal, setShowConfirmacionModal] =
     useState(false);
+  /*
+   * Características generales
+   */
 
+  /**
+   * Evaluar viabilidad
+   */
+  const evaluarViabilidad = useEvaluarViabilidad();
+  
   /*
    * Características generales
    */
@@ -216,6 +225,15 @@ export default function RequerimientosPage() {
 
   //TOAST
   const [toast, setToast] = useState(false);
+  const [toastTitle, setToastTitle] = useState("");
+  const [toastDescription, setToastDescription] = useState("");
+  
+  const mostrarToast = (title: string, description: string) => {
+    setToastTitle(title);
+    setToastDescription(description);
+    setToast(true);
+  };
+  
   /*
    * Cliente seleccionado
    *
@@ -253,7 +271,7 @@ export default function RequerimientosPage() {
       (current) =>
         Math.min(
           current + 1,
-          6,
+          5,
         ) as RequirementStep,
     );
   };
@@ -455,110 +473,58 @@ export default function RequerimientosPage() {
     setObservaciones("");
   };
 
-  /*
-   * Todavía no hacemos los POST.
-   * Primero terminamos la estructura visual.
-   */
-  const handleSubmit = async () => {
+  //HANDLE PARA VIABILIDAD
+  const handleAnalizarViabilidad = async () => {
     try {
-      if (!cuentaComercialId) {
-        throw new Error(
-          "Debe seleccionar un cliente.",
+      if (!productoSeleccionado) {
+        mostrarToast(
+          "Producto requerido",
+          "Debe seleccionar un producto antes de analizar la viabilidad."
         );
+        return;
       }
 
-      if (!categoriaSeleccionada) {
-        throw new Error(
-          "No se encontró una categoría de producto.",
+      if (esProductoNuevo) {
+        mostrarToast(
+          "Producto nuevo",
+          "La evaluación de productos nuevos requiere una versión de especificación y evaluación comercial."
         );
+        return;
       }
 
-      if (!product) {
-        throw new Error(
-          "Debe seleccionar un tipo de producto.",
+      const resultado = await evaluarViabilidad.mutateAsync({
+        producto_version: productoSeleccionado.version_id,
+      });
+
+      console.log("Resultado viabilidad:", resultado);
+
+      setResultadoViabilidad(resultado);
+
+      if (resultado.viable_global) {
+        mostrarToast(
+          "Producto viable",
+          "El producto es técnicamente viable."
+        );
+      } else {
+        mostrarToast(
+          "Producto no viable",
+          "El producto no es técnicamente viable."
         );
       }
-
-      const formData: RequerimientoFormData = {
-        cuentaComercialId,
-        product,
-        categoriaProductoId:
-          categoriaSeleccionada.id,
-
-        descripcion,
-        material,
-        micraje,
-        colorBolsa,
-        opacidad,
-        aptoAlimento,
-        tratamientosAcabadosEspeciales,
-        variantesColor,
-
-        impresion,
-        colorImpresion,
-        tipoImpresion,
-        tratamientoImpresion,
-        posicionImpresion,
-        caraImpresion,
-
-        distanciaImpresionSuperior,
-        distanciaImpresionInferior,
-        distanciaImpresionIzquierda,
-        distanciaImpresionDerecha,
-
-        otrasCaracteristicas,
-
-        anchoDoblado,
-        anchoDesdoblado,
-        largoDoblado,
-        largoDesdoblado,
-
-        fuelle,
-        fuelleIzquierdo,
-        fuelleDerecho,
-        fuelleInferior,
-        fuelleSuperior,
-
-        tipoTroquel,
-        tipoSello,
-        capas,
-        tipoPestana,
-
-        cantidadUnidades,
-        cantidadKg,
-        prioridad,
-        fechaEntrega,
-        lugarEntrega,
-        observaciones,
-
-        anchoBobina,
-        diametro,
-        diametroNucleo,
-        tipoNucleo,
-        peso,
-        longitud,
-      };
-
-      const resultado = await crearRequerimiento(formData);
-
-      console.log(
-        "Requerimiento creado correctamente:",
-        resultado,
-      );
-
-      setToast(true);
-
-      setTimeout(() => {
-        navigate("/comercial");
-      }, 1500);
 
     } catch (error) {
       console.error(
-        "Error al registrar requerimiento:",
-        error,
+        "Error al evaluar viabilidad:",
+        error
+      );
+
+      mostrarToast(
+        "Error",
+        "No se pudo evaluar la viabilidad del producto."
       );
     }
   };
+
   return (
     <div className="space-y-6">
       {/* Encabezado */}
@@ -873,7 +839,8 @@ export default function RequerimientosPage() {
         onNext={nextStep}
         onPrevious={previousStep}
         onCancel={resetWizard}
-        onSubmit={handleSubmit}
+        onSubmit={handleAnalizarViabilidad}
+        submitting={evaluarViabilidad.isPending}
       />
 
       {/* Modal de confirmación de producto */}
@@ -890,8 +857,8 @@ export default function RequerimientosPage() {
 
       <Toast
         open={toast}
-        title="Requerimiento registrado"
-        description="Se registró automáticamente la actividad de seguimiento."
+        title={toastTitle}
+        description={toastDescription}
         onClose={() => setToast(false)}
       />
     </div>
