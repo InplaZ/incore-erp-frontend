@@ -4,6 +4,7 @@ import { productosCategoriasApi, productosApi } from "./productos.api";
 
 import type {
   BuscarSimilaresResponse,
+  ProductoVersion,
 } from "@/features/comercial/comercial.types";
 
 // ============================================================
@@ -101,5 +102,41 @@ export function useBuscarProductosSimilares() {
   }>({
     mutationFn: (data) =>
       productosApi.buscarSimilares(data),
+  });
+}
+
+export function useUpdateProductoVersion() {
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<ProductoVersion>;
+    }) => productosApi.updateVersion(id, data),
+  });
+}
+
+export function useUpdateEspecificacionBolsa() {
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Record<string, unknown>;
+    }) => productosApi.updateEspecificacionBolsa(id, data),
+  });
+}
+
+export function useUpdateEspecificacionBobina() {
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Record<string, unknown>;
+    }) => productosApi.updateEspecificacionBobina(id, data),
   });
 }

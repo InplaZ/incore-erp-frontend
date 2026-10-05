@@ -26,44 +26,32 @@ export const productosCategoriasApi = {
 // ============================================================
 
 export const productosApi = {
-
-  // ----------------------------------------------------------
-  // Listar productos
-  // GET /productos/productos/
-  // ----------------------------------------------------------
-
   list: async (): Promise<PaginatedResponse<Producto>> =>
     api.get("/productos/productos/"),
-
-  // ----------------------------------------------------------
-  // Obtener producto
-  // GET /productos/productos/{id}/
-  // ----------------------------------------------------------
 
   get: async (id: number): Promise<Producto> =>
     api.get(`/productos/productos/${id}/`),
 
-  // ----------------------------------------------------------
-  // Obtener versión de producto
-  // GET /productos/versiones/{id}/
-  // ----------------------------------------------------------
-
   getVersion: async (id: number): Promise<ProductoVersion> =>
     api.get(`/productos/versiones/${id}/`),
 
-  // ----------------------------------------------------------
-  // Buscar productos del catálogo
-  //
-  // GET /productos/busqueda-productos/catalogo/
-  //
-  // Parámetros:
-  // categoria
-  // q
-  // material
-  // micraje
-  // capas
-  // impresion
-  // ----------------------------------------------------------
+  updateVersion: async (
+    id: number,
+    data: Partial<ProductoVersion>
+  ): Promise<ProductoVersion> =>
+    api.patch(`/productos/versiones/${id}/`, data),
+
+  updateEspecificacionBolsa: async (
+    id: number,
+    data: Record<string, unknown>
+  ) =>
+    api.patch(`/productos/especificaciones-bolsa/${id}/`, data),
+
+  updateEspecificacionBobina: async (
+    id: number,
+    data: Record<string, unknown>
+  ) =>
+    api.patch(`/productos/especificaciones-bobina/${id}/`, data),
 
   buscarCatalogo: async (params: {
     categoria?: string;
@@ -73,31 +61,11 @@ export const productosApi = {
     capas?: string;
     impresion?: boolean;
   }): Promise<BuscarCatalogoResponse> =>
-    api.get(
-      "/productos/busqueda-productos/catalogo/",
-      {
-        params,
-      }
-    ),
-
-  // ----------------------------------------------------------
-  // Buscar productos similares
-  //
-  // POST /productos/busqueda-productos/buscar_similares/
-  //
-  // Body:
-  // {
-  //   especificacion_producto_id?: number;
-  //   especificacion_producto_solicitado_version_id?: number;
-  // }
-  // ----------------------------------------------------------
+    api.get("/productos/busqueda-productos/catalogo/", { params }),
 
   buscarSimilares: async (data: {
     especificacion_producto_id?: number;
     especificacion_producto_solicitado_version_id?: number;
   }): Promise<BuscarSimilaresResponse> =>
-    api.post(
-      "/productos/busqueda-productos/buscar_similares/",
-      data
-    ),
+    api.post("/productos/busqueda-productos/buscar_similares/", data),
 };

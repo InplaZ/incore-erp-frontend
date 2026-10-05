@@ -24,7 +24,14 @@ import type {
   CaraImpresion,
   TipoPestana,
 } from "../comercial.types";
-import { useProductosCategorias } from "@/features/productos/productos.hooks";
+import { 
+  useProductosCategorias,
+  useBuscarProductosCatalogo,
+  useBuscarProductosSimilares,
+  useUpdateProductoVersion,
+  useUpdateEspecificacionBolsa,
+  useUpdateEspecificacionBobina,
+ } from "@/features/productos/productos.hooks";
 import RequerimientoSteps from "../components/requerimientos/RequerimientoSteps";
 import RequerimientoStepProducto, {
   type ProductType,
@@ -43,7 +50,9 @@ import type {
 import type { EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
 import { useEvaluarViabilidad } from "@/features/viabilidad/viabilidad.hook";
 
-export type RequirementStep = 1 | 2 | 3 | 4 | 5 ;
+import ViabilidadAnalizando from "@/features/viabilidad/requerimientos/ViabilidadAnalizando";
+import ViabilidadResultado from "@/features/viabilidad/requerimientos/ViabilidadResultado";
+export type RequirementStep = 1 | 2 | 3 | 4 | 5;
 
 export default function RequerimientosPage() {
   const [step, setStep] = useState<RequirementStep>(1);
@@ -58,6 +67,14 @@ export default function RequerimientosPage() {
    */
   const [resultadoViabilidad, setResultadoViabilidad] =
     useState<EvaluarViabilidadResponse | null>(null)
+
+  const [errorViabilidad, setErrorViabilidad] =
+    useState<string | null>(null);
+  /**
+   * Análisis viabilidad
+   */
+  const [analizandoViabilidad, setAnalizandoViabilidad] =
+    useState(false);
 
   /*
    * Producto
@@ -84,7 +101,10 @@ export default function RequerimientosPage() {
    * Evaluar viabilidad
    */
   const evaluarViabilidad = useEvaluarViabilidad();
-  
+  const actualizarProductoVersion = useUpdateProductoVersion();
+  const actualizarEspecificacionBolsa = useUpdateEspecificacionBolsa();
+  const actualizarEspecificacionBobina = useUpdateEspecificacionBobina();
+
   /*
    * Características generales
    */
@@ -227,13 +247,13 @@ export default function RequerimientosPage() {
   const [toast, setToast] = useState(false);
   const [toastTitle, setToastTitle] = useState("");
   const [toastDescription, setToastDescription] = useState("");
-  
+
   const mostrarToast = (title: string, description: string) => {
     setToastTitle(title);
     setToastDescription(description);
     setToast(true);
   };
-  
+
   /*
    * Cliente seleccionado
    *
@@ -293,7 +313,7 @@ export default function RequerimientosPage() {
     setProductoSeleccionado(producto);
     setShowConfirmacionModal(true);
   };
-  
+
   const cargarProductoExistente = (
     producto: ProductoBusquedaResultado
   ) => {
@@ -370,8 +390,8 @@ export default function RequerimientosPage() {
       );
     }
   };
-  
-  
+
+
 
   /*
   * CODIGO PARA NAVEGAR Y CONFIRMAR EL PRODUCTO EXISTENTE SELECCIONADO
@@ -474,6 +494,19 @@ export default function RequerimientosPage() {
   };
 
   //HANDLE PARA VIABILIDAD
+  const guardarVersionProducto = async () => {
+    if (!productoSeleccionado) {
+      throw new Error("No hay un producto seleccionado.");
+    }
+
+    await actualizarProductoVersion.mutateAsync({
+      id: productoSeleccionado.version_id,
+      data: {
+        material,
+        capas: capas || undefined,
+      },
+    });
+  };
   const handleAnalizarViabilidad = async () => {
     try {
       if (!productoSeleccionado) {
@@ -492,6 +525,32 @@ export default function RequerimientosPage() {
         return;
       }
 
+      // Limpiar resultado anterior y mostrar estado de análisis
+      setResultadoViabilidad(null);
+      setErrorViabilidad(null);
+
+      //Mostrar pantalla de análisis
+      setAnalizandoViabilidad(true);
+
+      console.log(
+        "PRODUCTO SELECCIONADO:",
+        productoSeleccionado
+      );
+
+      console.log(
+        "ESPECIFICACIÓN BOLSA:",
+        productoSeleccionado.especificacion_bolsa
+      );
+
+      console.log(
+        "ESPECIFICACIÓN BOBINA:",
+        productoSeleccionado.especificacion_bobina
+      );
+
+      // Primero guardamos la especificación completada
+      await guardarVersionProducto();
+
+      // Luego evaluamos la viabilidad con los datos actualizados
       const resultado = await evaluarViabilidad.mutateAsync({
         producto_version: productoSeleccionado.version_id,
       });
@@ -500,28 +559,21 @@ export default function RequerimientosPage() {
 
       setResultadoViabilidad(resultado);
 
-      if (resultado.viable_global) {
-        mostrarToast(
-          "Producto viable",
-          "El producto es técnicamente viable."
-        );
-      } else {
-        mostrarToast(
-          "Producto no viable",
-          "El producto no es técnicamente viable."
-        );
-      }
-
     } catch (error) {
       console.error(
         "Error al evaluar viabilidad:",
         error
       );
 
-      mostrarToast(
-        "Error",
-        "No se pudo evaluar la viabilidad del producto."
-      );
+      const mensaje =
+        error instanceof Error
+          ? error.message
+          : "No se pudo evaluar la viabilidad del producto";
+
+      setErrorViabilidad(mensaje);
+
+    } finally {
+      setAnalizandoViabilidad(false);
     }
   };
 
@@ -543,305 +595,289 @@ export default function RequerimientosPage() {
 
       {/* Contenido del paso */}
       <div className="min-h-[500px] rounded-xl border border-border bg-card p-6">
-        {/*
-        {step === 1 && (
-          <RequerimientoStepCliente
-            cuentaComercialId={cuentaComercialId}
-            setCuentaComercialId={
-              setCuentaComercialId
-            }
+        {analizandoViabilidad ? (
+          <ViabilidadAnalizando />
+
+        ) : resultadoViabilidad ? (
+          <ViabilidadResultado
+            resultado={resultadoViabilidad}
+            onContinuarCotizacion={() => {
+              // Luego implementaremos esta acción
+              console.log("Continuar a cotización");
+            }}
           />
-        )}
-      */}
-        {step === 1 && (
-          <RequerimientoStepProducto
-            product={product}
-            setProduct={setProduct}
-            onNext={nextStep}
+
+        ) : errorViabilidad ? (
+          <ViabilidadResultado
+            error={errorViabilidad}
+            onCompletarEspecificacion={() => {
+              setErrorViabilidad(null);
+              setStep(3);
+            }}
           />
-        )}
 
-        {step === 2 && (
-          <RequerimientoStepBusquedaProducto
-            product={product}
-            onProductSelect={handleProductoSelect}
-            onCreateNew={handleCrearProductoNuevo}
-          />
-        )}
+        ) : (
+          <>
+            {step === 1 && (
+              <RequerimientoStepProducto
+                product={product}
+                setProduct={setProduct}
+                onNext={nextStep}
+              />
+            )}
 
-        {step === 3 && (
-          <RequerimientoStepDetalles
-            product={product}
-            esProductoNuevo={esProductoNuevo}
-            cuentaComercialId={cuentaComercialId}
-            setCuentaComercialId={setCuentaComercialId}
-            cantidadUnidades={cantidadUnidades}
-            setCantidadUnidades={setCantidadUnidades}
-            cantidadKg={cantidadKg}
-            setCantidadKg={setCantidadKg}
+            {step === 2 && (
+              <RequerimientoStepBusquedaProducto
+                product={product}
+                onProductSelect={handleProductoSelect}
+                onCreateNew={handleCrearProductoNuevo}
+              />
+            )}
 
-            /*
-             * Características generales
-             */
-            descripcion={descripcion}
-            setDescripcion={setDescripcion}
+            {step === 3 && (
+              <RequerimientoStepDetalles
+                product={product}
+                esProductoNuevo={esProductoNuevo}
+                cuentaComercialId={cuentaComercialId}
+                setCuentaComercialId={setCuentaComercialId}
+                cantidadUnidades={cantidadUnidades}
+                setCantidadUnidades={setCantidadUnidades}
+                cantidadKg={cantidadKg}
+                setCantidadKg={setCantidadKg}
 
-            material={material}
-            setMaterial={setMaterial}
+                descripcion={descripcion}
+                setDescripcion={setDescripcion}
 
-            micraje={micraje}
-            setMicraje={setMicraje}
+                material={material}
+                setMaterial={setMaterial}
 
-            colorBolsa={colorBolsa}
-            setColorBolsa={setColorBolsa}
+                micraje={micraje}
+                setMicraje={setMicraje}
 
-            variantesColor={variantesColor}
-            setVariantesColor={setVariantesColor}
+                colorBolsa={colorBolsa}
+                setColorBolsa={setColorBolsa}
 
-            opacidad={opacidad}
-            setOpacidad={setOpacidad}
+                variantesColor={variantesColor}
+                setVariantesColor={setVariantesColor}
 
-            tratamientosAcabadosEspeciales={
-              tratamientosAcabadosEspeciales
-            }
-            setTratamientosAcabadosEspeciales={
-              setTratamientosAcabadosEspeciales
-            }
+                opacidad={opacidad}
+                setOpacidad={setOpacidad}
 
-            aptoAlimento={aptoAlimento}
-            setAptoAlimento={setAptoAlimento}
+                tratamientosAcabadosEspeciales={
+                  tratamientosAcabadosEspeciales
+                }
+                setTratamientosAcabadosEspeciales={
+                  setTratamientosAcabadosEspeciales
+                }
 
+                aptoAlimento={aptoAlimento}
+                setAptoAlimento={setAptoAlimento}
 
-            /*
-             * Impresión
-             */
-            impresion={impresion}
-            setImpresion={setImpresion}
+                impresion={impresion}
+                setImpresion={setImpresion}
 
-            colorImpresion={colorImpresion}
-            setColorImpresion={setColorImpresion}
+                colorImpresion={colorImpresion}
+                setColorImpresion={setColorImpresion}
 
-            tipoImpresion={tipoImpresion}
-            setTipoImpresion={setTipoImpresion}
+                tipoImpresion={tipoImpresion}
+                setTipoImpresion={setTipoImpresion}
 
-            tratamientoImpresion={
-              tratamientoImpresion
-            }
-            setTratamientoImpresion={
-              setTratamientoImpresion
-            }
+                tratamientoImpresion={tratamientoImpresion}
+                setTratamientoImpresion={setTratamientoImpresion}
 
-            posicionImpresion={posicionImpresion}
-            setPosicionImpresion={setPosicionImpresion}
+                posicionImpresion={posicionImpresion}
+                setPosicionImpresion={setPosicionImpresion}
 
-            distanciaImpresionSuperior={distanciaImpresionSuperior}
-            setDistanciaImpresionSuperior={setDistanciaImpresionSuperior}
+                distanciaImpresionSuperior={
+                  distanciaImpresionSuperior
+                }
+                setDistanciaImpresionSuperior={
+                  setDistanciaImpresionSuperior
+                }
 
-            distanciaImpresionInferior={distanciaImpresionInferior}
-            setDistanciaImpresionInferior={setDistanciaImpresionInferior}
+                distanciaImpresionInferior={
+                  distanciaImpresionInferior
+                }
+                setDistanciaImpresionInferior={
+                  setDistanciaImpresionInferior
+                }
 
-            distanciaImpresionIzquierda={distanciaImpresionIzquierda}
-            setDistanciaImpresionIzquierda={setDistanciaImpresionIzquierda}
+                distanciaImpresionIzquierda={
+                  distanciaImpresionIzquierda
+                }
+                setDistanciaImpresionIzquierda={
+                  setDistanciaImpresionIzquierda
+                }
 
-            distanciaImpresionDerecha={distanciaImpresionDerecha}
-            setDistanciaImpresionDerecha={setDistanciaImpresionDerecha}
+                distanciaImpresionDerecha={
+                  distanciaImpresionDerecha
+                }
+                setDistanciaImpresionDerecha={
+                  setDistanciaImpresionDerecha
+                }
 
-            caraImpresion={caraImpresion}
-            setCaraImpresion={setCaraImpresion}
+                caraImpresion={caraImpresion}
+                setCaraImpresion={setCaraImpresion}
 
-            otrasCaracteristicas={
-              otrasCaracteristicas
-            }
-            setOtrasCaracteristicas={
-              setOtrasCaracteristicas
-            }
-            /*
-             * Dimensiones de bolsa
-             */
-            anchoDoblado={anchoDoblado}
-            setAnchoDoblado={setAnchoDoblado}
+                otrasCaracteristicas={otrasCaracteristicas}
+                setOtrasCaracteristicas={setOtrasCaracteristicas}
 
-            anchoDesdoblado={anchoDesdoblado}
-            setAnchoDesdoblado={
-              setAnchoDesdoblado
-            }
+                anchoDoblado={anchoDoblado}
+                setAnchoDoblado={setAnchoDoblado}
 
-            largoDoblado={largoDoblado}
-            setLargoDoblado={setLargoDoblado}
+                anchoDesdoblado={anchoDesdoblado}
+                setAnchoDesdoblado={setAnchoDesdoblado}
 
-            largoDesdoblado={largoDesdoblado}
-            setLargoDesdoblado={
-              setLargoDesdoblado
-            }
+                largoDoblado={largoDoblado}
+                setLargoDoblado={setLargoDoblado}
 
-            /*
-             * Fuelle
-             */
-            fuelle={fuelle}
-            setFuelle={setFuelle}
+                largoDesdoblado={largoDesdoblado}
+                setLargoDesdoblado={setLargoDesdoblado}
 
-            fuelleIzquierdo={
-              fuelleIzquierdo
-            }
-            setFuelleIzquierdo={
-              setFuelleIzquierdo
-            }
+                fuelle={fuelle}
+                setFuelle={setFuelle}
 
-            fuelleDerecho={fuelleDerecho}
-            setFuelleDerecho={
-              setFuelleDerecho
-            }
+                fuelleIzquierdo={fuelleIzquierdo}
+                setFuelleIzquierdo={setFuelleIzquierdo}
 
-            fuelleInferior={fuelleInferior}
-            setFuelleInferior={
-              setFuelleInferior
-            }
+                fuelleDerecho={fuelleDerecho}
+                setFuelleDerecho={setFuelleDerecho}
 
-            fuelleSuperior={fuelleSuperior}
-            setFuelleSuperior={
-              setFuelleSuperior
-            }
+                fuelleInferior={fuelleInferior}
+                setFuelleInferior={setFuelleInferior}
 
-            capas={capas}
-            setCapas={setCapas}
+                fuelleSuperior={fuelleSuperior}
+                setFuelleSuperior={setFuelleSuperior}
 
-            /*
-             * Terminaciones de bolsa
-             */
-            tipoTroquel={tipoTroquel}
-            setTipoTroquel={setTipoTroquel}
+                capas={capas}
+                setCapas={setCapas}
 
-            tipoSello={tipoSello}
-            setTipoSello={setTipoSello}
+                tipoTroquel={tipoTroquel}
+                setTipoTroquel={setTipoTroquel}
 
-            tipoPestana={tipoPestana}
-            setTipoPestana={setTipoPestana}
+                tipoSello={tipoSello}
+                setTipoSello={setTipoSello}
 
-            // Características de bobina
-            anchoBobina={anchoBobina}
-            setAnchoBobina={setAnchoBobina}
+                tipoPestana={tipoPestana}
+                setTipoPestana={setTipoPestana}
 
-            diametro={diametro}
-            setDiametro={setDiametro}
+                anchoBobina={anchoBobina}
+                setAnchoBobina={setAnchoBobina}
 
-            diametroNucleo={diametroNucleo}
-            setDiametroNucleo={setDiametroNucleo}
+                diametro={diametro}
+                setDiametro={setDiametro}
 
-            tipoNucleo={tipoNucleo}
-            setTipoNucleo={setTipoNucleo}
+                diametroNucleo={diametroNucleo}
+                setDiametroNucleo={setDiametroNucleo}
 
-            peso={peso}
-            setPeso={setPeso}
+                tipoNucleo={tipoNucleo}
+                setTipoNucleo={setTipoNucleo}
 
-            longitud={longitud}
-            setLongitud={setLongitud}
-          />
-        )}
+                peso={peso}
+                setPeso={setPeso}
 
-        {step === 4 && (
-          <RequerimientoStepEntrega
-            cuentaComercialId={cuentaComercialId}
-            setCuentaComercialId={setCuentaComercialId}
-            productoSeleccionado={productoSeleccionado}
-            cantidadUnidades={cantidadUnidades}
-            setCantidadUnidades={
-              setCantidadUnidades
-            }
+                longitud={longitud}
+                setLongitud={setLongitud}
+              />
+            )}
 
-            cantidadKg={cantidadKg}
-            setCantidadKg={setCantidadKg}
+            {step === 4 && (
+              <RequerimientoStepEntrega
+                cuentaComercialId={cuentaComercialId}
+                setCuentaComercialId={setCuentaComercialId}
+                productoSeleccionado={productoSeleccionado}
+                cantidadUnidades={cantidadUnidades}
+                setCantidadUnidades={setCantidadUnidades}
+                cantidadKg={cantidadKg}
+                setCantidadKg={setCantidadKg}
+                prioridad={prioridad}
+                setPrioridad={setPrioridad}
+                fechaEntrega={fechaEntrega}
+                setFechaEntrega={setFechaEntrega}
+                lugarEntrega={lugarEntrega}
+                setLugarEntrega={setLugarEntrega}
+                observaciones={observaciones}
+                setObservaciones={setObservaciones}
+              />
+            )}
 
-            prioridad={prioridad}
-            setPrioridad={setPrioridad}
-
-            fechaEntrega={fechaEntrega}
-            setFechaEntrega={setFechaEntrega}
-
-            lugarEntrega={lugarEntrega}
-            setLugarEntrega={setLugarEntrega}
-
-            observaciones={observaciones}
-            setObservaciones={
-              setObservaciones
-            }
-          />
-        )}
-
-        {step === 5 && (
-          <RequerimientoStepConfirmacion
-            cuentaSeleccionada={cuentaSeleccionada}
-            product={product}
-
-            cantidadUnidades={cantidadUnidades}
-            cantidadKg={cantidadKg}
-            prioridad={prioridad}
-            fechaEntrega={fechaEntrega}
-
-            descripcion={descripcion}
-            observaciones={observaciones}
-            lugarEntrega={lugarEntrega}
-
-            material={material}
-            aptoAlimento={aptoAlimento}
-            micraje={micraje}
-            colorBolsa={colorBolsa}
-            opacidad={opacidad}
-            capas={capas}
-
-            variantesColor={variantesColor}
-
-            tratamientosAcabadosEspeciales={
-              tratamientosAcabadosEspeciales
-            }
-
-            impresion={impresion}
-            colorImpresion={colorImpresion}
-            tipoImpresion={tipoImpresion}
-            tratamientoImpresion={tratamientoImpresion}
-            caraImpresion={caraImpresion}
-            posicionImpresion={posicionImpresion}
-            distanciaImpresionSuperior={distanciaImpresionSuperior}
-            distanciaImpresionInferior={distanciaImpresionInferior}
-            distanciaImpresionIzquierda={distanciaImpresionIzquierda}
-            distanciaImpresionDerecha={distanciaImpresionDerecha}
-
-            otrasCaracteristicas={otrasCaracteristicas}
-
-            anchoDoblado={anchoDoblado}
-            anchoDesdoblado={anchoDesdoblado}
-            largoDoblado={largoDoblado}
-            largoDesdoblado={largoDesdoblado}
-
-            fuelle={fuelle}
-            fuelleIzquierdo={fuelleIzquierdo}
-            fuelleDerecho={fuelleDerecho}
-            fuelleInferior={fuelleInferior}
-            fuelleSuperior={fuelleSuperior}
-
-            tipoTroquel={tipoTroquel}
-            tipoSello={tipoSello}
-            tipoPestana={tipoPestana}
-
-            // Bobina
-            anchoBobina={anchoBobina}
-            diametro={diametro}
-            diametroNucleo={diametroNucleo}
-            tipoNucleo={tipoNucleo}
-            peso={peso}
-            longitud={longitud}
-          />
+            {step === 5 && (
+              <RequerimientoStepConfirmacion
+                cuentaSeleccionada={cuentaSeleccionada}
+                product={product}
+                cantidadUnidades={cantidadUnidades}
+                cantidadKg={cantidadKg}
+                prioridad={prioridad}
+                fechaEntrega={fechaEntrega}
+                descripcion={descripcion}
+                observaciones={observaciones}
+                lugarEntrega={lugarEntrega}
+                material={material}
+                aptoAlimento={aptoAlimento}
+                micraje={micraje}
+                colorBolsa={colorBolsa}
+                opacidad={opacidad}
+                capas={capas}
+                variantesColor={variantesColor}
+                tratamientosAcabadosEspeciales={
+                  tratamientosAcabadosEspeciales
+                }
+                impresion={impresion}
+                colorImpresion={colorImpresion}
+                tipoImpresion={tipoImpresion}
+                tratamientoImpresion={tratamientoImpresion}
+                caraImpresion={caraImpresion}
+                posicionImpresion={posicionImpresion}
+                distanciaImpresionSuperior={
+                  distanciaImpresionSuperior
+                }
+                distanciaImpresionInferior={
+                  distanciaImpresionInferior
+                }
+                distanciaImpresionIzquierda={
+                  distanciaImpresionIzquierda
+                }
+                distanciaImpresionDerecha={
+                  distanciaImpresionDerecha
+                }
+                otrasCaracteristicas={otrasCaracteristicas}
+                anchoDoblado={anchoDoblado}
+                anchoDesdoblado={anchoDesdoblado}
+                largoDoblado={largoDoblado}
+                largoDesdoblado={largoDesdoblado}
+                fuelle={fuelle}
+                fuelleIzquierdo={fuelleIzquierdo}
+                fuelleDerecho={fuelleDerecho}
+                fuelleInferior={fuelleInferior}
+                fuelleSuperior={fuelleSuperior}
+                tipoTroquel={tipoTroquel}
+                tipoSello={tipoSello}
+                tipoPestana={tipoPestana}
+                anchoBobina={anchoBobina}
+                diametro={diametro}
+                diametroNucleo={diametroNucleo}
+                tipoNucleo={tipoNucleo}
+                peso={peso}
+                longitud={longitud}
+              />
+            )}
+          </>
         )}
       </div>
-
+      
       {/* Navegación */}
-      <RequerimientoNavigation
-        step={step}
-        onNext={nextStep}
-        onPrevious={previousStep}
-        onCancel={resetWizard}
-        onSubmit={handleAnalizarViabilidad}
-        submitting={evaluarViabilidad.isPending}
-      />
+      {!analizandoViabilidad &&
+        !resultadoViabilidad &&
+        !errorViabilidad && (
+          <RequerimientoNavigation
+            step={step}
+            onNext={nextStep}
+            onPrevious={previousStep}
+            onCancel={resetWizard}
+            onSubmit={handleAnalizarViabilidad}
+            submitting={evaluarViabilidad.isPending}
+          />
+        )}
 
       {/* Modal de confirmación de producto */}
       {productoSeleccionado && (
