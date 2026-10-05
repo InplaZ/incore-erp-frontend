@@ -43,6 +43,7 @@ import type {
   VarianteColorSolicitada,
   VarianteColorSolicitadaCreate,
   VarianteColorSolicitadaUpdate, 
+  Moneda,
 } from "./comercial.types";
 
 // ============================================================
@@ -469,13 +470,21 @@ export const cotizacionesApi = {
   remove: async (id: number): Promise<void> => {
     await api.delete(`/cotizaciones/${id}/`);
   },
+
+  crearDesdeSolicitud: async (data: {
+    solicitud_comercial_id: number;
+    fecha_vencimiento?: string | null;
+    observaciones?: string;
+  }) => {
+    return api.post("/cotizaciones/crear_desde_solicitud/", data);
+  },
 };
+
 
 
 // ============================================================
 // VERSIONES DE COTIZACIÓN
 // ============================================================
-
 export const cotizacionesVersionesApi = {
   list: async (
     params?: ApiQueryParams,
@@ -495,10 +504,67 @@ export const cotizacionesVersionesApi = {
   create: async (
     data: CotizacionVersionCreate,
   ): Promise<CotizacionVersion> => {
-      return api.post<CotizacionVersion>(
-        "/cotizaciones-versiones/",
-        data,
-      );
+    return api.post<CotizacionVersion>(
+      "/cotizaciones-versiones/",
+      data,
+    );
+  },
+
+  crearVersion: async (
+    cotizacionId: number,
+    data?: {
+      moneda?: Moneda;
+    },
+  ) => {
+    return api.post(
+      `/cotizaciones/${cotizacionId}/crear_version/`,
+      data ?? {},
+    );
+  },
+
+  agregarDetalle: async (
+    versionId: number,
+    data: {
+      especificacion_producto_solicitado_version_id?: number | null;
+      producto_version_id?: number | null;
+      cantidad: string;
+      costo_estimado?: string | null;
+      precio_lista: string;
+      descuento_porcentaje?: string;
+    },
+  ) => {
+    return api.post(
+      `/cotizaciones-versiones/${versionId}/agregar_detalle/`,
+      data,
+    );
+  },
+
+  enviar: async (
+    versionId: number,
+  ) => {
+    return api.post(
+      `/cotizaciones-versiones/${versionId}/enviar/`,
+    );
+  },
+
+  aceptar: async (
+    versionId: number,
+    observaciones?: string,
+  ) => {
+    return api.post(
+      `/cotizaciones-versiones/${versionId}/aceptar/`,
+      { observaciones },
+    );
+  },
+
+  rechazar: async (
+    versionId: number,
+    motivo?: string,
+  ) => {
+    return api.post(
+      `/cotizaciones-versiones/${versionId}/rechazar/`,
+      { motivo },
+    );
   },
 
   update: async (
@@ -506,9 +572,9 @@ export const cotizacionesVersionesApi = {
     data: CotizacionVersionUpdate,
   ): Promise<CotizacionVersion> => {
     return api.patch<CotizacionVersion>(
-        `/cotizaciones-versiones/${id}/`,
-        data,
-      );
+      `/cotizaciones-versiones/${id}/`,
+      data,
+    );
   },
 
   remove: async (id: number): Promise<void> => {
@@ -607,6 +673,40 @@ export const pedidosApi = {
 
   remove: async (id: number): Promise<void> => {
     await api.delete(`/pedidos/${id}/`);
+  },
+  crearDesdeCotizacion: async (data: {
+    cotizacion_version_id: number;
+    fecha_entrega_comprometida?: string;
+    observaciones?: string;
+  }) => {
+    return api.post(
+      "/pedidos/crear_desde_cotizacion/",
+      data,
+    );
+  },
+
+  crearDetallesDesdeCotizacion: async (
+    pedidoId: number,
+  ) => {
+    return api.post(
+      `/pedidos/${pedidoId}/crear_detalles_desde_cotizacion/`,
+    );
+  },
+
+  confirmar: async (
+    pedidoId: number,
+    observaciones?: string,
+  ) => {
+    return api.post(
+      `/pedidos/${pedidoId}/confirmar/`,
+      { observaciones },
+    );
+  },
+
+  conDetalles: async (pedidoId: number) => {
+    return api.get(
+      `/pedidos/${pedidoId}/con_detalles/`,
+    );
   },
 };
 

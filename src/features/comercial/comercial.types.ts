@@ -766,17 +766,11 @@ export type EstadoCotizacionVersion =
 
 export interface CotizacionVersion {
   id: number;
-
   cotizacion: number;
-
   version: number;
-
   moneda: Moneda;
-
   precio_total: string;
-
   estado: EstadoCotizacionVersion;
-
   created_at: string;
   updated_at: string;
 }
@@ -807,6 +801,9 @@ export interface CotizacionDetalle {
   especificacion_producto_solicitado_version: number | null;
   producto_version: number | null;
   cantidad: string;
+  costo_estimado: string | null;
+  precio_lista: string;
+  descuento_porcentaje: string;
   precio_unitario: string;
   precio_total: string;
   created_at: string;
@@ -816,10 +813,11 @@ export interface CotizacionDetalle {
 export interface CotizacionDetalleCreate {
   cotizacion_version: number;
   especificacion_producto_solicitado_version?: number | null;
-  producto_version: number | null;
+  producto_version?: number | null;
   cantidad: string;
-  precio_unitario: string;
-  precio_total: string;
+  costo_estimado?: string | null;
+  precio_lista: string;
+  descuento_porcentaje?: string;
 }
 
 export type CotizacionDetalleUpdate =
@@ -831,25 +829,21 @@ export type CotizacionDetalleUpdate =
 // ============================================================
 
 export type EstadoPedido =
+  | "borrador"
+  | "confirmado"
+  | "en_produccion"
   | "finalizado"
-  | "en_proceso";
+  | "cancelado";
 
 export interface Pedido {
   id: number;
-
   cotizacion_version: number;
   cuenta_comercial: number;
-
   numero: string;
-
   fecha_pedido: string;
-
   estado: EstadoPedido;
-
   fecha_entrega_comprometida: string;
-
   observaciones: string;
-
   created_at: string;
   updated_at: string;
 }
@@ -879,10 +873,9 @@ export type PedidoUpdate =
 
 export interface PedidoDetalle {
   id: number;
-
   pedido: number;
   especificacion_producto_solicitado_version: number| null;
-  producto_version: number;
+  producto_version: number | null;
   cantidad: string;
   precio_unitario: string;
   precio_total: string;

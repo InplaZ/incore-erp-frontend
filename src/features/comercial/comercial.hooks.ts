@@ -33,6 +33,7 @@ import type {
   CotizacionUpdate,
   CotizacionVersionCreate,
   CotizacionVersionUpdate,
+  Moneda,
   EspecificacionBobinaSolicitadaCreate,
   EspecificacionBobinaSolicitadaUpdate,
   EspecificacionBolsaSolicitadaCreate,
@@ -947,7 +948,155 @@ export function useUpdateCotizacionDetalle() {
     },
   });
 }
+// ============================================================
+// CREAR COTIZACION DESDE 
+// ============================================================
+export function useCrearCotizacionDesdeSolicitud() {
+  const queryClient = useQueryClient();
 
+  return useMutation({
+    mutationFn: (data: {
+      solicitud_comercial_id: number;
+      fecha_vencimiento?: string | null;
+      observaciones?: string;
+    }) =>
+      cotizacionesApi.crearDesdeSolicitud(data),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: comercialQueryKeys.cotizaciones(),
+      });
+    },
+  });
+}
+export function useCrearCotizacionVersion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      cotizacionId,
+      moneda,
+    }: {
+      cotizacionId: number;
+      moneda?: Moneda;
+    }) =>
+      cotizacionesVersionesApi.crearVersion(
+        cotizacionId,
+        moneda ? { moneda } : undefined,
+      ),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.cotizacionesVersiones(),
+      });
+    },
+  });
+}
+export function useAgregarDetalleCotizacion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      versionId,
+      data,
+    }: {
+      versionId: number;
+      data: {
+        especificacion_producto_solicitado_version_id?: number | null;
+        producto_version_id?: number | null;
+        cantidad: string;
+        costo_estimado?: string | null;
+        precio_lista: string;
+        descuento_porcentaje?: string;
+      };
+    }) =>
+      cotizacionesVersionesApi.agregarDetalle(
+        versionId,
+        data,
+      ),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.cotizacionesDetalles(),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.cotizacionesVersiones(),
+      });
+    },
+  });
+}
+export function useEnviarCotizacion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (versionId: number) =>
+      cotizacionesVersionesApi.enviar(versionId),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.cotizacionesVersiones(),
+      });
+    },
+  });
+}
+export function useAceptarCotizacion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      versionId,
+      observaciones,
+    }: {
+      versionId: number;
+      observaciones?: string;
+    }) =>
+      cotizacionesVersionesApi.aceptar(
+        versionId,
+        observaciones,
+      ),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.cotizacionesVersiones(),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.cotizaciones(),
+      });
+    },
+  });
+}
+export function useRechazarCotizacion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      versionId,
+      motivo,
+    }: {
+      versionId: number;
+      motivo?: string;
+    }) =>
+      cotizacionesVersionesApi.rechazar(
+        versionId,
+        motivo,
+      ),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.cotizacionesVersiones(),
+      });
+    },
+  });
+}
 
 // ============================================================
 // PEDIDOS
@@ -1020,8 +1169,91 @@ export function useUpdatePedido() {
     },
   });
 }
+export function useCrearPedidoDesdeCotizacion() {
+  const queryClient = useQueryClient();
 
+  return useMutation({
+    mutationFn: (data: {
+      cotizacion_version_id: number;
+      fecha_entrega_comprometida?: string;
+      observaciones?: string;
+    }) =>
+      pedidosApi.crearDesdeCotizacion(data),
 
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.pedidos(),
+      });
+    },
+  });
+}
+export function useCrearDetallesDesdeCotizacion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (pedidoId: number) =>
+      pedidosApi.crearDetallesDesdeCotizacion(
+        pedidoId,
+      ),
+
+    onSuccess: (_, pedidoId) => {
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.pedido(pedidoId),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.pedidos(),
+      });
+    },
+  });
+}
+export function useConfirmarPedido() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      pedidoId,
+      observaciones,
+    }: {
+      pedidoId: number;
+      observaciones?: string;
+    }) =>
+      pedidosApi.confirmar(
+        pedidoId,
+        observaciones,
+      ),
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.pedidos(),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey:
+          comercialQueryKeys.pedido(
+            variables.pedidoId,
+          ),
+      });
+    },
+  });
+}
+export function usePedidoConDetalles(id: number) {
+  return useQuery({
+    queryKey: [
+      ...comercialQueryKeys.pedido(id),
+      "con-detalles",
+    ],
+
+    queryFn: () =>
+      pedidosApi.conDetalles(id),
+
+    enabled: !!id,
+  });
+}
 // ============================================================
 // DETALLES DE PEDIDOS
 // ============================================================
