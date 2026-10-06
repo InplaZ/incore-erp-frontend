@@ -245,7 +245,7 @@ export default function AgendaComercialPage() {
           onClick={() => navigate("/comercial/requerimientos")}
           className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
           <ClipboardList className="h-4 w-4" />
-          Nuevo Requerimiento
+          Nueva cotización
         </button>
       </div>
 
@@ -440,7 +440,7 @@ export default function AgendaComercialPage() {
           <div className="grid grid-cols-2 gap-3 p-5">
             <QuickAction
               icon={ClipboardList}
-              label="Nuevo requerimiento"
+              label="Nueva cotización"
               onClick={() => navigate("/comercial/requerimientos")}
             />
             <QuickAction

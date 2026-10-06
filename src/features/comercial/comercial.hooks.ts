@@ -34,12 +34,14 @@ import type {
   CotizacionVersionCreate,
   CotizacionVersionUpdate,
   Moneda,
+  FormalizarCotizacionWizardPayload,
   EspecificacionBobinaSolicitadaCreate,
   EspecificacionBobinaSolicitadaUpdate,
   EspecificacionBolsaSolicitadaCreate,
   EspecificacionBolsaSolicitadaUpdate,
   EspecificacionProductoSolicitadoCreate,
   EspecificacionProductoSolicitadoUpdate,
+  EspecificacionProductoSolicitadoVersionCreateRequest,
   PedidoCreate,
   PedidoDetalleCreate,
   PedidoDetalleUpdate,
@@ -959,6 +961,7 @@ export function useCrearCotizacionDesdeSolicitud() {
       solicitud_comercial_id: number;
       fecha_vencimiento?: string | null;
       observaciones?: string;
+      producto_version_id?: number | null;
     }) =>
       cotizacionesApi.crearDesdeSolicitud(data),
 
@@ -966,6 +969,20 @@ export function useCrearCotizacionDesdeSolicitud() {
       queryClient.invalidateQueries({
         queryKey: comercialQueryKeys.cotizaciones(),
       });
+    },
+  });
+}
+
+export function useFormalizarCotizacionDesdeWizard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: FormalizarCotizacionWizardPayload) =>
+      cotizacionesApi.formalizarDesdeWizard(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizaciones() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesDetalles() });
     },
   });
 }
@@ -1308,5 +1325,17 @@ export function useUpdatePedidoDetalle() {
           comercialQueryKeys.pedidosDetalles(),
       });
     },
+  });
+}
+
+export function useCrearVersionEspecificacion() {
+  return useMutation({
+    mutationFn: ({
+      solicitudId,
+      data,
+    }: {
+      solicitudId: number;
+      data: EspecificacionProductoSolicitadoVersionCreateRequest;
+    }) => especificacionesProductoApi.crearVersion(solicitudId, data),
   });
 }

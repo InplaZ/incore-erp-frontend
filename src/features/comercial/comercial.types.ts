@@ -155,6 +155,57 @@ export interface RequerimientoDetalle {
   especificacionProducto: EspecificacionProductoSolicitado | null;
   especificacionBolsa: EspecificacionBolsaSolicitada | null;
   especificacionBobina: EspecificacionBobinaSolicitada | null;
+  productosCotizados: ProductoCotizadoEnSolicitud[];
+}
+
+export interface ProductoCotizadoEnSolicitud {
+  cotizacion: Cotizacion;
+  cotizacionVersion: CotizacionVersion;
+  cotizacionDetalle: Pick<
+    CotizacionDetalle,
+    | "id"
+    | "cantidad"
+    | "costo_estimado"
+    | "precio_lista"
+    | "descuento_porcentaje"
+    | "precio_unitario"
+    | "precio_total"
+  >;
+  producto: {
+    id: number;
+    categoria: number;
+    codigo: string;
+    nombre: string;
+    descripcion: string;
+    unidad_medida: string;
+    pais_origen: string;
+    estado: string;
+    created_at: string;
+    updated_at: string;
+  };
+  categoria: ProductoCategoria;
+  productoVersion: {
+    id: number;
+    producto: number;
+    material: string;
+    capas: string | null;
+    cara_impresion: string | null;
+    tratamiento_impresion: string | null;
+    diseno: number | null;
+    apto_alimento: boolean;
+    micraje: string | null;
+    color_bolsa: string;
+    impresion: boolean;
+    color_impresion: string[];
+    tipo_impresion: string;
+    numero_version: number;
+    estado: string;
+    observaciones: string;
+    created_at: string;
+    updated_at: string;
+  };
+  especificacionBolsa: EspecificacionBolsaCatalogo | null;
+  especificacionBobina: EspecificacionBobinaCatalogo | null;
 }
 
 // ============================================================
@@ -483,6 +534,7 @@ export interface EspecificacionBolsaSolicitadaCreate {
   tipo_sello: TipoSello;
 
   pestana: string;
+  acabado_especial?: string;
 
   otras_caracteristicas?: string;
 }
@@ -932,7 +984,8 @@ export interface EspecificacionBobinaCatalogo {
   diametro_nucleo: string | number | null;
   tipo_nucleo: string;
   peso: string | number | null;
-  longitud: string | number | null;
+  longitud?: string | number | null;
+  otras_caracteristicas?: string;
 }
 
 export interface EspecificacionBolsaCatalogo {
@@ -954,6 +1007,7 @@ export interface EspecificacionBolsaCatalogo {
   pestana: TipoPestana | "";
 
   acabado_especial?: string;
+  otras_caracteristicas?: string;
 }
 
 // ============================================================
@@ -997,4 +1051,87 @@ export interface BuscarSimilaresResponse {
   exito: boolean;
   productos_similares: ProductoSimilar[];
   cantidad: number;
+}
+
+export interface CrearCotizacionResponse {
+  exito: boolean;
+  mensaje: string;
+  cotizacion: number;
+  numero: string;
+  solicitud_comercial: number;
+  estado_solicitud: string;
+}
+
+export interface CrearCotizacionVersionResponse {
+  exito: boolean;
+  mensaje: string;
+  cotizacion_version: number;
+  version: number;
+  cotizacion: number;
+  moneda: Moneda;
+  estado: string;
+  precio_total: number;
+}
+
+export interface AgregarDetalleCotizacionResponse {
+  exito: boolean;
+  mensaje: string;
+  cotizacion_detalle: number;
+  cotizacion_version: number;
+  producto_version: number | null;
+  especificacion_version: number | null;
+  cantidad: number;
+  costo_estimado: number | null;
+  precio_lista: number;
+  descuento_porcentaje: number;
+  precio_unitario: number;
+  precio_total_detalle: number;
+  precio_total_version: number;
+}
+
+export interface FormalizarCotizacionWizardPayload {
+  solicitud: Omit<SolicitudComercialCreate, "estado">;
+  tipo_producto: "bolsa" | "bobina";
+  producto_version_id?: number;
+  especificacion?: Record<string, unknown>;
+  especificacion_bolsa?: Record<string, unknown>;
+  especificacion_bobina?: Record<string, unknown>;
+  cotizacion: {
+    fecha_vencimiento?: string | null;
+    observaciones?: string;
+    moneda: Moneda;
+  };
+  detalle: {
+    cantidad: string;
+    precio_lista: string;
+    descuento_porcentaje: string;
+    costo_estimado?: string | null;
+  };
+}
+
+export interface FormalizarCotizacionWizardResponse {
+  exito: boolean;
+  solicitud_comercial: number;
+  actividad_creada: boolean;
+  cotizacion: number;
+  numero: string;
+  cotizacion_version: number;
+  especificacion_producto_solicitado_version: number | null;
+  evaluacion_viabilidad: number;
+}
+
+export interface EspecificacionProductoSolicitadoVersionCreateRequest {
+  especificacion_producto_solicitado_id: number;
+  motivo_cambio: string;
+  datos_especificacion?: Record<string, unknown>;
+}
+
+export interface CrearVersionEspecificacionResponse {
+  exito: boolean;
+  mensaje: string;
+  version_id: number;
+  version_numero: number;
+  especificacion_producto_solicitado_id: number;
+  requiere_nueva_viabilidad: boolean;
+  cambios_tecnicos: boolean;
 }

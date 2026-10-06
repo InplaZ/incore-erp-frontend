@@ -4,12 +4,22 @@ import type {
   EvaluarViabilidadPayload,
   EvaluarViabilidadResponse,
   EvaluacionViabilidad,
+  EvaluacionComercialCreate,
+  EvaluacionComercialResponse,
   AlternativasMaquinaResponse,
   SeleccionarMaquinaPayload,
   AccionViabilidadResponse,
 } from "./viabilidad.types";
 
 export const viabilidadApi = {
+  crearEvaluacionComercial: async (
+    data: EvaluacionComercialCreate,
+  ): Promise<EvaluacionComercialResponse> =>
+    api.post<EvaluacionComercialResponse>(
+      "/viabilidad/evaluacion-comercial/",
+      data,
+    ),
+
   evaluarProducto: async (
     data: EvaluarViabilidadPayload,
   ): Promise<EvaluarViabilidadResponse> => {

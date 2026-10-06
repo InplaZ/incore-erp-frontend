@@ -4,6 +4,7 @@ import { viabilidadApi } from "./viabilidad.api";
 
 import type {
   EvaluarViabilidadPayload,
+  EvaluacionComercialCreate,
   SeleccionarMaquinaPayload,
 } from "./viabilidad.types";
 
@@ -75,5 +76,12 @@ export function useSeleccionarMaquina() {
         evaluacionProcesoId,
         data,
       ),
+  });
+}
+
+export function useCrearEvaluacionComercial() {
+  return useMutation({
+    mutationFn: (data: EvaluacionComercialCreate) =>
+      viabilidadApi.crearEvaluacionComercial(data),
   });
 }

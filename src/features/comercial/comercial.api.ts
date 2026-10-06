@@ -28,6 +28,8 @@ import type {
   EspecificacionProductoSolicitado,
   EspecificacionProductoSolicitadoCreate,
   EspecificacionProductoSolicitadoUpdate,
+  EspecificacionProductoSolicitadoVersionCreateRequest,
+  CrearVersionEspecificacionResponse,
   PaginatedResponse,
   Pedido,
   PedidoCreate,
@@ -44,6 +46,11 @@ import type {
   VarianteColorSolicitadaCreate,
   VarianteColorSolicitadaUpdate, 
   Moneda,
+  CrearCotizacionResponse,
+  CrearCotizacionVersionResponse,
+  AgregarDetalleCotizacionResponse,
+  FormalizarCotizacionWizardPayload,
+  FormalizarCotizacionWizardResponse,
 } from "./comercial.types";
 
 // ============================================================
@@ -250,6 +257,15 @@ export const especificacionesProductoApi = {
       `/comercial/especificacion-producto-solicitado/${id}/`,
     );
   },
+
+  crearVersion: async (
+    solicitudId: number,
+    data: EspecificacionProductoSolicitadoVersionCreateRequest,
+  ): Promise<CrearVersionEspecificacionResponse> =>
+    api.post<CrearVersionEspecificacionResponse>(
+      `/comercial/solicitudes/${solicitudId}/crear_nueva_version/`,
+      data,
+    ),
 };
 
 
@@ -437,14 +453,14 @@ export const cotizacionesApi = {
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<Cotizacion>> => {
     return api.get<PaginatedResponse<Cotizacion>>(
-      "/cotizaciones/",
+      "/comercial/cotizaciones/",
       { params },
     );
   },
 
   get: async (id: number): Promise<Cotizacion> => {
     return api.get<Cotizacion>(
-      `/cotizaciones/${id}/`,
+      `/comercial/cotizaciones/${id}/`,
     );
   },
 
@@ -452,7 +468,7 @@ export const cotizacionesApi = {
     data: CotizacionCreate,
   ): Promise<Cotizacion> => {
     return api.post<Cotizacion>(
-      "/cotizaciones/",
+      "/comercial/cotizaciones/",
       data,
     );
   },
@@ -462,22 +478,34 @@ export const cotizacionesApi = {
     data: CotizacionUpdate,
   ): Promise<Cotizacion> => {
     return api.patch<Cotizacion>(
-      `/cotizaciones/${id}/`,
+      `/comercial/cotizaciones/${id}/`,
       data,
     );
   },
 
   remove: async (id: number): Promise<void> => {
-    await api.delete(`/cotizaciones/${id}/`);
+    await api.delete(`/comercial/cotizaciones/${id}/`);
   },
 
   crearDesdeSolicitud: async (data: {
     solicitud_comercial_id: number;
     fecha_vencimiento?: string | null;
     observaciones?: string;
-  }) => {
-    return api.post("/cotizaciones/crear_desde_solicitud/", data);
+    producto_version_id?: number | null;
+  }): Promise<CrearCotizacionResponse> => {
+    return api.post<CrearCotizacionResponse>(
+      "/comercial/cotizaciones/crear_desde_solicitud/",
+      data
+    );
   },
+
+  formalizarDesdeWizard: async (
+    data: FormalizarCotizacionWizardPayload,
+  ): Promise<FormalizarCotizacionWizardResponse> =>
+    api.post<FormalizarCotizacionWizardResponse>(
+      "/comercial/cotizaciones/formalizar-desde-wizard/",
+      data,
+    ),
 };
 
 
@@ -490,14 +518,14 @@ export const cotizacionesVersionesApi = {
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<CotizacionVersion>> => {
     return api.get<PaginatedResponse<CotizacionVersion>>(
-      "/cotizaciones-versiones/",
+      "/comercial/cotizaciones-versiones/",
       { params },
     );
   },
 
   get: async (id: number): Promise<CotizacionVersion> => {
     return api.get<CotizacionVersion>(
-      `/cotizaciones-versiones/${id}/`,
+      `/comercial/cotizaciones-versiones/${id}/`,
     );
   },
 
@@ -505,7 +533,7 @@ export const cotizacionesVersionesApi = {
     data: CotizacionVersionCreate,
   ): Promise<CotizacionVersion> => {
     return api.post<CotizacionVersion>(
-      "/cotizaciones-versiones/",
+      "/comercial/cotizaciones-versiones/",
       data,
     );
   },
@@ -515,9 +543,9 @@ export const cotizacionesVersionesApi = {
     data?: {
       moneda?: Moneda;
     },
-  ) => {
-    return api.post(
-      `/cotizaciones/${cotizacionId}/crear_version/`,
+  ): Promise<CrearCotizacionVersionResponse> => {
+    return api.post<CrearCotizacionVersionResponse>(
+      `/comercial/cotizaciones/${cotizacionId}/crear_version/`,
       data ?? {},
     );
   },
@@ -532,9 +560,9 @@ export const cotizacionesVersionesApi = {
       precio_lista: string;
       descuento_porcentaje?: string;
     },
-  ) => {
-    return api.post(
-      `/cotizaciones-versiones/${versionId}/agregar_detalle/`,
+  ): Promise<AgregarDetalleCotizacionResponse> => {
+    return api.post<AgregarDetalleCotizacionResponse>(
+      `/comercial/cotizaciones-versiones/${versionId}/agregar_detalle/`,
       data,
     );
   },
@@ -543,7 +571,7 @@ export const cotizacionesVersionesApi = {
     versionId: number,
   ) => {
     return api.post(
-      `/cotizaciones-versiones/${versionId}/enviar/`,
+      `/comercial/cotizaciones-versiones/${versionId}/enviar/`,
     );
   },
 
@@ -552,7 +580,7 @@ export const cotizacionesVersionesApi = {
     observaciones?: string,
   ) => {
     return api.post(
-      `/cotizaciones-versiones/${versionId}/aceptar/`,
+      `/comercial/cotizaciones-versiones/${versionId}/aceptar/`,
       { observaciones },
     );
   },
@@ -562,7 +590,7 @@ export const cotizacionesVersionesApi = {
     motivo?: string,
   ) => {
     return api.post(
-      `/cotizaciones-versiones/${versionId}/rechazar/`,
+      `/comercial/cotizaciones-versiones/${versionId}/rechazar/`,
       { motivo },
     );
   },
@@ -572,14 +600,14 @@ export const cotizacionesVersionesApi = {
     data: CotizacionVersionUpdate,
   ): Promise<CotizacionVersion> => {
     return api.patch<CotizacionVersion>(
-      `/cotizaciones-versiones/${id}/`,
+      `/comercial/cotizaciones-versiones/${id}/`,
       data,
     );
   },
 
   remove: async (id: number): Promise<void> => {
     await api.delete(
-      `/cotizaciones-versiones/${id}/`,
+      `/comercial/cotizaciones-versiones/${id}/`,
     );
   },
 };
@@ -594,14 +622,14 @@ export const cotizacionesDetallesApi = {
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<CotizacionDetalle>> => {
     return api.get<PaginatedResponse<CotizacionDetalle>>(
-      "/cotizaciones-detalles/",
+      "/comercial/cotizaciones-detalles/",
       { params },
     );
   },
 
   get: async (id: number): Promise<CotizacionDetalle> => {
     return api.get<CotizacionDetalle>(
-      `/cotizaciones-detalles/${id}/`,
+      `/comercial/cotizaciones-detalles/${id}/`,
     );
   },
 
@@ -609,7 +637,7 @@ export const cotizacionesDetallesApi = {
     data: CotizacionDetalleCreate,
   ): Promise<CotizacionDetalle> => {
     return api.post<CotizacionDetalle>(
-      "/cotizaciones-detalles/",
+      "/comercial/cotizaciones-detalles/",
       data,
     );
   },
@@ -619,14 +647,14 @@ export const cotizacionesDetallesApi = {
     data: CotizacionDetalleUpdate,
   ): Promise<CotizacionDetalle> => {
     return api.patch<CotizacionDetalle>(
-      `/cotizaciones-detalles/${id}/`,
+      `/comercial/cotizaciones-detalles/${id}/`,
       data,
     );
   },
 
   remove: async (id: number): Promise<void> => {
     await api.delete(
-      `/cotizaciones-detalles/${id}/`,
+      `/comercial/cotizaciones-detalles/${id}/`,
     );
   },
 };
@@ -641,14 +669,14 @@ export const pedidosApi = {
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<Pedido>> => {
     return api.get<PaginatedResponse<Pedido>>(
-      "/pedidos/",
+      "/comercial/pedidos/",
       { params },
     );
   },
 
   get: async (id: number): Promise<Pedido> => {
     return api.get<Pedido>(
-      `/pedidos/${id}/`,
+      `/comercial/pedidos/${id}/`,
     );
   },
 
@@ -656,7 +684,7 @@ export const pedidosApi = {
     data: PedidoCreate,
   ): Promise<Pedido> => {
     return api.post<Pedido>(
-      "/pedidos/",
+      "/comercial/pedidos/",
       data,
     );
   },
@@ -666,13 +694,13 @@ export const pedidosApi = {
     data: PedidoUpdate,
   ): Promise<Pedido> => {
     return api.patch<Pedido>(
-      `/pedidos/${id}/`,
+      `/comercial/pedidos/${id}/`,
       data,
     );
   },
 
   remove: async (id: number): Promise<void> => {
-    await api.delete(`/pedidos/${id}/`);
+    await api.delete(`/comercial/pedidos/${id}/`);
   },
   crearDesdeCotizacion: async (data: {
     cotizacion_version_id: number;
@@ -680,7 +708,7 @@ export const pedidosApi = {
     observaciones?: string;
   }) => {
     return api.post(
-      "/pedidos/crear_desde_cotizacion/",
+      "/comercial/pedidos/crear_desde_cotizacion/",
       data,
     );
   },
@@ -689,7 +717,7 @@ export const pedidosApi = {
     pedidoId: number,
   ) => {
     return api.post(
-      `/pedidos/${pedidoId}/crear_detalles_desde_cotizacion/`,
+      `/comercial/pedidos/${pedidoId}/crear_detalles_desde_cotizacion/`,
     );
   },
 
@@ -698,14 +726,14 @@ export const pedidosApi = {
     observaciones?: string,
   ) => {
     return api.post(
-      `/pedidos/${pedidoId}/confirmar/`,
+      `/comercial/pedidos/${pedidoId}/confirmar/`,
       { observaciones },
     );
   },
 
   conDetalles: async (pedidoId: number) => {
     return api.get(
-      `/pedidos/${pedidoId}/con_detalles/`,
+      `/comercial/pedidos/${pedidoId}/con_detalles/`,
     );
   },
 };
@@ -720,14 +748,14 @@ export const pedidosDetallesApi = {
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<PedidoDetalle>> => {
     return api.get<PaginatedResponse<PedidoDetalle>>(
-      "/pedidos-detalles/",
+      "/comercial/pedidos-detalles/",
       { params },
     );
   },
 
   get: async (id: number): Promise<PedidoDetalle> => {
     return api.get<PedidoDetalle>(
-      `/pedidos-detalles/${id}/`,
+      `/comercial/pedidos-detalles/${id}/`,
     );
   },
 
@@ -735,7 +763,7 @@ export const pedidosDetallesApi = {
     data: PedidoDetalleCreate,
   ): Promise<PedidoDetalle> => {
     return api.post<PedidoDetalle>(
-      "/pedidos-detalles/",
+      "/comercial/pedidos-detalles/",
       data,
     );
   },
@@ -745,14 +773,14 @@ export const pedidosDetallesApi = {
     data: PedidoDetalleUpdate,
   ): Promise<PedidoDetalle> => {
     return api.patch<PedidoDetalle>(
-      `/pedidos-detalles/${id}/`,
+      `/comercial/pedidos-detalles/${id}/`,
       data,
     );
   },
 
   remove: async (id: number): Promise<void> => {
     await api.delete(
-      `/pedidos-detalles/${id}/`,
+      `/comercial/pedidos-detalles/${id}/`,
     );
   },
 };

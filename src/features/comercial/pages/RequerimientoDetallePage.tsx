@@ -87,6 +87,47 @@ export default function RequerimientoDetallePage() {
         especificacionBobina,
     } = data;
 
+    const productoCotizado = data.productosCotizados?.[0] ?? null;
+    const productoVersion = productoCotizado?.productoVersion ?? null;
+    const variantesColorSolicitadas =
+        especificacionProducto?.variantes_color ?? [];
+    const bolsaMostrar =
+        especificacionBolsa ?? productoCotizado?.especificacionBolsa ?? null;
+    const bobinaMostrar =
+        especificacionBobina ?? productoCotizado?.especificacionBobina ?? null;
+    const datosTecnicos = especificacionProducto ?? (
+        productoVersion
+            ? {
+                material: productoVersion.material,
+                apto_alimento: productoVersion.apto_alimento,
+                micraje: productoVersion.micraje,
+                color_bolsa: productoVersion.color_bolsa,
+                opacidad: "",
+                capas: productoVersion.capas ?? "",
+                cara_impresion: productoVersion.cara_impresion ?? "",
+                impresion: productoVersion.impresion,
+                color_impresion: productoVersion.color_impresion,
+                tipo_impresion: productoVersion.tipo_impresion,
+                tratamiento_impresion: productoVersion.tratamiento_impresion ?? "",
+                posicion_impresion: "",
+                distancia_impresion_superior: null,
+                distancia_impresion_inferior: null,
+                distancia_impresion_izquierda: null,
+                distancia_impresion_derecha: null,
+                variantes_color: [],
+                tratamientos_acabados_especiales: [],
+                otras_caracteristicas:
+                    productoCotizado?.especificacionBolsa?.otras_caracteristicas ??
+                    productoCotizado?.especificacionBobina?.otras_caracteristicas ??
+                    "",
+            }
+            : null
+    );
+    const categoriaProducto = productoCotizado?.categoria.nombre ??
+        categorias?.find(
+            (categoria) => categoria.id === especificacionProducto?.categoria_producto,
+        )?.nombre ?? "—";
+
     return (
         <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
             {/* ============================================================
@@ -197,13 +238,7 @@ export default function RequerimientoDetallePage() {
                     <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                         <InfoItem
                             label="Producto"
-                            value={
-                                categorias?.find(
-                                    (categoria) =>
-                                        categoria.id ===
-                                        especificacionProducto?.categoria_producto,
-                                )?.nombre ?? "—"
-                            }
+                            value={categoriaProducto}
                         />
 
                         <InfoItem
@@ -240,23 +275,43 @@ export default function RequerimientoDetallePage() {
     PRODUCTO
    ======================================================== */}
 
-                {especificacionProducto && (
+                {datosTecnicos && (
                     <InfoCard
                         icon={<Package className="h-5 w-5" />}
                         title="Producto"
                     >
                         <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                            {productoCotizado && (
+                                <>
+                                    <InfoItem
+                                        label="Código"
+                                        value={productoCotizado.producto.codigo}
+                                    />
+                                    <InfoItem
+                                        label="Producto de catálogo"
+                                        value={productoCotizado.producto.nombre}
+                                    />
+                                    <InfoItem
+                                        label="Categoría"
+                                        value={productoCotizado.categoria.nombre || "—"}
+                                    />
+                                    <InfoItem
+                                        label="Versión de catálogo"
+                                        value={`V${productoVersion?.numero_version ?? "—"}`}
+                                    />
+                                </>
+                            )}
                             <InfoItem
                                 label="Material"
                                 value={getMaterialLabel(
-                                    especificacionProducto.material,
+                                    datosTecnicos.material,
                                 )}
                             />
 
                             <InfoItem
                                 label="Apto para alimentos"
                                 value={
-                                    especificacionProducto.apto_alimento
+                                    datosTecnicos.apto_alimento
                                         ? "Sí"
                                         : "No"
                                 }
@@ -265,8 +320,8 @@ export default function RequerimientoDetallePage() {
                             <InfoItem
                                 label="Micraje"
                                 value={
-                                    especificacionProducto.micraje
-                                        ? `${especificacionProducto.micraje} micras`
+                                    datosTecnicos.micraje
+                                        ? `${datosTecnicos.micraje} micras`
                                         : "—"
                                 }
                             />
@@ -274,28 +329,28 @@ export default function RequerimientoDetallePage() {
                             <InfoItem
                                 label="Color"
                                 value={
-                                    especificacionProducto.color_bolsa || "—"
+                                    datosTecnicos.color_bolsa || "—"
                                 }
                             />
 
                             <InfoItem
                                 label="Opacidad"
                                 value={getOpacidadLabel(
-                                    especificacionProducto.opacidad,
+                                    datosTecnicos.opacidad,
                                 )}
                             />
 
                             <InfoItem
                                 label="Tipo de capa"
                                 value={getCapasLabel(
-                                    especificacionProducto.capas,
+                                    datosTecnicos.capas,
                                 )}
                             />
 
                             <InfoItem
                                 label="Cara impresión"
                                 value={getCaraImpresionLabel(
-                                    especificacionProducto.cara_impresion,
+                                    datosTecnicos.cara_impresion,
                                 )}
                             />
                         </div>
@@ -304,7 +359,7 @@ export default function RequerimientoDetallePage() {
             COLORES Y CANTIDADES
            ======================================================== */}
 
-                        {especificacionProducto.variantes_color?.length > 0 && (
+                        {variantesColorSolicitadas.length > 0 && (
                             <div className="mt-6 border-t border-border pt-5">
                                 <div className="mb-4">
                                     <h4 className="text-sm font-semibold">
@@ -317,7 +372,7 @@ export default function RequerimientoDetallePage() {
                                 </div>
 
                                 <div className="space-y-3">
-                                    {especificacionProducto.variantes_color.map(
+                                    {variantesColorSolicitadas.map(
                                         (variante, index) => (
                                             <div
                                                 key={variante.id ?? index}
@@ -349,7 +404,7 @@ export default function RequerimientoDetallePage() {
                     ESPECIFICACIONES
                    ======================================================== */}
 
-                {especificacionProducto && (
+                {datosTecnicos && (
                     <InfoCard
                         icon={<Palette className="h-5 w-5" />}
                         title="Especificaciones"
@@ -359,7 +414,7 @@ export default function RequerimientoDetallePage() {
                                 DIMENSIONES DE BOLSA
                                ================================================= */}
 
-                            {especificacionBolsa && (
+                            {bolsaMostrar && (
                                 <div>
                                     <SectionTitle>
                                         Dimensiones
@@ -369,8 +424,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Ancho doblado"
                                             value={
-                                                especificacionBolsa.ancho_doblado
-                                                    ? `${especificacionBolsa.ancho_doblado} cm`
+                                                bolsaMostrar.ancho_doblado
+                                                    ? `${bolsaMostrar.ancho_doblado} cm`
                                                     : "—"
                                             }
                                         />
@@ -378,8 +433,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Ancho desdoblado"
                                             value={
-                                                especificacionBolsa.ancho_desdoblado
-                                                    ? `${especificacionBolsa.ancho_desdoblado} cm`
+                                                bolsaMostrar.ancho_desdoblado
+                                                    ? `${bolsaMostrar.ancho_desdoblado} cm`
                                                     : "—"
                                             }
                                         />
@@ -387,8 +442,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Largo doblado"
                                             value={
-                                                especificacionBolsa.largo_doblado
-                                                    ? `${especificacionBolsa.largo_doblado} cm`
+                                                bolsaMostrar.largo_doblado
+                                                    ? `${bolsaMostrar.largo_doblado} cm`
                                                     : "—"
                                             }
                                         />
@@ -396,8 +451,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Largo desdoblado"
                                             value={
-                                                especificacionBolsa.largo_desdoblado
-                                                    ? `${especificacionBolsa.largo_desdoblado} cm`
+                                                bolsaMostrar.largo_desdoblado
+                                                    ? `${bolsaMostrar.largo_desdoblado} cm`
                                                     : "—"
                                             }
                                         />
@@ -409,17 +464,17 @@ export default function RequerimientoDetallePage() {
                                 FUELLE
                                ================================================= */}
 
-                            {especificacionBolsa && (
+                            {bolsaMostrar && (
                                 <div>
                                     <SectionTitle>Fuelle</SectionTitle>
 
-                                    {especificacionBolsa.fuelle ? (
+                                    {bolsaMostrar.fuelle ? (
                                         <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                                             <InfoItem
                                                 label="Izquierdo"
                                                 value={
-                                                    especificacionBolsa.fuelle_izquierdo
-                                                        ? `${especificacionBolsa.fuelle_izquierdo} cm`
+                                                    bolsaMostrar.fuelle_izquierdo
+                                                        ? `${bolsaMostrar.fuelle_izquierdo} cm`
                                                         : "—"
                                                 }
                                             />
@@ -427,8 +482,8 @@ export default function RequerimientoDetallePage() {
                                             <InfoItem
                                                 label="Derecho"
                                                 value={
-                                                    especificacionBolsa.fuelle_derecho
-                                                        ? `${especificacionBolsa.fuelle_derecho} cm`
+                                                    bolsaMostrar.fuelle_derecho
+                                                        ? `${bolsaMostrar.fuelle_derecho} cm`
                                                         : "—"
                                                 }
                                             />
@@ -436,8 +491,8 @@ export default function RequerimientoDetallePage() {
                                             <InfoItem
                                                 label="Inferior"
                                                 value={
-                                                    especificacionBolsa.fuelle_inferior
-                                                        ? `${especificacionBolsa.fuelle_inferior} cm`
+                                                    bolsaMostrar.fuelle_inferior
+                                                        ? `${bolsaMostrar.fuelle_inferior} cm`
                                                         : "—"
                                                 }
                                             />
@@ -445,8 +500,8 @@ export default function RequerimientoDetallePage() {
                                             <InfoItem
                                                 label="Superior"
                                                 value={
-                                                    especificacionBolsa.fuelle_superior
-                                                        ? `${especificacionBolsa.fuelle_superior} cm`
+                                                    bolsaMostrar.fuelle_superior
+                                                        ? `${bolsaMostrar.fuelle_superior} cm`
                                                         : "—"
                                                 }
                                             />
@@ -463,7 +518,7 @@ export default function RequerimientoDetallePage() {
                                 CONFIGURACIÓN DE BOLSA
                                ================================================= */}
 
-                            {especificacionBolsa && (
+                            {bolsaMostrar && (
                                 <div>
                                     <SectionTitle>
                                         Configuración de bolsa
@@ -473,20 +528,20 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Troquel"
                                             value={getTroquelLabel(
-                                                especificacionBolsa.tipo_troquel,
+                                                bolsaMostrar.tipo_troquel,
                                             )}
                                         />
 
                                         <InfoItem
                                             label="Sello"
                                             value={getSelloLabel(
-                                                especificacionBolsa.tipo_sello,
+                                                bolsaMostrar.tipo_sello,
                                             )}
                                         />
 
                                         <InfoItem
                                             label="Pestaña"
-                                            value={especificacionBolsa.pestana}
+                                            value={bolsaMostrar.pestana}
                                         />
                                     </div>
                                 </div>
@@ -497,7 +552,7 @@ export default function RequerimientoDetallePage() {
                                ================================================= */}
 
                             {/* BOBINA */}
-                            {especificacionBobina && (
+                            {bobinaMostrar && (
                                 <div>
                                     <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                         Características de bobina
@@ -507,8 +562,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Ancho de bobina"
                                             value={
-                                                especificacionBobina.ancho
-                                                    ? `${especificacionBobina.ancho} cm`
+                                                bobinaMostrar.ancho
+                                                    ? `${bobinaMostrar.ancho} cm`
                                                     : "—"
                                             }
                                         />
@@ -516,8 +571,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Longitud"
                                             value={
-                                                especificacionBobina.longitud
-                                                    ? `${especificacionBobina.longitud} m`
+                                                bobinaMostrar.longitud
+                                                    ? `${bobinaMostrar.longitud} m`
                                                     : "—"
                                             }
                                         />
@@ -525,8 +580,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Peso"
                                             value={
-                                                especificacionBobina.peso
-                                                    ? `${especificacionBobina.peso} kg`
+                                                bobinaMostrar.peso
+                                                    ? `${bobinaMostrar.peso} kg`
                                                     : "—"
                                             }
                                         />
@@ -534,8 +589,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Diámetro"
                                             value={
-                                                especificacionBobina.diametro
-                                                    ? `${especificacionBobina.diametro} cm`
+                                                bobinaMostrar.diametro
+                                                    ? `${bobinaMostrar.diametro} cm`
                                                     : "—"
                                             }
                                         />
@@ -543,15 +598,15 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Diámetro núcleo"
                                             value={
-                                                especificacionBobina.diametro_nucleo
-                                                    ? `${especificacionBobina.diametro_nucleo} cm`
+                                                bobinaMostrar.diametro_nucleo
+                                                    ? `${bobinaMostrar.diametro_nucleo} cm`
                                                     : "—"
                                             }
                                         />
 
                                         <InfoItem
                                             label="Tipo núcleo"
-                                            value={especificacionBobina.tipo_nucleo || "—"}
+                                            value={bobinaMostrar.tipo_nucleo || "—"}
                                         />
                                     </div>
                                 </div>
@@ -564,7 +619,7 @@ export default function RequerimientoDetallePage() {
                             <div>
                                 <SectionTitle>Impresión</SectionTitle>
 
-                                {!especificacionProducto.impresion ? (
+                                {!datosTecnicos.impresion ? (
                                     <p className="text-sm text-muted-foreground">
                                         Sin impresión
                                     </p>
@@ -578,9 +633,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Colores"
                                             value={
-                                                especificacionProducto
-                                                    .color_impresion?.length
-                                                    ? especificacionProducto.color_impresion.join(
+                                                datosTecnicos.color_impresion?.length
+                                                    ? datosTecnicos.color_impresion.join(
                                                         ", ",
                                                     )
                                                     : "—"
@@ -590,29 +644,29 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Tipo"
                                             value={getTipoImpresionLabel(
-                                                especificacionProducto.tipo_impresion,
+                                                datosTecnicos.tipo_impresion,
                                             )}
                                         />
 
                                         <InfoItem
                                             label="Tratamiento"
                                             value={getTratamientoImpresionLabel(
-                                                especificacionProducto.tratamiento_impresion,
+                                                datosTecnicos.tratamiento_impresion,
                                             )}
                                         />
 
                                         <InfoItem
                                             label="Posición"
                                             value={getPosicionLabel(
-                                                especificacionProducto.posicion_impresion,
+                                                datosTecnicos.posicion_impresion,
                                             )}
                                         />
 
                                         <InfoItem
                                             label="Distancia superior"
                                             value={
-                                                especificacionProducto.distancia_impresion_superior
-                                                    ? `${especificacionProducto.distancia_impresion_superior} cm`
+                                                datosTecnicos.distancia_impresion_superior
+                                                    ? `${datosTecnicos.distancia_impresion_superior} cm`
                                                     : "—"
                                             }
                                         />
@@ -620,8 +674,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Distancia inferior"
                                             value={
-                                                especificacionProducto.distancia_impresion_inferior
-                                                    ? `${especificacionProducto.distancia_impresion_inferior} cm`
+                                                datosTecnicos.distancia_impresion_inferior
+                                                    ? `${datosTecnicos.distancia_impresion_inferior} cm`
                                                     : "—"
                                             }
                                         />
@@ -629,8 +683,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Distancia izquierda"
                                             value={
-                                                especificacionProducto.distancia_impresion_izquierda
-                                                    ? `${especificacionProducto.distancia_impresion_izquierda} cm`
+                                                datosTecnicos.distancia_impresion_izquierda
+                                                    ? `${datosTecnicos.distancia_impresion_izquierda} cm`
                                                     : "—"
                                             }
                                         />
@@ -638,8 +692,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Distancia derecha"
                                             value={
-                                                especificacionProducto.distancia_impresion_derecha
-                                                    ? `${especificacionProducto.distancia_impresion_derecha} cm`
+                                                datosTecnicos.distancia_impresion_derecha
+                                                    ? `${datosTecnicos.distancia_impresion_derecha} cm`
                                                     : "—"
                                             }
                                         />
@@ -651,8 +705,7 @@ export default function RequerimientoDetallePage() {
                                 TRATAMIENTOS
                                ================================================= */}
 
-                            {especificacionProducto
-                                .tratamientos_acabados_especiales?.length >
+                            {datosTecnicos.tratamientos_acabados_especiales?.length >
                                 0 && (
                                     <div>
                                         <div className="mb-4 flex items-center gap-3">
@@ -666,7 +719,7 @@ export default function RequerimientoDetallePage() {
                                         </div>
 
                                         <div className="flex flex-wrap gap-2">
-                                            {especificacionProducto.tratamientos_acabados_especiales.map(
+                                            {datosTecnicos.tratamientos_acabados_especiales.map(
                                                 (tratamiento: string) => (
                                                     <span
                                                         key={tratamiento}
@@ -686,11 +739,11 @@ export default function RequerimientoDetallePage() {
                                 OTRAS CARACTERÍSTICAS
                                ================================================= */}
 
-                            {especificacionProducto.otras_caracteristicas && (
+                            {datosTecnicos.otras_caracteristicas && (
                                 <InfoText
                                     label="Otras características"
                                     value={
-                                        especificacionProducto.otras_caracteristicas
+                                        datosTecnicos.otras_caracteristicas
                                     }
                                 />
                             )}

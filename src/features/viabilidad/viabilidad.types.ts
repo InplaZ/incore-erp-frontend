@@ -2,6 +2,13 @@ export interface EvaluarViabilidadPayload {
   producto_version?: number;
   especificacion_producto_solicitado_version?: number;
   evaluacion_comercial?: number;
+  previsualizar?: boolean;
+  datos_especificacion?: {
+    tipo_producto: "bolsa" | "bobina";
+    especificacion: Record<string, unknown>;
+    especificacion_bolsa?: Record<string, unknown>;
+    especificacion_bobina?: Record<string, unknown>;
+  };
 }
 
 export interface ResultadoProceso {
@@ -12,7 +19,7 @@ export interface ResultadoProceso {
 
 export interface EvaluarViabilidadResponse {
   exito: boolean;
-  evaluacion_viabilidad: number;
+  evaluacion_viabilidad: number | null;
   ruta: string[];
   descripcion_ruta: string;
   viable_global: boolean;
@@ -63,4 +70,20 @@ export interface AccionViabilidadResponse {
   mensaje: string;
   evaluacion_viabilidad: number;
   [key: string]: unknown;
+}
+
+export interface EvaluacionComercialCreate {
+  especificacion_producto_solicitado_version: number;
+  resultado: "aprobado" | "aprobada" | "viable";
+  observaciones?: string;
+}
+
+export interface EvaluacionComercialResponse {
+  id: number;
+  especificacion_producto_solicitado_version: number;
+  especificacion_producto_solicitado_legacy: number | null;
+  usuario: number;
+  resultado: string;
+  fecha: string;
+  observaciones: string;
 }

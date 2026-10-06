@@ -545,7 +545,7 @@ export default function RequerimientoStepDetalles(
         <Section
           icon={Package}
           title="Cliente"
-          description="Selecciona el cliente para quien se está creando este requerimiento."
+          description="Selecciona el cliente para quien se está creando esta cotización."
         >
           <div>
             <label className="mb-1.5 block text-sm font-medium text-foreground">

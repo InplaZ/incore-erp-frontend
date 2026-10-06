@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+
 import {
   X,
-  FileText,
   User,
   Package,
   Route,
@@ -9,15 +9,17 @@ import {
   DollarSign,
   Percent,
   Calculator,
+  ArrowRight,
 } from "lucide-react";
 
 import type {
   CuentaComercial,
   Moneda,
   ProductoBusquedaResultado,
+  ProductType,
 } from "@/features/comercial/comercial.types";
 
-import type  EvaluarViabilidadResponse  from "@/features/comercial/comercial.hooks";
+import type { EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
 
 interface CotizacionModalProps {
   open: boolean;
@@ -25,8 +27,9 @@ interface CotizacionModalProps {
 
   cuenta?: CuentaComercial;
   producto?: ProductoBusquedaResultado | null;
+  productoNombre?: string;
 
-  productType?: "bolsa" | "bobina";
+  productType?: ProductType;
 
   cantidadUnidades?: string;
   cantidadKg?: string;
@@ -50,11 +53,25 @@ export interface CotizacionFormData {
   observaciones: string;
 }
 
+const nombresProceso: Record<string, string> = {
+  extrusion: "Extrusión",
+  flexografia: "Flexografía",
+  confeccion: "Confección",
+};
+
+function obtenerNombreProceso(proceso: string) {
+  return (
+    nombresProceso[proceso.toLowerCase()] ??
+    proceso.charAt(0).toUpperCase() + proceso.slice(1)
+  );
+}
+
 export default function CotizacionModal({
   open,
   onClose,
   cuenta,
   producto,
+  productoNombre,
   productType,
   cantidadUnidades,
   cantidadKg,
@@ -63,47 +80,24 @@ export default function CotizacionModal({
   resultadoViabilidad,
   onCrear,
 }: CotizacionModalProps) {
-  const [cantidad, setCantidad] = useState("");
+  const [cantidad, setCantidad] = useState(cantidadUnidades || "");
   const [moneda, setMoneda] = useState<Moneda>("BOB");
   const [precioLista, setPrecioLista] = useState("");
   const [descuentoPorcentaje, setDescuentoPorcentaje] = useState("0");
   const [fechaVencimiento, setFechaVencimiento] = useState("");
   const [observacionesCotizacion, setObservacionesCotizacion] =
-    useState("");
+    useState(observaciones || "");
 
   /*
-   * Inicializar la cantidad con la cantidad solicitada
-   * en el requerimiento.
+   * =====================================================
+   * INICIALIZACIÓN
+   * =====================================================
    */
-  useEffect(() => {
-    if (!open) return;
-
-    if (productType === "bobina") {
-      setCantidad(cantidadKg || "");
-    } else {
-      setCantidad(cantidadUnidades || "");
-    }
-
-    setObservacionesCotizacion(observaciones || "");
-
-    /*
-     * Por ahora dejamos la fecha de vencimiento
-     * independiente de la fecha de entrega.
-     */
-    setFechaVencimiento("");
-  }, [
-    open,
-    productType,
-    cantidadUnidades,
-    cantidadKg,
-    observaciones,
-  ]);
 
   /*
-   * Cálculo visual de precios.
-   *
-   * El backend seguirá siendo la fuente definitiva
-   * para calcular estos valores.
+   * =====================================================
+   * CÁLCULOS
+   * =====================================================
    */
   const precioUnitario = useMemo(() => {
     const lista = Number(precioLista);
@@ -123,42 +117,63 @@ export default function CotizacionModal({
   const precioTotal = useMemo(() => {
     const cantidadNumerica = Number(cantidad);
 
-    if (!Number.isFinite(cantidadNumerica) || cantidadNumerica < 0) {
+    if (
+      !Number.isFinite(cantidadNumerica) ||
+      cantidadNumerica < 0
+    ) {
       return 0;
     }
 
     return cantidadNumerica * precioUnitario;
   }, [cantidad, precioUnitario]);
 
-  const rutaDescripcion = useMemo(() => {
-    if (!resultadoViabilidad?.ruta?.length) {
-      return "Ruta no disponible";
-    }
-
-    return resultadoViabilidad.ruta
-      .map((proceso: string) => {
-        const nombres: Record<string, string> = {
-          extrusion: "Extrusión",
-          flexografia: "Flexografía",
-          confeccion: "Confección",
-        };
-
-        return nombres[proceso] || proceso;
-      })
-      .join(" → ");
-  }, [resultadoViabilidad]);
+  /*
+   * =====================================================
+   * DATOS DE PRESENTACIÓN
+   * =====================================================
+   */
 
   const nombreCliente =
-    cuenta?.razon_social ||
-    cuenta?.nombre_comercial ||
-    cuenta?.nombre ||
-    "Cliente no disponible";
+    cuenta?.tipo_persona === "juridica"
+      ? cuenta.razon_social
+      : [
+        cuenta?.nombres,
+        cuenta?.apellido_paterno,
+        cuenta?.apellido_materno,
+      ]
+        .filter(Boolean)
+        .join(" ") || "Cliente no disponible";
 
   const nombreProducto =
-    producto?.producto_nombre ||
-    producto?.nombre ||
-    producto?.descripcion ||
-    "Producto seleccionado";
+    producto?.producto_nombre || productoNombre || "Producto seleccionado";
+
+  const codigoProducto =
+    producto?.producto_codigo || "Sin código";
+
+  const versionProducto =
+    producto?.version_numero
+      ? `Versión ${producto.version_numero}`
+      : "";
+
+  const tipoProducto =
+    productType === "bag"
+      ? "Bolsa"
+      : productType === "roll"
+        ? "Bobina"
+        : "Producto";
+
+  const rutaDescripcion =
+    resultadoViabilidad?.ruta?.length
+      ? resultadoViabilidad.ruta
+        .map(obtenerNombreProceso)
+        .join(" → ")
+      : "Ruta no disponible";
+
+  /*
+   * =====================================================
+   * CREAR COTIZACIÓN
+   * =====================================================
+   */
 
   const handleCrear = () => {
     const data: CotizacionFormData = {
@@ -177,11 +192,6 @@ export default function CotizacionModal({
       return;
     }
 
-    /*
-     * Por ahora solo dejamos preparado el flujo.
-     * La conexión con el backend la hacemos después
-     * de aprobar la interfaz.
-     */
     console.log("Datos de cotización:", data);
   };
 
@@ -191,290 +201,441 @@ export default function CotizacionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-card shadow-xl">
 
-        {/* HEADER */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+        {/* =====================================================
+            ENCABEZADO
+            ===================================================== */}
+
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
-              <FileText className="h-5 w-5 text-blue-600" />
-            </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-foreground">
                 Crear cotización
               </h2>
 
-              <p className="text-sm text-gray-500">
-                Define las condiciones económicas para el cliente
+              <p className="mt-1 text-sm text-muted-foreground">
+                Define las condiciones económicas del producto viable.
               </p>
             </div>
+
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X className="h-5 w-5" />
           </button>
+
         </div>
 
-        {/* CONTENIDO */}
-        <div className="overflow-y-auto px-6 py-5">
+        {/* =====================================================
+            CONTENIDO
+            ===================================================== */}
 
-          {/* RESUMEN */}
-          <section className="mb-6">
-            <div className="mb-3 flex items-center gap-2">
-              <Package className="h-4 w-4 text-gray-500" />
+        <div className="overflow-y-auto px-6 py-6">
 
-              <h3 className="text-sm font-semibold text-gray-800">
-                Resumen de la solicitud
-              </h3>
+          {/* ===================================================
+              RESUMEN DEL PRODUCTO
+              =================================================== */}
+
+          <section>
+
+            <div className="mb-4 flex items-center gap-3">
+
+              <Package className="h-5 w-5 text-primary" />
+
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Resumen de la solicitud
+                </h3>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Información del cliente y producto seleccionado.
+                </p>
+              </div>
+
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
               {/* CLIENTE */}
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <div className="mb-2 flex items-center gap-2 text-gray-500">
-                  <User className="h-4 w-4" />
 
-                  <span className="text-xs font-medium uppercase">
-                    Cliente
-                  </span>
+              <div className="rounded-lg border border-border bg-card p-4">
+
+                <div className="flex items-start gap-3">
+
+                  <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+
+                  <div className="min-w-0">
+
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Cliente
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {nombreCliente}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {cuenta?.telefono || ""}
+                    </p>
+
+
+                  </div>
+
                 </div>
 
-                <p className="truncate text-sm font-semibold text-gray-900">
-                  {nombreCliente}
-                </p>
               </div>
 
               {/* PRODUCTO */}
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <div className="mb-2 flex items-center gap-2 text-gray-500">
-                  <Package className="h-4 w-4" />
 
-                  <span className="text-xs font-medium uppercase">
-                    Producto
-                  </span>
+              <div className="rounded-lg border border-border bg-card p-4">
+
+                <div className="flex items-start gap-3">
+
+                  <Package className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+
+                  <div className="min-w-0">
+
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Producto
+                    </p>
+
+                    <p className="mt-1 truncate text-sm font-semibold text-foreground">
+                      {nombreProducto}
+                    </p>
+
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+
+                      <span>{tipoProducto}</span>
+
+                      <span>
+                        Código: {codigoProducto}
+                      </span>
+
+                      {versionProducto && (
+                        <span>{versionProducto}</span>
+                      )}
+
+                    </div>
+
+                  </div>
+
                 </div>
 
-                <p className="truncate text-sm font-semibold text-gray-900">
-                  {nombreProducto}
-                </p>
-
-                <p className="mt-1 text-xs text-gray-500">
-                  {productType === "bobina" ? "Bobina" : "Bolsa"}
-                </p>
               </div>
 
               {/* CANTIDAD */}
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <div className="mb-2 flex items-center gap-2 text-gray-500">
-                  <Calculator className="h-4 w-4" />
 
-                  <span className="text-xs font-medium uppercase">
+              <div className="rounded-lg border border-border bg-card p-4">
+
+                <div className="flex items-start gap-3">
+
+                  <Calculator className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+
+                  <div>
+
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Cantidad solicitada
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {cantidad || "—"}
+                    </p>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {productType === "roll"
+                        ? "Kilogramos"
+                        : "Unidades"}
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* ENTREGA */}
+
+              <div className="rounded-lg border border-border bg-card p-4">
+
+                <div className="flex items-start gap-3">
+
+                  <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+
+                  <div>
+
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Fecha de entrega solicitada
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {fechaEntrega || "No definida"}
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </section>
+
+          {/* ===================================================
+              VIABILIDAD
+              =================================================== */}
+
+          <section className="mt-8">
+
+            <div className="mb-4 flex items-center gap-3">
+
+              <Route className="h-5 w-5 text-emerald-600" />
+
+              <div>
+
+                <h3 className="text-sm font-semibold text-foreground">
+                  Viabilidad técnica
+                </h3>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Ruta de producción determinada por la evaluación.
+                </p>
+
+              </div>
+
+            </div>
+
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+
+              <div className="flex items-center gap-3">
+
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+
+                  <Route className="h-4 w-4 text-emerald-600" />
+
+                </div>
+
+                <div>
+
+                  <p className="text-xs font-medium text-emerald-700">
+                    Ruta propuesta
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold text-emerald-900">
+                    {rutaDescripcion}
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </section>
+
+          {/* ===================================================
+              CONDICIONES ECONÓMICAS
+              =================================================== */}
+
+          <section className="mt-8">
+
+            <div className="mb-4 flex items-center gap-3">
+
+              <DollarSign className="h-5 w-5 text-primary" />
+
+              <div>
+
+                <h3 className="text-sm font-semibold text-foreground">
+                  Condiciones económicas
+                </h3>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Define el precio y las condiciones de la cotización.
+                </p>
+
+              </div>
+
+            </div>
+
+            <div className="rounded-lg border border-border p-5">
+
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+
+                {/* CANTIDAD */}
+
+                <div>
+
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">
                     Cantidad
-                  </span>
-                </div>
-
-                <p className="text-sm font-semibold text-gray-900">
-                  {cantidad || "—"}
-                </p>
-
-                <p className="mt-1 text-xs text-gray-500">
-                  {productType === "bobina" ? "kg" : "unidades"}
-                </p>
-              </div>
-
-              {/* FECHA ENTREGA */}
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <div className="mb-2 flex items-center gap-2 text-gray-500">
-                  <Calendar className="h-4 w-4" />
-
-                  <span className="text-xs font-medium uppercase">
-                    Entrega solicitada
-                  </span>
-                </div>
-
-                <p className="text-sm font-semibold text-gray-900">
-                  {fechaEntrega || "No definida"}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* VIABILIDAD */}
-          <section className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
-            <div className="flex items-start gap-3">
-
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-100">
-                <Route className="h-4 w-4 text-green-600" />
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-green-800">
-                  Producto técnicamente viable
-                </p>
-
-                <p className="mt-1 text-sm text-green-700">
-                  Ruta de producción:
-                </p>
-
-                <p className="mt-1 text-sm font-semibold text-green-900">
-                  {rutaDescripcion}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* DATOS ECONÓMICOS */}
-          <section>
-            <div className="mb-4 flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-gray-500" />
-
-              <h3 className="text-sm font-semibold text-gray-800">
-                Condiciones económicas
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
-              {/* CANTIDAD */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Cantidad
-                </label>
-
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={cantidad}
-                  onChange={(e) => setCantidad(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  placeholder="Ej. 10000"
-                />
-
-                <p className="mt-1 text-xs text-gray-500">
-                  {productType === "bobina"
-                    ? "Cantidad expresada en kg"
-                    : "Cantidad expresada en unidades"}
-                </p>
-              </div>
-
-              {/* MONEDA */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Moneda
-                </label>
-
-                <select
-                  value={moneda}
-                  onChange={(e) =>
-                    setMoneda(e.target.value as Moneda)
-                  }
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                >
-                  <option value="BOB">
-                    Bolivianos (BOB)
-                  </option>
-
-                  <option value="USD">
-                    Dólares (USD)
-                  </option>
-                </select>
-              </div>
-
-              {/* PRECIO LISTA */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Precio de lista
-                </label>
-
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  </label>
 
                   <input
                     type="number"
                     min="0"
                     step="0.01"
-                    value={precioLista}
+                    value={cantidad}
                     onChange={(e) =>
-                      setPrecioLista(e.target.value)
+                      setCantidad(e.target.value)
                     }
-                    className="w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    placeholder="0.00"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
+                    placeholder="Ej. 10000"
                   />
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {productType === "roll"
+                      ? "Cantidad expresada en kg."
+                      : "Cantidad expresada en unidades."}
+                  </p>
+
                 </div>
 
-                <p className="mt-1 text-xs text-gray-500">
-                  Precio unitario antes del descuento
-                </p>
-              </div>
+                {/* MONEDA */}
 
-              {/* DESCUENTO */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Descuento
-                </label>
+                <div>
 
-                <div className="relative">
-                  <Percent className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">
+                    Moneda
+                  </label>
 
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    value={descuentoPorcentaje}
+                  <select
+                    value={moneda}
                     onChange={(e) =>
-                      setDescuentoPorcentaje(e.target.value)
+                      setMoneda(
+                        e.target.value as Moneda,
+                      )
                     }
-                    className="w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    placeholder="0"
-                  />
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="BOB">
+                      Bolivianos (BOB)
+                    </option>
+
+                    <option value="USD">
+                      Dólares (USD)
+                    </option>
+                  </select>
+
                 </div>
 
-                <p className="mt-1 text-xs text-gray-500">
-                  Descuento aplicado sobre el precio de lista
-                </p>
+                {/* PRECIO LISTA */}
+
+                <div>
+
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">
+                    Precio de lista
+                  </label>
+
+                  <div className="relative">
+
+                    <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={precioLista}
+                      onChange={(e) =>
+                        setPrecioLista(
+                          e.target.value,
+                        )
+                      }
+                      className="w-full rounded-lg border border-border bg-background py-2.5 pl-9 pr-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
+                      placeholder="0.00"
+                    />
+
+                  </div>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Precio unitario antes del descuento.
+                  </p>
+
+                </div>
+
+                {/* DESCUENTO */}
+
+                <div>
+
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">
+                    Descuento
+                  </label>
+
+                  <div className="relative">
+
+                    <Percent className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={descuentoPorcentaje}
+                      onChange={(e) =>
+                        setDescuentoPorcentaje(
+                          e.target.value,
+                        )
+                      }
+                      className="w-full rounded-lg border border-border bg-background py-2.5 pl-9 pr-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
+                      placeholder="0"
+                    />
+
+                  </div>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Porcentaje aplicado sobre el precio de lista.
+                  </p>
+
+                </div>
+
               </div>
 
-              {/* PRECIO UNITARIO */}
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                <p className="text-xs font-medium uppercase text-blue-600">
-                  Precio unitario
-                </p>
+              {/* RESULTADO ECONÓMICO */}
 
-                <p className="mt-1 text-xl font-bold text-blue-900">
-                  {moneda} {precioUnitario.toFixed(2)}
-                </p>
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
 
-                <p className="mt-1 text-xs text-blue-700">
-                  Precio después del descuento
-                </p>
+                <div className="rounded-lg border border-border bg-muted/30 p-4">
+
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Precio unitario
+                  </p>
+
+                  <p className="mt-1 text-xl font-semibold text-foreground">
+                    {moneda} {precioUnitario.toFixed(2)}
+                  </p>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Precio después del descuento.
+                  </p>
+
+                </div>
+
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+
+                  <p className="text-xs font-medium text-emerald-700">
+                    Total de la cotización
+                  </p>
+
+                  <p className="mt-1 text-xl font-semibold text-emerald-800">
+                    {moneda} {precioTotal.toFixed(2)}
+                  </p>
+
+                  <p className="mt-1 text-xs text-emerald-700">
+                    Cantidad × precio unitario.
+                  </p>
+
+                </div>
+
               </div>
 
-              {/* TOTAL */}
-              <div className="rounded-xl border border-gray-300 bg-gray-50 p-4">
-                <p className="text-xs font-medium uppercase text-gray-500">
-                  Total cotización
-                </p>
+              {/* VALIDEZ */}
 
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {moneda} {precioTotal.toFixed(2)}
-                </p>
-
-                <p className="mt-1 text-xs text-gray-500">
-                  Cantidad × precio unitario
-                </p>
-              </div>
-
-              {/* FECHA VENCIMIENTO */}
-              <div className="md:col-span-2">
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              <div className="mt-5">
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
                   Validez de la cotización
                 </label>
 
@@ -482,49 +643,57 @@ export default function CotizacionModal({
                   type="date"
                   value={fechaVencimiento}
                   onChange={(e) =>
-                    setFechaVencimiento(e.target.value)
+                    setFechaVencimiento(
+                      e.target.value,
+                    )
                   }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
                 />
 
-                <p className="mt-1 text-xs text-gray-500">
-                  Fecha hasta la cual se mantiene vigente esta cotización.
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Fecha hasta la cual se mantiene vigente la cotización.
                 </p>
               </div>
 
               {/* OBSERVACIONES */}
-              <div className="md:col-span-2">
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+
+              <div className="mt-5">
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
                   Observaciones
                 </label>
 
                 <textarea
                   value={observacionesCotizacion}
                   onChange={(e) =>
-                    setObservacionesCotizacion(e.target.value)
+                    setObservacionesCotizacion(
+                      e.target.value,
+                    )
                   }
                   rows={3}
-                  className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
                   placeholder="Observaciones adicionales de la cotización..."
                 />
+
               </div>
             </div>
           </section>
         </div>
 
-        {/* FOOTER */}
-        <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4">
+        {/* =====================================================
+            FOOTER
+            ===================================================== */}
 
-          <div className="text-xs text-gray-500">
-            Los precios serán calculados y validados nuevamente por el sistema.
-          </div>
+        <div className="flex flex-col gap-3 border-t border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
 
-          <div className="flex items-center gap-3">
+          <p className="text-xs text-muted-foreground">
+            Los precios serán validados nuevamente por el sistema.
+          </p>
+          <div className="flex items-center justify-end gap-3">
 
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
               Cancelar
             </button>
@@ -538,11 +707,11 @@ export default function CotizacionModal({
                 Number(precioLista) < 0 ||
                 Number(cantidad) <= 0
               }
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <FileText className="h-4 w-4" />
-
               Crear cotización
+
+              <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         </div>

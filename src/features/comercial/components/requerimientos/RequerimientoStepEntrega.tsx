@@ -141,6 +141,7 @@ export default function RequerimientoStepEntrega({
           />
         </div>
 
+
         <div>
           <label className="mb-2 block text-sm font-medium">
             Prioridad
@@ -204,7 +205,7 @@ export default function RequerimientoStepEntrega({
             setObservaciones(event.target.value)
           }
           rows={5}
-          placeholder="Observaciones adicionales del requerimiento..."
+          placeholder="Observaciones adicionales de la cotización..."
           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
         />
         <NuevoClienteModal

@@ -23,7 +23,7 @@ export default function RequerimientoStepProducto({
         </h3>
 
         <p className="mt-1 text-sm text-muted-foreground">
-          Selecciona una opción para personalizar tu requerimiento.
+          Selecciona una opción para personalizar tu cotización.
         </p>
       </div>
 

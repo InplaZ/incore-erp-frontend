@@ -7,7 +7,12 @@ import { useState } from "react";
 import Toast from "@/components/ui/Toast";
 import {
   useCuentasComerciales,
-} from "../comercial.hooks";
+  useFormalizarCotizacionDesdeWizard,
+} from "@/features/comercial/comercial.hooks";
+
+import CotizacionModal, {
+  type CotizacionFormData,
+} from "@/features/comercial/cotizaciones/CotizacionModal";
 
 import type {
   MaterialProducto,
@@ -26,11 +31,6 @@ import type {
 } from "../comercial.types";
 import { 
   useProductosCategorias,
-  useBuscarProductosCatalogo,
-  useBuscarProductosSimilares,
-  useUpdateProductoVersion,
-  useUpdateEspecificacionBolsa,
-  useUpdateEspecificacionBobina,
  } from "@/features/productos/productos.hooks";
 import RequerimientoSteps from "../components/requerimientos/RequerimientoSteps";
 import RequerimientoStepProducto, {
@@ -45,13 +45,14 @@ import ProductoConfirmacionModal from "../components/requerimientos/ProductoConf
 
 import type {
   ProductoBusquedaResultado,
-} from "../comercial.types";
+} from "@/features/comercial/comercial.types";
 
 import type { EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
 import { useEvaluarViabilidad } from "@/features/viabilidad/viabilidad.hook";
 
 import ViabilidadAnalizando from "@/features/viabilidad/requerimientos/ViabilidadAnalizando";
 import ViabilidadResultado from "@/features/viabilidad/requerimientos/ViabilidadResultado";
+
 export type RequirementStep = 1 | 2 | 3 | 4 | 5;
 
 export default function RequerimientosPage() {
@@ -82,6 +83,11 @@ export default function RequerimientosPage() {
   const [product, setProduct] =
     useState<ProductType>(null);
 
+  /**
+   * Cotizacion
+   */
+  const [mostrarCotizacion, setMostrarCotizacion] = useState(false);
+
   /*
    * Selección de producto del catálogo
    */
@@ -101,9 +107,11 @@ export default function RequerimientosPage() {
    * Evaluar viabilidad
    */
   const evaluarViabilidad = useEvaluarViabilidad();
-  const actualizarProductoVersion = useUpdateProductoVersion();
-  const actualizarEspecificacionBolsa = useUpdateEspecificacionBolsa();
-  const actualizarEspecificacionBobina = useUpdateEspecificacionBobina();
+
+  /**
+   * Crear Solicitud comercial - cotización
+   */
+  const formalizarCotizacion = useFormalizarCotizacionDesdeWizard();
 
   /*
    * Características generales
@@ -305,6 +313,7 @@ export default function RequerimientosPage() {
         ) as RequirementStep,
     );
   };
+  
 
   /*
    * Manejo de selección de producto
@@ -417,12 +426,144 @@ export default function RequerimientosPage() {
     nextStep();
   };
 
+ const handleCrearCotizacion = async (
+    data: CotizacionFormData
+  ) => {
+    try {
+      if (!cuentaComercialId) {
+        throw new Error("Debe seleccionar un cliente.");
+      }
+      if (!esProductoNuevo && !productoSeleccionado) {
+        throw new Error("No se encontró la referencia técnica que se evaluó.");
+      }
+      if (esProductoNuevo && !categoriaSeleccionada) {
+        throw new Error("No se encontró la categoría de producto seleccionada.");
+      }
+
+      const tipoProducto = product === "bag" ? "bolsa" : "bobina";
+      const especificacion = esProductoNuevo ? {
+        categoria_producto: categoriaSeleccionada!.id,
+        material,
+        capas: capas || "monocapa",
+        apto_alimento: aptoAlimento,
+        micraje: micraje || null,
+        color_bolsa: colorBolsa,
+        impresion,
+        color_impresion: colorImpresion.split(",").map((color) => color.trim()).filter(Boolean),
+        tipo_impresion: tipoImpresion,
+        tratamiento_impresion: tratamientoImpresion,
+        posicion_impresion: posicionImpresion,
+        cara_impresion: caraImpresion,
+        distancia_impresion_superior: distanciaImpresionSuperior || null,
+        distancia_impresion_inferior: distanciaImpresionInferior || null,
+        distancia_impresion_izquierda: distanciaImpresionIzquierda || null,
+        distancia_impresion_derecha: distanciaImpresionDerecha || null,
+        otras_caracteristicas: otrasCaracteristicas,
+        opacidad,
+        tratamientos_acabados_especiales: tratamientosAcabadosEspeciales,
+      } : undefined;
+
+      const resultado = await formalizarCotizacion.mutateAsync({
+        solicitud: {
+          cuenta_comercial: cuentaComercialId,
+          fecha: new Date().toISOString(),
+          descripcion: descripcion.trim() || `Solicitud de cotización - ${tipoProducto === "bolsa" ? "Bolsa" : "Bobina"}`,
+          cantidad_unidades: cantidadUnidades || "0",
+          cantidad_kg: cantidadKg || "0",
+          fecha_entrega: fechaEntrega || null,
+          lugar_entrega: lugarEntrega,
+          observaciones,
+          prioridad,
+        },
+        tipo_producto: tipoProducto,
+        producto_version_id: esProductoNuevo ? undefined : productoSeleccionado!.version_id,
+        especificacion,
+        especificacion_bolsa: esProductoNuevo && tipoProducto === "bolsa" ? {
+          ancho_doblado: anchoDoblado,
+          ancho_desdoblado: anchoDesdoblado || null,
+          largo_doblado: largoDoblado,
+          largo_desdoblado: largoDesdoblado || null,
+          fuelle,
+          fuelle_izquierdo: fuelleIzquierdo || null,
+          fuelle_derecho: fuelleDerecho || null,
+          fuelle_inferior: fuelleInferior || null,
+          fuelle_superior: fuelleSuperior || null,
+          tipo_troquel: tipoTroquel || "normal",
+          tipo_sello: tipoSello,
+          pestana: tipoPestana || "sin_pestana",
+          acabado_especial: tratamientosAcabadosEspeciales.join(","),
+          otras_caracteristicas: otrasCaracteristicas,
+        } : undefined,
+        especificacion_bobina: esProductoNuevo && tipoProducto === "bobina" ? {
+          ancho: anchoBobina,
+          diametro: diametro || null,
+          diametro_nucleo: diametroNucleo || null,
+          longitud: longitud || null,
+          tipo_nucleo: tipoNucleo,
+          peso: peso || null,
+          otras_caracteristicas: otrasCaracteristicas,
+        } : undefined,
+        cotizacion: {
+          fecha_vencimiento: data.fechaVencimiento || null,
+          observaciones: data.observaciones || "",
+          moneda: data.moneda,
+        },
+        detalle: {
+          cantidad: data.cantidad,
+          precio_lista: data.precioLista,
+          descuento_porcentaje: data.descuentoPorcentaje || "0",
+          costo_estimado: null,
+        },
+      });
+
+      // ============================================================
+      // 6. ÉXITO
+      // ============================================================
+
+      setMostrarCotizacion(false);
+
+      mostrarToast(
+        "Cotización creada",
+        `Cotización ${resultado.numero} creada correctamente.`
+      );
+
+      resetWizard();
+
+    } catch (error: unknown) {
+      console.error(
+        "Error al crear cotización:",
+        error
+      );
+
+      const apiMessage = (error as {
+        response?: { data?: { mensaje?: string; detail?: string } };
+      })?.response?.data?.mensaje || (error as {
+        response?: { data?: { detail?: string } };
+      })?.response?.data?.detail;
+
+      mostrarToast(
+        "Error",
+        apiMessage ||
+          (error instanceof Error ? error.message : "") ||
+          "No se pudo crear la cotización."
+      );
+    }
+  };
+
   /*
    * Por ahora solo reinicia el formulario.
    * Después podemos convertir esto en "Guardar borrador".
    */
   const resetWizard = () => {
     setStep(1);
+    setCuentaComercialId(null);
+    setResultadoViabilidad(null);
+    setErrorViabilidad(null);
+    setAnalizandoViabilidad(false);
+    setProductoSeleccionado(null);
+    setEsProductoNuevo(false);
+    setShowConfirmacionModal(false);
+    setMostrarCotizacion(false);
 
     /*
      * Producto
@@ -435,6 +576,8 @@ export default function RequerimientosPage() {
     setMaterial("PEBD");
     setMicraje("");
     setColorBolsa("");
+    setVariantesColor([]);
+    setAptoAlimento(false);
     setOpacidad("media");
     setTratamientosAcabadosEspeciales([]);
 
@@ -493,34 +636,17 @@ export default function RequerimientosPage() {
     setObservaciones("");
   };
 
-  //HANDLE PARA VIABILIDAD
-  const guardarVersionProducto = async () => {
-    if (!productoSeleccionado) {
-      throw new Error("No hay un producto seleccionado.");
-    }
-
-    await actualizarProductoVersion.mutateAsync({
-      id: productoSeleccionado.version_id,
-      data: {
-        material,
-        capas: capas || undefined,
-      },
-    });
-  };
+  // La evaluación previa solo ejecuta reglas técnicas; no formaliza entidades
+  // comerciales ni persiste evaluaciones.
   const handleAnalizarViabilidad = async () => {
     try {
-      if (!productoSeleccionado) {
+      if (!cuentaComercialId) {
+        throw new Error("Debe seleccionar un cliente.");
+      }
+      if (!esProductoNuevo && !productoSeleccionado) {
         mostrarToast(
           "Producto requerido",
-          "Debe seleccionar un producto antes de analizar la viabilidad."
-        );
-        return;
-      }
-
-      if (esProductoNuevo) {
-        mostrarToast(
-          "Producto nuevo",
-          "La evaluación de productos nuevos requiere una versión de especificación y evaluación comercial."
+          "Seleccione un producto existente o elija crear uno nuevo."
         );
         return;
       }
@@ -532,28 +658,66 @@ export default function RequerimientosPage() {
       //Mostrar pantalla de análisis
       setAnalizandoViabilidad(true);
 
-      console.log(
-        "PRODUCTO SELECCIONADO:",
-        productoSeleccionado
-      );
-
-      console.log(
-        "ESPECIFICACIÓN BOLSA:",
-        productoSeleccionado.especificacion_bolsa
-      );
-
-      console.log(
-        "ESPECIFICACIÓN BOBINA:",
-        productoSeleccionado.especificacion_bobina
-      );
-
-      // Primero guardamos la especificación completada
-      await guardarVersionProducto();
-
-      // Luego evaluamos la viabilidad con los datos actualizados
-      const resultado = await evaluarViabilidad.mutateAsync({
-        producto_version: productoSeleccionado.version_id,
-      });
+      let resultado: EvaluarViabilidadResponse;
+      if (!esProductoNuevo) {
+        resultado = await evaluarViabilidad.mutateAsync({
+          producto_version: productoSeleccionado!.version_id,
+          previsualizar: true,
+        });
+      } else {
+        if (!categoriaSeleccionada) throw new Error("No se encontró la categoría de producto seleccionada.");
+        const tipoProducto = product === "bag" ? "bolsa" : "bobina";
+        resultado = await evaluarViabilidad.mutateAsync({
+          datos_especificacion: {
+            tipo_producto: tipoProducto,
+            especificacion: {
+            categoria_producto: categoriaSeleccionada.id,
+            material,
+            capas: capas || "monocapa",
+            apto_alimento: aptoAlimento,
+            micraje: micraje || null,
+            color_bolsa: colorBolsa,
+            impresion,
+            color_impresion: colorImpresion.split(",").map((color) => color.trim()).filter(Boolean),
+            tipo_impresion: tipoImpresion,
+            tratamiento_impresion: tratamientoImpresion,
+            posicion_impresion: posicionImpresion,
+            cara_impresion: caraImpresion,
+            distancia_impresion_superior: distanciaImpresionSuperior || null,
+            distancia_impresion_inferior: distanciaImpresionInferior || null,
+            distancia_impresion_izquierda: distanciaImpresionIzquierda || null,
+            distancia_impresion_derecha: distanciaImpresionDerecha || null,
+            otras_caracteristicas: otrasCaracteristicas,
+            opacidad,
+            tratamientos_acabados_especiales: tratamientosAcabadosEspeciales,
+            },
+            ...(tipoProducto === "bolsa" ? { especificacion_bolsa: {
+              ancho_doblado: anchoDoblado,
+              ancho_desdoblado: anchoDesdoblado || null,
+              largo_doblado: largoDoblado,
+              largo_desdoblado: largoDesdoblado || null,
+              fuelle,
+              fuelle_izquierdo: fuelleIzquierdo || null,
+              fuelle_derecho: fuelleDerecho || null,
+              fuelle_inferior: fuelleInferior || null,
+              fuelle_superior: fuelleSuperior || null,
+              tipo_troquel: tipoTroquel || "normal",
+              tipo_sello: tipoSello,
+              pestana: tipoPestana || "sin_pestana",
+              acabado_especial: tratamientosAcabadosEspeciales.join(","),
+              otras_caracteristicas: otrasCaracteristicas,
+            } } : { especificacion_bobina: {
+              ancho: anchoBobina,
+              diametro: diametro || null,
+              diametro_nucleo: diametroNucleo || null,
+              longitud: longitud || null,
+              tipo_nucleo: tipoNucleo,
+              peso: peso || null,
+              otras_caracteristicas: otrasCaracteristicas,
+            } }),
+          },
+        });
+      }
 
       console.log("Resultado viabilidad:", resultado);
 
@@ -565,10 +729,14 @@ export default function RequerimientosPage() {
         error
       );
 
-      const mensaje =
-        error instanceof Error
-          ? error.message
-          : "No se pudo evaluar la viabilidad del producto";
+      const apiMessage = (error as {
+        response?: { data?: { mensaje?: string; detail?: string } };
+      })?.response?.data?.mensaje || (error as {
+        response?: { data?: { detail?: string } };
+      })?.response?.data?.detail;
+      const mensaje = apiMessage || (error instanceof Error
+        ? error.message
+        : "No se pudo evaluar la viabilidad del producto");
 
       setErrorViabilidad(mensaje);
 
@@ -582,11 +750,11 @@ export default function RequerimientosPage() {
       {/* Encabezado */}
       <div>
         <h1 className="text-2xl font-semibold text-foreground">
-          Nuevo requerimiento
+          Nueva cotización
         </h1>
 
         <p className="mt-1 text-sm text-muted-foreground">
-          Registra las necesidades del cliente para iniciar la evaluación comercial.
+          Registra la solicitud del cliente, evalúa la viabilidad técnica y genera la cotización económica.
         </p>
       </div>
 
@@ -602,8 +770,7 @@ export default function RequerimientosPage() {
           <ViabilidadResultado
             resultado={resultadoViabilidad}
             onContinuarCotizacion={() => {
-              // Luego implementaremos esta acción
-              console.log("Continuar a cotización");
+              setMostrarCotizacion(true);
             }}
           />
 
@@ -786,10 +953,13 @@ export default function RequerimientosPage() {
                 cuentaComercialId={cuentaComercialId}
                 setCuentaComercialId={setCuentaComercialId}
                 productoSeleccionado={productoSeleccionado}
+
                 cantidadUnidades={cantidadUnidades}
                 setCantidadUnidades={setCantidadUnidades}
+
                 cantidadKg={cantidadKg}
                 setCantidadKg={setCantidadKg}
+
                 prioridad={prioridad}
                 setPrioridad={setPrioridad}
                 fechaEntrega={fechaEntrega}
@@ -891,6 +1061,20 @@ export default function RequerimientosPage() {
         />
       )}
 
+      {mostrarCotizacion && <CotizacionModal
+        open
+        onClose={() => setMostrarCotizacion(false)}
+        cuenta={cuentaSeleccionada}
+        producto={productoSeleccionado}
+        productoNombre={productoSeleccionado?.producto_nombre || descripcion || (product === "bag" ? "Bolsa solicitada" : "Bobina solicitada")}
+        productType={product}
+        cantidadUnidades={cantidadUnidades}
+        cantidadKg={cantidadKg}
+        fechaEntrega={fechaEntrega}
+        observaciones={observaciones}
+        resultadoViabilidad={resultadoViabilidad}
+        onCrear={handleCrearCotizacion}
+      />}
       <Toast
         open={toast}
         title={toastTitle}
