@@ -703,6 +703,8 @@ export interface ComunicacionCreate {
   direccion: DireccionComunicacion;
   asunto?: string | null;
   contenido: string;
+  cotizacion_version_id?: number | null;
+  accion_cotizacion?: "ninguna" | "enviar" | "aceptar";
 }
 
 export type ComunicacionUpdate = {

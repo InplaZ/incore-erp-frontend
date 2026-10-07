@@ -271,7 +271,12 @@ export const createApiClient = (options: ApiClientOptions = {}): ApiClient => {
        * No mostramos response.data.
        */
       if (isDev) {
-        console.debug("[API] Response:", response.status, response.config.url);
+        console.debug(
+          "[API] Response:",
+          response.status,
+          response.config.url,
+          response.data,
+        );
       }
 
       return response;

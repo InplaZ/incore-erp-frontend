@@ -17,6 +17,7 @@ import {
   useActividadesComerciales,
   useCuentasComerciales,
   useDeleteActividadComercial,
+  useSolicitudComercial,
 } from "@/features/comercial/comercial.hooks";
 
 import ConfirmDialog from "../../../components/feedback/ConfirmDialog";
@@ -55,17 +56,6 @@ function getClientName(client: {
     .join(" ");
 }
 
-function getActivityLabel(tipo: TipoActividad) {
-  const labels: Record<TipoActividad, string> = {
-    llamada: "Llamada",
-    reunion: "Reunión",
-    cotizacion: "Cotización",
-    seguimiento: "Seguimiento",
-    confirmacion: "Confirmación",
-  };
-
-  return labels[tipo];
-}
 function getActivityEstadoLabel(estado: EstadoActividad) {
   const labels: Record<EstadoActividad, string> = {
     pendiente: "Pendiente",
@@ -216,6 +206,15 @@ export default function AgendaComercialPage() {
   }, [actividadesConCliente]);
 
   const [showRegistrarComunicacion, setShowRegistrarComunicacion] = useState(false)
+  const [actividadComunicacion, setActividadComunicacion] =
+    useState<ActividadComercial | null>(null);
+
+  const { data: solicitudDetalle }
+    = useSolicitudComercial(
+      actividadComunicacion?.solicitud_comercial ?? 0
+    )
+  const cotizacionVersionComunicacion =
+  solicitudDetalle?.productosCotizados?.[0]?.cotizacionVersion?.id ?? null;
 
   const handleEliminarActividad = async () => {
     if (!actividadEliminar) return;
@@ -405,9 +404,10 @@ export default function AgendaComercialPage() {
                       actividad={activity}
                       onEdit={() => setActividadEditar(activity)}
                       onDelete={() => setActividadEliminar(activity)}
-                      onRegistrarComunicacion={() =>
+                      onRegistrarComunicacion={() => {
+                        setActividadComunicacion(activity);
                         setShowRegistrarComunicacion(true)
-                      }
+                      }}
                     />
                   </div>
                 );
@@ -588,7 +588,14 @@ export default function AgendaComercialPage() {
 
       <RegistrarComunicacionModal
         open={showRegistrarComunicacion}
-        onClose={() => setShowRegistrarComunicacion(false)}
+        solicitudInicial={
+          actividadComunicacion?.solicitud_comercial ?? undefined
+        }
+        cotizacionVersionInicial={cotizacionVersionComunicacion}
+        onClose={() => {
+          setShowRegistrarComunicacion(false);
+          setActividadComunicacion(null);
+        }}
       />
       <NuevoClienteModal
         open={showNuevoClienteOpen}

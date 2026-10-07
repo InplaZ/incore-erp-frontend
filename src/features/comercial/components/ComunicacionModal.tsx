@@ -5,8 +5,11 @@ import {
   X,
 } from "lucide-react";
 
+import { useState } from "react";
 import { useComunicaciones } from "../comercial.hooks";
 import type { Comunicacion } from "../comercial.types";
+
+import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
 
 interface ComunicacionesModalProps {
   open: boolean;
@@ -14,6 +17,7 @@ interface ComunicacionesModalProps {
 
   solicitudId?: number;
   cuentaComercialId?: number;
+  cotizacionVersionId?: number | null;
 
   titulo?: string;
   subtitulo?: string;
@@ -23,6 +27,7 @@ export default function ComunicacionesModal({
   open,
   solicitudId,
   cuentaComercialId,
+  cotizacionVersionId,
   onClose,
   titulo,
   subtitulo,
@@ -34,14 +39,17 @@ export default function ComunicacionesModal({
   } = useComunicaciones(
     solicitudId
       ? {
-          solicitud_comercial: solicitudId,
-        }
+        solicitud_comercial: solicitudId,
+      }
       : cuentaComercialId
         ? {
-            cuenta_comercial: cuentaComercialId,
-          }
+          cuenta_comercial: cuentaComercialId,
+        }
         : undefined,
   );
+
+  const [showRegistrarComunicacion, setShowRegistrarComunicacion] =
+    useState(false)
 
   if (!open) {
     return null;
@@ -58,6 +66,8 @@ export default function ComunicacionesModal({
     (solicitudId
       ? `Historial de la solicitud #${solicitudId}`
       : "Historial de comunicaciones con el cliente");
+
+  
 
   return (
     <div
@@ -156,12 +166,19 @@ export default function ComunicacionesModal({
         <div className="flex justify-end border-t border-border px-6 py-4">
           <button
             type="button"
+            onClick={() => setShowRegistrarComunicacion(true)}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <MessageCircle className="h-4 w-4" />
             Nueva comunicación
           </button>
         </div>
+       <RegistrarComunicacionModal
+        open={showRegistrarComunicacion}
+        solicitudInicial={solicitudId}
+        cotizacionVersionInicial={cotizacionVersionId}
+        onClose={() => setShowRegistrarComunicacion(false)}
+      /> 
       </div>
     </div>
   );
@@ -182,29 +199,26 @@ function ComunicacionBubble({
 
   return (
     <div
-      className={`flex ${
-        esSaliente
+      className={`flex ${esSaliente
           ? "justify-end"
           : esEntrante
             ? "justify-start"
             : "justify-center"
-      }`}
+        }`}
     >
       <div
-        className={`max-w-[80%] ${
-          esHistorica ? "w-full max-w-md" : ""
-        }`}
+        className={`max-w-[80%] ${esHistorica ? "w-full max-w-md" : ""
+          }`}
       >
         {/* Fecha */}
 
         <div
-          className={`mb-1.5 flex items-center gap-2 text-[11px] text-muted-foreground ${
-            esSaliente
+          className={`mb-1.5 flex items-center gap-2 text-[11px] text-muted-foreground ${esSaliente
               ? "justify-end"
               : esEntrante
                 ? "justify-start"
                 : "justify-center"
-          }`}
+            }`}
         >
           <span>
             {formatFecha(comunicacion.created_at)}
@@ -214,13 +228,12 @@ function ComunicacionBubble({
         {/* Bubble */}
 
         <div
-          className={`rounded-2xl border px-4 py-3 ${
-            esSaliente
+          className={`rounded-2xl border px-4 py-3 ${esSaliente
               ? "rounded-br-md border-primary/20 bg-primary/10"
               : esEntrante
                 ? "rounded-bl-md border-border bg-card"
                 : "border-dashed border-border bg-muted/50"
-          }`}
+            }`}
         >
           {/* Dirección */}
 

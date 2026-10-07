@@ -74,7 +74,6 @@ export default function CotizacionModal({
   productoNombre,
   productType,
   cantidadUnidades,
-  cantidadKg,
   fechaEntrega,
   observaciones,
   resultadoViabilidad,

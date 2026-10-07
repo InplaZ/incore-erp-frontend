@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
 import {
@@ -16,12 +16,14 @@ interface RegistrarComunicacionModalProps {
   open: boolean;
   onClose: () => void;
   solicitudInicial?: number;
+  cotizacionVersionInicial?: number | null;
 }
 
 export default function RegistrarComunicacionModal({
   open,
   onClose,
   solicitudInicial,
+  cotizacionVersionInicial,
 }: RegistrarComunicacionModalProps) {
   const createComunicacion = useCreateComunicacion();
 
@@ -31,6 +33,14 @@ export default function RegistrarComunicacionModal({
   } = useSolicitudesComerciales();
 
   const solicitudes = solicitudesData ?? [];
+
+  // ============================================================
+  // SOLICITUD SELECCIONADA
+  // ============================================================
+
+  const solicitudSeleccionada = solicitudes.find(
+    (solicitud) => solicitud.id === solicitudInicial,
+  );
 
   // ============================================================
   // ESTADOS DEL FORMULARIO
@@ -52,6 +62,23 @@ export default function RegistrarComunicacionModal({
   const [asunto, setAsunto] = useState("");
 
   const [contenido, setContenido] = useState("");
+
+  type AccionCotizacion = "ninguna" | "enviar" | "aceptar";
+
+  const [accionCotizacion, setAccionCotizacion] =
+    useState<AccionCotizacion>("ninguna");
+
+  // ============================================================
+  // SINCRONIZAR SOLICITUD INICIAL
+  // ============================================================
+
+  useEffect(() => {
+    setSolicitudComercial(
+      solicitudInicial
+        ? String(solicitudInicial)
+        : "",
+    );
+  }, [solicitudInicial]);
 
   // ============================================================
   // CERRAR MODAL
@@ -83,6 +110,10 @@ export default function RegistrarComunicacionModal({
         direccion,
         asunto: asunto.trim() || null,
         contenido: contenido.trim(),
+        cotizacion_version_id: cotizacionVersionInicial ?? null,
+        accion_cotizacion: cotizacionVersionInicial
+          ? accionCotizacion
+          : "ninguna",
       });
 
       // ========================================================
@@ -100,6 +131,7 @@ export default function RegistrarComunicacionModal({
       setDireccion("saliente");
       setAsunto("");
       setContenido("");
+      setAccionCotizacion("ninguna");
 
       onClose();
     } catch (error) {
@@ -157,34 +189,49 @@ export default function RegistrarComunicacionModal({
               Solicitud comercial
             </label>
 
-            <select
-              value={solicitudComercial}
-              onChange={(e) =>
-                setSolicitudComercial(e.target.value)
-              }
-              disabled={
-                solicitudesLoading ||
-                !!solicitudInicial
-              }
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
-              required
-            >
-              <option value="">
-                {solicitudesLoading
-                  ? "Cargando solicitudes..."
-                  : "Seleccionar solicitud"}
-              </option>
+            {solicitudInicial ? (
+              <div className="w-full rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+                <p className="text-sm font-medium text-foreground">
+                  Solicitud #{solicitudInicial}
+                </p>
 
-              {solicitudes.map((solicitud) => (
-                <option
-                  key={solicitud.id}
-                  value={solicitud.id}
-                >
-                  #{solicitud.id} —{" "}
-                  {solicitud.descripcion}
+                {solicitudSeleccionada?.descripcion && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {solicitudSeleccionada.descripcion}
+                  </p>
+                )}
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Esta comunicación pertenece a esta solicitud.
+                </p>
+              </div>
+            ) : (
+              <select
+                value={solicitudComercial}
+                onChange={(e) =>
+                  setSolicitudComercial(e.target.value)
+                }
+                disabled={solicitudesLoading}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+                required
+              >
+                <option value="">
+                  {solicitudesLoading
+                    ? "Cargando solicitudes..."
+                    : "Seleccionar solicitud"}
                 </option>
-              ))}
-            </select>
+
+                {solicitudes.map((solicitud) => (
+                  <option
+                    key={solicitud.id}
+                    value={solicitud.id}
+                  >
+                    #{solicitud.id} —{" "}
+                    {solicitud.descripcion}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* ======================================================
@@ -310,6 +357,40 @@ export default function RegistrarComunicacionModal({
             </p>
           </div>
 
+          {cotizacionVersionInicial && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Acción sobre la cotización
+              </label>
+
+              <select
+                value={accionCotizacion}
+                onChange={(e) =>
+                  setAccionCotizacion(
+                    e.target.value as AccionCotizacion,
+                  )
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20"
+              >
+                <option value="ninguna">
+                  Solo registrar comunicación
+                </option>
+
+                <option value="enviar">
+                  Informar / enviar cotización
+                </option>
+
+                <option value="aceptar">
+                  Registrar aceptación
+                </option>
+              </select>
+
+              <p className="text-xs text-muted-foreground">
+                Cotización versión #{cotizacionVersionInicial}
+              </p>
+            </div>
+          )}
+
           {/* ======================================================
               ASUNTO
           ====================================================== */}
@@ -318,7 +399,6 @@ export default function RegistrarComunicacionModal({
             <label className="text-sm font-medium text-foreground">
               Asunto
             </label>
-
             <input
               type="text"
               value={asunto}
