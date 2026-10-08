@@ -102,7 +102,7 @@ function formatAgendaDate() {
   }).format(new Date());
 }
 
-type AgendaTab = "hoy" | "proximos" | "completadas";
+type AgendaTab = "hoy" | "proximos" | "vencidas" | "completadas";
 
 export default function AgendaComercialPage() {
 
@@ -186,12 +186,38 @@ export default function AgendaComercialPage() {
     );
   }, [actividadesConCliente]);
 
+  /**
+ * ACTIVIDADES VENCIDAS
+ */
+  const actividadesVencidas = useMemo(() => {
+    const hoy = new Date();
+
+    hoy.setHours(0, 0, 0, 0);
+
+    return actividadesConCliente.filter((actividad) => {
+      const fecha = new Date(actividad.fecha_programada);
+
+      fecha.setHours(0, 0, 0, 0);
+
+      return (
+        fecha < hoy &&
+        actividad.estado !== "completada" &&
+        actividad.estado !== "cancelada"
+      );
+    });
+  }, [actividadesConCliente]);
+
+  /**
+   * Actividades mostradas según la pestaña activa
+   */
   const actividadesMostradas =
     activeTab === "hoy"
       ? actividadesHoy
       : activeTab === "proximos"
         ? actividadesProximas
-        : actividadesCompletadas;
+        : activeTab === "vencidas"
+          ? actividadesVencidas
+          : actividadesCompletadas;
 
   const clientesPorContactar = useMemo(() => {
     const clientesIds = actividadesConCliente
@@ -214,7 +240,7 @@ export default function AgendaComercialPage() {
       actividadComunicacion?.solicitud_comercial ?? 0
     )
   const cotizacionVersionComunicacion =
-  solicitudDetalle?.productosCotizados?.[0]?.cotizacionVersion?.id ?? null;
+    solicitudDetalle?.productosCotizados?.[0]?.cotizacionVersion?.id ?? null;
 
   const handleEliminarActividad = async () => {
     if (!actividadEliminar) return;
@@ -254,14 +280,21 @@ export default function AgendaComercialPage() {
           icon={CalendarDays}
           label="Actividades hoy"
           value={actividadesHoy.length.toString()}
-          detail="3 pendientes"
+          detail={`${actividadesVencidas.length} vencidas`}
         />
 
         <MetricCard
           icon={Phone}
           label="Llamadas pendientes"
-          value={actividadesMostradas.filter((a) => a.tipo === "llamada").length.toString()}
-          detail="2 vencidas"
+          value={actividadesConCliente
+            .filter(
+              (a) =>
+                a.tipo === "llamada" &&
+                a.estado !== "completada" &&
+                a.estado !== "cancelada",
+            )
+            .length.toString()}
+          detail={`${actividadesVencidas.filter((a) => a.tipo === "llamada").length} vencidas`}
           negative
         />
 
@@ -347,6 +380,20 @@ export default function AgendaComercialPage() {
                 {actividadesCompletadas.length}
               </span>
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("vencidas")}
+              className={
+                activeTab === "vencidas"
+                  ? "border-b-2 border-primary py-3 text-sm font-medium text-primary"
+                  : "border-b-2 border-transparent py-3 text-sm text-muted-foreground hover:text-foreground"
+              }
+            >
+              Vencidas{" "}
+              <span className="ml-1">
+                {actividadesVencidas.length}
+              </span>
+            </button>
           </div>
 
           {/* Actividades */}
@@ -365,7 +412,9 @@ export default function AgendaComercialPage() {
                   ? "No tienes actividades programadas para hoy."
                   : activeTab === "proximos"
                     ? "No tienes actividades próximas."
-                    : "No tienes actividades completadas."}
+                    : activeTab === "vencidas"
+                      ? "No tienes actividades vencidas"
+                      : "No tienes actividades completadas."}
               </div>
             ) : (
               actividadesMostradas.map((activity) => {

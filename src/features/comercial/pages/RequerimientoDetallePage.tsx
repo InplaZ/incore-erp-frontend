@@ -17,6 +17,7 @@ import { useSolicitudComercial } from "../comercial.hooks";
 import { useProductosCategorias } from "@/features/productos/productos.hooks";
 import ComunicacionesModal from "@/features/comercial/components/ComunicacionModal";
 import EditarRequerimientoModal from "@/features/comercial/components/EditarRequerimientoModal";
+import { Printer } from "lucide-react";
 
 export default function RequerimientoDetallePage() {
     const navigate = useNavigate();
@@ -123,7 +124,7 @@ export default function RequerimientoDetallePage() {
             }
             : null
     );
-    const categoriaProducto = productoCotizado?.categoria.nombre ??
+    const categoriaProducto = productoCotizado?.categoria?.nombre ??
         categorias?.find(
             (categoria) => categoria.id === especificacionProducto?.categoria_producto,
         )?.nombre ?? "—";
@@ -173,6 +174,15 @@ export default function RequerimientoDetallePage() {
                     >
                         <MessageCircle className="h-4 w-4" />
                         Ver comunicaciones
+                    </button>
+
+                     <button
+                        type="button"
+                        onClick={() => setShowComunicaciones(true)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted"
+                    >
+                        <MessageCircle className="h-4 w-4" />
+                        Imprimir 
                     </button>
 
                 </div>
@@ -285,15 +295,15 @@ export default function RequerimientoDetallePage() {
                                 <>
                                     <InfoItem
                                         label="Código"
-                                        value={productoCotizado.producto.codigo}
+                                        value={productoCotizado.producto?.codigo}
                                     />
                                     <InfoItem
                                         label="Producto de catálogo"
-                                        value={productoCotizado.producto.nombre}
+                                        value={productoCotizado.producto?.nombre}
                                     />
                                     <InfoItem
                                         label="Categoría"
-                                        value={productoCotizado.categoria.nombre || "—"}
+                                        value={productoCotizado.categoria?.nombre || "—"}
                                     />
                                     <InfoItem
                                         label="Versión de catálogo"

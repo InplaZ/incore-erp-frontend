@@ -209,16 +209,7 @@ export default function NuevaActividadModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div
-        className="
-          w-full max-w-lg
-          overflow-hidden
-          rounded-xl
-          border border-border
-          bg-card
-          shadow-2xl
-        "
-      >
+      <div className="w-8/12 max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-background shadow-xl">
         {/* HEADER */}
         <div className="flex items-start justify-between border-b border-border px-6 py-5">
           <div className="flex items-center gap-3">

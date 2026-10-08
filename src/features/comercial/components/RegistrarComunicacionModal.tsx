@@ -144,7 +144,7 @@ export default function RegistrarComunicacionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-xl border border-border bg-background shadow-xl">
+      <div className="w-8/12 max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-background shadow-xl">
 
         {/* ========================================================
             HEADER
