@@ -17,7 +17,7 @@ import { useSolicitudComercial } from "../comercial.hooks";
 import { useProductosCategorias } from "@/features/productos/productos.hooks";
 import ComunicacionesModal from "@/features/comercial/components/ComunicacionModal";
 import EditarRequerimientoModal from "@/features/comercial/components/EditarRequerimientoModal";
-import { Printer } from "lucide-react";
+import { api } from "@/api/api.config";
 
 export default function RequerimientoDetallePage() {
     const navigate = useNavigate();
@@ -36,6 +36,31 @@ export default function RequerimientoDetallePage() {
         useSolicitudComercial(solicitudId);
 
     const { data: categorias } = useProductosCategorias();
+
+    //IMPRIMIR
+
+    const handleImprimir = async () => {
+        let pdfUrl: string | null = null;
+
+        try {
+            const pdfBlob = await api.get<Blob>(
+                `/comercial/solicitudes/${solicitudId}/pdf/`,
+                {
+                    config: {
+                        responseType: "blob",
+                    },
+                }
+            );
+
+            pdfUrl = URL.createObjectURL(pdfBlob);
+            window.open(pdfUrl, "_blank");
+
+        } catch (error) {
+            console.error("Error al generar el PDF:", error);
+            alert("No se pudo generar la orden de producción.");
+        }
+    };
+
 
     /* ============================================================
        ESTADOS DE CARGA / ERROR
@@ -148,8 +173,8 @@ export default function RequerimientoDetallePage() {
 
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            <span>Solicitud #{solicitud.id}  </span> 
-                            <EstadoBadge estado={solicitud.estado}/>
+                            <span>Solicitud #{solicitud.id}  </span>
+                            <EstadoBadge estado={solicitud.estado} />
                         </p>
                         <h1 className="text-2xl font-bold tracking-tight text-foreground">
                             Detalle del Requerimiento
@@ -175,16 +200,16 @@ export default function RequerimientoDetallePage() {
                         <MessageCircle className="h-4 w-4" />
                         Ver comunicaciones
                     </button>
-
-                     <button
+                {solicitud.estado == "aprobada" && (
+                    <button
                         type="button"
-                        onClick={() => setShowComunicaciones(true)}
+                        onClick={handleImprimir}
                         className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted"
                     >
                         <MessageCircle className="h-4 w-4" />
-                        Imprimir 
+                        Imprimir
                     </button>
-
+                )}
                 </div>
             </header>
 
