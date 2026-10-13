@@ -31,6 +31,10 @@ const AdminPage = lazy(
   () => import("../../features/admin/AdminPage"),
 );
 
+const ProductosPage = lazy(
+  () => import("../../features/productos/ProductosPage"),
+);
+
 // Error
 const NotFoundPage = lazy(
   () => import("../../pages/not-found/not-found-page"),
@@ -74,6 +78,10 @@ export const appRoutes: AppRoute[] = [
       {
         path: "/admin",
         element: <AdminPage />,
+      },
+      {
+        path: "/productos",
+        element: <ProductosPage />,
       },
       ...comercialRoutes,
     ],

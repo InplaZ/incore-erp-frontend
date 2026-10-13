@@ -732,16 +732,22 @@ export interface ProductoCategoria {
 // PRODUCTOS DEL CATÁLOGO
 // ============================================================
 
+
 export interface Producto {
   id: number;
-  categoria_producto: number;
+  categoria: number;
+  subcategoria: number | null;
   codigo: string;
   nombre: string;
   descripcion: string;
-  activo: boolean;
+  imagen: string | null;
+  unidad_medida: "unidad" | "fajo" | "metro";
+  pais_origen: string;
+  estado: string;
   created_at: string;
   updated_at: string;
 }
+
 // ============================================================
 // VERSIONES DE PRODUCTO
 // ============================================================
@@ -957,27 +963,28 @@ export type PedidoDetalleUpdate =
 // RESULTADO DE BÚSQUEDA DE PRODUCTOS
 // ============================================================
 
+
 export interface ProductoBusquedaResultado {
   producto_id: number;
   producto_codigo: string;
   producto_nombre: string;
   producto_descripcion: string;
-  categoria: string;
-
+  categoria: string | null;
+  subcategoria_id: number | null;
+  subcategoria: string | null;
   version_id: number;
   version_numero: number;
-
   material: MaterialProducto;
   capas: TipoCapa | null;
   micraje: string | number | null;
-
   impresion: boolean;
   color_bolsa: string;
   tipo_impresion: TipoImpresion | "";
-
+  imagen: string | null;
   especificacion_bolsa?: EspecificacionBolsaCatalogo;
   especificacion_bobina?: EspecificacionBobinaCatalogo;
 }
+
 
 export interface EspecificacionBobinaCatalogo {
   id: number;
@@ -1020,6 +1027,9 @@ export interface BuscarCatalogoResponse {
   exito: boolean;
   productos: ProductoBusquedaResultado[];
   cantidad: number;
+  pagina: number;
+  por_pagina: number;
+  total_paginas: number;
 }
 
 // ============================================================

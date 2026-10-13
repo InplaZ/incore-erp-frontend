@@ -18,6 +18,7 @@ export const productosQueryKeys = {
     [...productosQueryKeys.all, "categorias"] as const,
 
   catalogo: (params: {
+    subcategoria?: number;  
     categoria?: string;
     q?: string;
     material?: string;
@@ -52,11 +53,14 @@ export function useProductosCategorias() {
 export function useBuscarProductosCatalogo(
   params: {
     categoria?: string;
+    subcategoria?: number;
     q?: string;
     material?: string;
     micraje?: string | number;
     capas?: string;
     impresion?: boolean;
+    pagina?: number;
+    por_pagina?: number;
   },
   enabled = true
 ) {

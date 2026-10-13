@@ -55,11 +55,14 @@ export const productosApi = {
 
   buscarCatalogo: async (params: {
     categoria?: string;
+    subcategoria?: number;
     q?: string;
     material?: string;
     micraje?: string | number;
     capas?: string;
     impresion?: boolean;
+    pagina?: number;
+    por_pagina?: number;
   }): Promise<BuscarCatalogoResponse> =>
     api.get("/productos/busqueda-productos/catalogo/", { params }),
 
