@@ -1,7 +1,6 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-
-import { productosCategoriasApi, productosApi } from "./productos.api";
-
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { productosCategoriasApi, productosApi, productosSubcategoriasApi } from "./productos.api";
+import type { Producto } from "./productos.types";
 import type {
   BuscarSimilaresResponse,
   ProductoVersion,
@@ -33,6 +32,8 @@ export const productosQueryKeys = {
 
   version: (id: number) =>
     [...productosQueryKeys.all, "version", id] as const,
+
+  lista: () => [...productosQueryKeys.all, "lista"] as const,
 };
 
 // ============================================================
@@ -82,7 +83,16 @@ export function useProducto(id: number, enabled = true) {
     enabled: enabled && !!id,
   });
 }
+// ============================================================
+// LISTADO GENERAL DE PRODUCTOS
+// ============================================================
 
+export function useProductos() {
+  return useQuery({
+    queryKey: productosQueryKeys.lista(),
+    queryFn: () => productosApi.list(),
+  });
+}
 // ============================================================
 // VERSIÓN DE PRODUCTO
 // ============================================================
@@ -142,5 +152,51 @@ export function useUpdateEspecificacionBobina() {
       id: number;
       data: Record<string, unknown>;
     }) => productosApi.updateEspecificacionBobina(id, data),
+  });
+}
+export function useCreateProducto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: Partial<Producto>) =>
+      productosApi.create(data),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: productosQueryKeys.all,
+      });
+    },
+  });
+}
+
+export function useUpdateProducto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<Producto>;
+    }) => productosApi.update(id, data),
+
+    onSuccess: (_producto, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: productosQueryKeys.all,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: productosQueryKeys.producto(variables.id),
+      });
+    },
+  });
+}
+
+export function useProductosSubcategorias(categoria?: number) {
+  return useQuery({
+    queryKey: ["productos", "subcategorias", categoria],
+    queryFn: () => productosSubcategoriasApi.list(categoria),
+    enabled: Boolean(categoria),
   });
 }

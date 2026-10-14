@@ -32,6 +32,12 @@ export const productosApi = {
   get: async (id: number): Promise<Producto> =>
     api.get(`/productos/productos/${id}/`),
 
+  create: async (data: Partial<Producto>): Promise<Producto> =>
+    api.post("/productos/productos/", data),
+
+  update: async (id: number, data: Partial<Producto>): Promise<Producto> =>
+    api.put(`/productos/productos/${id}/`, data),
+
   getVersion: async (id: number): Promise<ProductoVersion> =>
     api.get(`/productos/versiones/${id}/`),
 
@@ -71,4 +77,11 @@ export const productosApi = {
     especificacion_producto_solicitado_version_id?: number;
   }): Promise<BuscarSimilaresResponse> =>
     api.post("/productos/busqueda-productos/buscar_similares/", data),
+};
+
+export const productosSubcategoriasApi = {
+  list: async (categoria?: number) =>
+    api.get("/productos/subcategorias/", {
+      params: categoria ? { categoria, activo: true } : {},
+    }),
 };
