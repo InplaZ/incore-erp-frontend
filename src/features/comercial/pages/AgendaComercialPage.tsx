@@ -240,7 +240,9 @@ export default function AgendaComercialPage() {
       actividadComunicacion?.solicitud_comercial ?? 0
     )
   const cotizacionVersionComunicacion =
-    solicitudDetalle?.productosCotizados?.[0]?.cotizacionVersion?.id ?? null;
+    [...(solicitudDetalle?.productosCotizados ?? [])]
+      .sort((a, b) => b.cotizacionVersion.version - a.cotizacionVersion.version)[0]
+      ?.cotizacionVersion.id ?? null;
 
   const handleEliminarActividad = async () => {
     if (!actividadEliminar) return;
@@ -641,6 +643,7 @@ export default function AgendaComercialPage() {
           actividadComunicacion?.solicitud_comercial ?? undefined
         }
         cotizacionVersionInicial={cotizacionVersionComunicacion}
+        actividadComercialInicial={actividadComunicacion?.id ?? null}
         onClose={() => {
           setShowRegistrarComunicacion(false);
           setActividadComunicacion(null);

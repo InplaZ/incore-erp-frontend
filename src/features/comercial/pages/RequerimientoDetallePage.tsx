@@ -13,11 +13,26 @@ import {
     Pencil,
 } from "lucide-react";
 
-import { useSolicitudComercial } from "../comercial.hooks";
+import { useSolicitudComercial, useCrearCotizacionVersion } from "../comercial.hooks";
 import { useProductosCategorias } from "@/features/productos/productos.hooks";
 import ComunicacionesModal from "@/features/comercial/components/ComunicacionModal";
 import EditarRequerimientoModal from "@/features/comercial/components/EditarRequerimientoModal";
 import { api } from "@/api/api.config";
+
+interface LineaEdicionForm {
+    cantidad: string;
+    precio_lista: string;
+    descuento_porcentaje: string;
+    unidad_comercial: string;
+    peso_kg: string;
+    motivo_cambio: string;
+    ancho_doblado: string;
+    ancho_desdoblado: string;
+    largo_doblado: string;
+    largo_desdoblado: string;
+    ancho_bobina: string;
+    tecnica: Record<string, string | boolean | string[]>;
+}
 
 export default function RequerimientoDetallePage() {
     const navigate = useNavigate();
@@ -30,6 +45,11 @@ export default function RequerimientoDetallePage() {
 
     //MOSTRAR EDICIÓN
     const [showEditar, setShowEditar] = useState(false);
+    const [lineaSeleccionadaId, setLineaSeleccionadaId] = useState<number | null>(null);
+    const [lineaEditandoId, setLineaEditandoId] = useState<number | null>(null);
+    const [formLinea, setFormLinea] = useState<LineaEdicionForm | null>(null);
+    const [guardandoLinea, setGuardandoLinea] = useState(false);
+    const crearVersionCotizacion = useCrearCotizacionVersion();
 
 
     const { data, isLoading, isError } =
@@ -113,16 +133,22 @@ export default function RequerimientoDetallePage() {
         especificacionBobina,
     } = data;
 
-    const productoCotizado = data.productosCotizados?.[0] ?? null;
+    const productoCotizado = (data.productosCotizados ?? []).find(
+        (linea) => linea.cotizacionDetalle.id === lineaSeleccionadaId,
+    ) ?? data.productosCotizados?.[0] ?? null;
+    const versionesCotizacion = Array.from(new Map(
+        (data.productosCotizados ?? []).map((linea) => [linea.cotizacionVersion.id, linea.cotizacionVersion]),
+    ).values()).sort((a, b) => b.version - a.version);
+    const versionEnviada = versionesCotizacion.find((version) => version.estado === "enviada");
     const productoVersion = productoCotizado?.productoVersion ?? null;
+    const especificacionVersionada = productoCotizado?.especificacionProductoSolicitadoVersion ?? null;
     const variantesColorSolicitadas =
         especificacionProducto?.variantes_color ?? [];
     const bolsaMostrar =
-        especificacionBolsa ?? productoCotizado?.especificacionBolsa ?? null;
+        especificacionVersionada?.especificacionBolsa ?? especificacionBolsa ?? productoCotizado?.especificacionBolsa ?? null;
     const bobinaMostrar =
-        especificacionBobina ?? productoCotizado?.especificacionBobina ?? null;
-    const datosTecnicos = especificacionProducto ?? (
-        productoVersion
+        especificacionVersionada?.especificacionBobina ?? especificacionBobina ?? productoCotizado?.especificacionBobina ?? null;
+    const datosTecnicos = especificacionVersionada ?? (productoVersion
             ? {
                 material: productoVersion.material,
                 apto_alimento: productoVersion.apto_alimento,
@@ -147,12 +173,101 @@ export default function RequerimientoDetallePage() {
                     productoCotizado?.especificacionBobina?.otras_caracteristicas ??
                     "",
             }
-            : null
-    );
+            : productoCotizado ? null : especificacionProducto);
     const categoriaProducto = productoCotizado?.categoria?.nombre ??
         categorias?.find(
-            (categoria) => categoria.id === especificacionProducto?.categoria_producto,
+            (categoria) => categoria.id === (especificacionVersionada?.categoria_producto ?? especificacionProducto?.categoria_producto),
         )?.nombre ?? "—";
+
+    const iniciarEdicionLinea = (linea: NonNullable<typeof data.productosCotizados>[number]) => {
+        const versionTecnica = linea.especificacionProductoSolicitadoVersion;
+        const tecnica: Record<string, string | boolean | string[]> = {};
+        if (versionTecnica) {
+            for (const [campo, valor] of Object.entries(versionTecnica)) {
+                if (campo !== "especificacionBolsa" && campo !== "especificacionBobina" && campo !== "id" && campo !== "version" && campo !== "especificacion_producto_solicitado" && campo !== "categoria_producto") {
+                    tecnica[campo] = Array.isArray(valor) ? valor.join(", ") : (valor as string | boolean | null) ?? "";
+                }
+            }
+            for (const [grupo, valores] of [["especificacion_bolsa", versionTecnica.especificacionBolsa], ["especificacion_bobina", versionTecnica.especificacionBobina]] as const) {
+                if (valores) Object.entries(valores).forEach(([campo, valor]) => { tecnica[`${grupo}.${campo}`] = (valor as string | number | null | boolean) ?? ""; });
+            }
+        }
+        setLineaSeleccionadaId(linea.cotizacionDetalle.id);
+        setLineaEditandoId(linea.cotizacionDetalle.id);
+        setFormLinea({
+            cantidad: String(linea.cotizacionDetalle.cantidad),
+            precio_lista: String(linea.cotizacionDetalle.precio_lista ?? ""),
+            descuento_porcentaje: String(linea.cotizacionDetalle.descuento_porcentaje ?? "0"),
+            unidad_comercial: linea.cotizacionDetalle.unidad_comercial || "unidad",
+            peso_kg: String(linea.cotizacionDetalle.peso_kg ?? ""),
+            motivo_cambio: "Cambio solicitado por el cliente",
+            ancho_doblado: String(versionTecnica?.especificacionBolsa?.ancho_doblado ?? ""),
+            ancho_desdoblado: String(versionTecnica?.especificacionBolsa?.ancho_desdoblado ?? ""),
+            largo_doblado: String(versionTecnica?.especificacionBolsa?.largo_doblado ?? ""),
+            largo_desdoblado: String(versionTecnica?.especificacionBolsa?.largo_desdoblado ?? ""),
+            ancho_bobina: String(versionTecnica?.especificacionBobina?.ancho ?? ""),
+            tecnica,
+        });
+    };
+
+    const guardarEdicionLinea = async (linea: NonNullable<typeof data.productosCotizados>[number]) => {
+        if (!formLinea) return;
+        const versionTecnica = linea.especificacionProductoSolicitadoVersion;
+        const bolsa = versionTecnica?.especificacionBolsa;
+        const bobina = versionTecnica?.especificacionBobina;
+        const datosEspecificacion: Record<string, unknown> = {};
+        if (versionTecnica) {
+            const base: Record<string, unknown> = { ...versionTecnica };
+            if (bolsa) base.especificacion_bolsa = bolsa;
+            if (bobina) base.especificacion_bobina = bobina;
+            const normalizar = (valor: unknown) => Array.isArray(valor) ? valor.join(", ") : valor == null ? "" : String(valor);
+            for (const [clave, valor] of Object.entries(formLinea.tecnica)) {
+                const separador = clave.indexOf(".");
+                const grupo = separador >= 0 ? clave.slice(0, separador) : null;
+                const campo = separador >= 0 ? clave.slice(separador + 1) : clave;
+                const original = grupo ? (base[grupo] as Record<string, unknown> | null)?.[campo] : base[campo];
+                if (normalizar(valor) === normalizar(original)) continue;
+                const convertido = Array.isArray(original) && typeof valor === "string"
+                    ? valor.split(",").map((item) => item.trim()).filter(Boolean)
+                    : typeof original === "boolean" ? valor === true || valor === "true" : valor === "" ? null : valor;
+                if (grupo) {
+                    (datosEspecificacion[grupo] as Record<string, unknown> | undefined) ??= {};
+                    (datosEspecificacion[grupo] as Record<string, unknown>)[campo] = convertido;
+                } else datosEspecificacion[campo] = convertido;
+            }
+        }
+        const hayCambioTecnico = Object.keys(datosEspecificacion).length > 0;
+
+        setGuardandoLinea(true);
+        try {
+            await api.patch(`/comercial/cotizaciones-detalles/${linea.cotizacionDetalle.id}/editar-version/`, {
+                cantidad: formLinea.cantidad,
+                precio_lista: formLinea.precio_lista,
+                descuento_porcentaje: formLinea.descuento_porcentaje,
+                unidad_comercial: formLinea.unidad_comercial,
+                peso_kg: formLinea.peso_kg || null,
+                motivo_cambio: formLinea.motivo_cambio,
+                ...(hayCambioTecnico ? { datos_especificacion: datosEspecificacion } : {}),
+            });
+            window.location.reload();
+        } catch (error) {
+            console.error("No se pudo guardar la modificación de la línea", error);
+            alert("No se pudo guardar. Verifica la viabilidad de la nueva medida y que la versión esté en borrador.");
+        } finally {
+            setGuardandoLinea(false);
+        }
+    };
+
+    const actualizarTecnica = (campo: string, valor: string | boolean) => {
+        if (!formLinea) return;
+        setFormLinea({ ...formLinea, tecnica: { ...formLinea.tecnica, [campo]: valor } });
+    };
+    const campoTecnico = (campo: string, etiqueta: string, opciones?: string[]) => {
+        if (!formLinea) return null;
+        const valor = formLinea.tecnica[campo] ?? "";
+        if (typeof valor === "boolean") return <label key={campo} className="flex items-center gap-2 text-sm text-foreground"><input type="checkbox" checked={valor} onChange={(event) => actualizarTecnica(campo, event.target.checked)} />{etiqueta}</label>;
+        return <label key={campo} className="text-xs text-muted-foreground">{etiqueta}{opciones ? <select value={String(valor)} onChange={(event) => actualizarTecnica(campo, event.target.value)} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground"><option value="">—</option>{opciones.map((opcion) => <option key={opcion} value={opcion}>{opcion.replaceAll("_", " ")}</option>)}</select> : <input value={Array.isArray(valor) ? valor.join(", ") : String(valor)} onChange={(event) => actualizarTecnica(campo, event.target.value)} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />}</label>;
+    };
 
     return (
         <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -216,6 +331,119 @@ export default function RequerimientoDetallePage() {
             {/* ============================================================
                 GRID PRINCIPAL
                ============================================================ */}
+
+            {versionesCotizacion.length > 0 && (
+                <section className="mb-8 rounded-2xl border border-border bg-card p-5">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 className="text-lg font-semibold">Historial de cotizaciones</h2>
+                            <p className="text-sm text-muted-foreground">Selecciona una línea para consultar su detalle. Las versiones anteriores conservan sus importes.</p>
+                        </div>
+                        {solicitud.estado !== "aprobada" && solicitud.estado !== "convertida" && !["aceptada", "borrador"].includes(versionesCotizacion[0].estado) && (
+                            <button type="button" onClick={async () => {
+                                const response = await crearVersionCotizacion.mutateAsync({ cotizacionId: versionesCotizacion[0].cotizacion, moneda: versionesCotizacion[0].moneda });
+                                window.location.assign(`/comercial/requerimientos/${solicitudId}?version_preparada=${response.cotizacion_version}`);
+                            }} disabled={crearVersionCotizacion.isPending} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50">
+                                {crearVersionCotizacion.isPending ? "Preparando…" : "Preparar nueva versión para editar"}
+                            </button>
+                        )}
+                    </div>
+                    <div className="space-y-3">
+                        {versionesCotizacion.map((version) => {
+                            const lineas = (data.productosCotizados ?? []).filter((linea) => linea.cotizacionVersion.id === version.id);
+                            return <div key={version.id} className="rounded-xl border border-border p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p className="font-semibold">{lineas[0]?.cotizacion.numero} · Versión {version.version}</p>
+                                        <p className="text-xs text-muted-foreground">{new Date(version.created_at).toLocaleDateString()} · {version.estado} · {version.moneda} {Number(version.precio_total).toFixed(2)}</p>
+                                    </div>
+                                    <button type="button" onClick={async () => {
+                                        const blob = await api.get<Blob>(`/comercial/cotizaciones-versiones/${version.id}/pdf/`, { config: { responseType: "blob" } });
+                                        window.open(URL.createObjectURL(blob), "_blank");
+                                    }} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted">Ver PDF</button>
+                                </div>
+                                <div className="mt-3 divide-y divide-border">
+                                    {lineas.map((linea) => {
+                                        const seleccionada = linea.cotizacionDetalle.id === lineaSeleccionadaId;
+                                        const versionTecnica = linea.especificacionProductoSolicitadoVersion;
+                                        return <div key={linea.cotizacionDetalle.id} className="border-b border-border last:border-0">
+                                            <button
+                                                type="button"
+                                                aria-expanded={seleccionada}
+                                                onClick={() => {
+                                                    setLineaSeleccionadaId(linea.cotizacionDetalle.id);
+                                                    if (lineaEditandoId !== linea.cotizacionDetalle.id) setLineaEditandoId(null);
+                                                }}
+                                                className={`flex w-full flex-wrap justify-between gap-2 py-3 text-left text-sm ${seleccionada ? "text-primary" : "hover:text-primary"}`}
+                                            >
+                                                <span>{linea.producto?.nombre || `Producto solicitado · especificación #${versionTecnica?.id ?? "—"}`}{linea.producto?.codigo ? ` · ${linea.producto.codigo}` : " · Sin código definitivo"}</span>
+                                                <span>{linea.cotizacionDetalle.cantidad} {linea.cotizacionDetalle.unidad_comercial} × {version.moneda} {Number(linea.cotizacionDetalle.precio_unitario).toFixed(2)} = {version.moneda} {Number(linea.cotizacionDetalle.precio_total).toFixed(2)}</span>
+                                            </button>
+                                            {seleccionada && (
+                                                <div className="mb-3 rounded-lg bg-muted/30 p-3 text-sm">
+                                                    <p className="font-medium">Detalle de línea · cotización {linea.cotizacion.numero}, versión {version.version}</p>
+                                                    <p className="mt-1 text-muted-foreground">
+                                                        {versionTecnica
+                                                            ? `Especificación técnica V${versionTecnica.version} · ${versionTecnica.especificacionBolsa ? `ancho ${versionTecnica.especificacionBolsa.ancho_doblado} cm` : versionTecnica.especificacionBobina ? `ancho ${versionTecnica.especificacionBobina.ancho} cm` : "medidas no disponibles"}`
+                                                            : `Versión de catálogo ${linea.productoVersion?.numero_version ?? "—"} · ${linea.producto?.codigo ?? ""}`}
+                                                    </p>
+                                                    {version.estado !== "borrador" && <p className="mt-2 text-xs text-muted-foreground">Esta versión es histórica y no se modifica. Prepara una nueva versión para registrar cambios.</p>}
+                                                    {version.estado === "borrador" && (
+                                                        <button type="button" onClick={() => iniciarEdicionLinea(linea)} className="mt-3 rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-background">
+                                                            Editar esta línea
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {lineaEditandoId === linea.cotizacionDetalle.id && formLinea && version.estado === "borrador" && (
+                                                <form onSubmit={(event) => { event.preventDefault(); void guardarEdicionLinea(linea); }} className="mb-4 space-y-4 rounded-lg border border-primary/30 bg-background p-4">
+                                                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                                        <label className="text-xs text-muted-foreground">Cantidad<input required type="number" min="0.01" step="0.01" value={formLinea.cantidad} onChange={(event) => setFormLinea({ ...formLinea, cantidad: event.target.value })} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" /></label>
+                                                        <label className="text-xs text-muted-foreground">Precio lista<input required type="number" min="0" step="0.01" value={formLinea.precio_lista} onChange={(event) => setFormLinea({ ...formLinea, precio_lista: event.target.value })} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" /></label>
+                                                        <label className="text-xs text-muted-foreground">Descuento %<input required type="number" min="0" max="100" step="0.01" value={formLinea.descuento_porcentaje} onChange={(event) => setFormLinea({ ...formLinea, descuento_porcentaje: event.target.value })} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" /></label>
+                                                        <label className="text-xs text-muted-foreground">Unidad comercial<select required value={formLinea.unidad_comercial} onChange={(event) => setFormLinea({ ...formLinea, unidad_comercial: event.target.value })} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground"><option value="unidad">Unidad</option><option value="kg">Kilogramo</option><option value="bobina">Bobina</option><option value="fajo">Fajo</option><option value="metro">Metro</option></select></label>
+                                                        <label className="text-xs text-muted-foreground">Peso kg<input type="number" min="0.001" step="0.001" value={formLinea.peso_kg} onChange={(event) => setFormLinea({ ...formLinea, peso_kg: event.target.value })} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" /></label>
+                                                    </div>
+                                                    {versionTecnica && <div className="space-y-4 rounded-lg border border-border p-3">
+                                                        <p className="font-medium">Características técnicas · versión actual V{versionTecnica.version}</p>
+                                                        <fieldset className="space-y-3"><legend className="mb-2 text-sm font-semibold">Material e impresión</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                                            {campoTecnico("material", "Material", ["PEAD", "PEBD", "PP", "BOPP", "OTRO"])}{campoTecnico("capas", "Capas", ["monocapa", "bicapa", "tricapa"])}{campoTecnico("apto_alimento", "Apto para alimentos")}{campoTecnico("micraje", "Micraje")}{campoTecnico("color_bolsa", "Color")}{campoTecnico("impresion", "Lleva impresión")}{campoTecnico("color_impresion", "Colores de impresión (separados por coma)")}{campoTecnico("tipo_impresion", "Tipo de impresión", ["corrida", "dimensionada"])}{campoTecnico("tratamiento_impresion", "Tratamiento de impresión", ["solido", "degradado", "trameado"])}{campoTecnico("cara_impresion", "Cara de impresión", ["anverso", "reverso", "ambas"])}{campoTecnico("posicion_impresion", "Posición", ["centrada", "personalizada"])}{campoTecnico("opacidad", "Opacidad", ["alta", "media", "baja"])}{campoTecnico("distancia_impresion_superior", "Distancia superior")}{campoTecnico("distancia_impresion_inferior", "Distancia inferior")}{campoTecnico("distancia_impresion_izquierda", "Distancia izquierda")}{campoTecnico("distancia_impresion_derecha", "Distancia derecha")}{campoTecnico("tratamientos_acabados_especiales", "Acabados especiales (separados por coma)")}{campoTecnico("otras_caracteristicas", "Otras características")}
+                                                        </div></fieldset>
+                                                        {versionTecnica.especificacionBolsa && <fieldset><legend className="mb-2 text-sm font-semibold">Bolsa · medidas y acabados</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{["ancho_doblado", "ancho_desdoblado", "largo_doblado", "largo_desdoblado", "fuelle_izquierdo", "fuelle_derecho", "fuelle_inferior", "fuelle_superior"].map((campo) => campoTecnico(`especificacion_bolsa.${campo}`, `${campo.replaceAll("_", " ")} (cm)`))}{campoTecnico("especificacion_bolsa.fuelle", "Tiene fuelle")}{campoTecnico("especificacion_bolsa.tipo_troquel", "Tipo de troquel", ["camiseta", "normal", "rinonera", "con_asa", "refuerzo", "solapa", "adhesiva", "cierre_facil"])}{campoTecnico("especificacion_bolsa.tipo_sello", "Tipo de sello", ["lateral", "fondo", "ninguno"])}{campoTecnico("especificacion_bolsa.pestana", "Pestaña", ["sin_pestana", "superior", "inferior", "ambas"])}{campoTecnico("especificacion_bolsa.acabado_especial", "Acabado especial")}{campoTecnico("especificacion_bolsa.otras_caracteristicas", "Otras características de bolsa")}</div></fieldset>}
+                                                        {versionTecnica.especificacionBobina && <fieldset><legend className="mb-2 text-sm font-semibold">Bobina · medidas</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{["ancho", "diametro", "diametro_nucleo", "peso", "longitud"].map((campo) => campoTecnico(`especificacion_bobina.${campo}`, `${campo.replaceAll("_", " ")} (cm / kg según corresponda)`))}{campoTecnico("especificacion_bobina.tipo_nucleo", "Tipo de núcleo")}{campoTecnico("especificacion_bobina.otras_caracteristicas", "Otras características de bobina")}</div></fieldset>}
+                                                        <p className="text-xs text-muted-foreground">Al guardar, las características modificadas crean una nueva versión técnica y vuelven a pasar por la evaluación de viabilidad. Los datos de esta versión quedarán en el historial.</p>
+                                                    </div>}
+                                                    {!versionTecnica && <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Producto de catálogo: su versión técnica es de solo lectura. Para cambiar sus características debe generarse una solicitud de producto nuevo conforme al proceso comercial.</p>}
+                                                    {versionTecnica && <label className="block max-w-xl text-xs text-muted-foreground">Motivo del cambio<input value={formLinea.motivo_cambio} onChange={(event) => setFormLinea({ ...formLinea, motivo_cambio: event.target.value })} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" /></label>}
+                                                    <div className="flex justify-end gap-2">
+                                                        <button type="button" onClick={() => setLineaEditandoId(null)} className="rounded-md border border-border px-3 py-2 text-sm">Cancelar</button>
+                                                        <button type="submit" disabled={guardandoLinea} className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50">{guardandoLinea ? "Guardando…" : "Guardar cambios en esta versión"}</button>
+                                                    </div>
+                                                    {versionTecnica && <p className="text-xs text-muted-foreground">Si cambias medidas, el servidor crea una nueva versión técnica y evalúa su viabilidad antes de actualizar esta línea.</p>}
+                                                </form>
+                                            )}
+                                        </div>;
+                                    })}
+                                </div>
+                            </div>;
+                        })}
+                    </div>
+                </section>
+            )}
+
+            {productoCotizado && (
+                <section className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-5" aria-live="polite">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary">Línea seleccionada · versión {productoCotizado.cotizacionVersion.version}</p>
+                    <h2 className="mt-1 text-lg font-semibold">{productoCotizado.producto?.nombre ?? `Producto solicitado · especificación #${productoCotizado.especificacionProductoSolicitadoVersion?.id ?? "—"}`}</h2>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                        <InfoItem label="Cantidad solicitada" value={`${productoCotizado.cotizacionDetalle.cantidad} ${productoCotizado.cotizacionDetalle.unidad_comercial}`} />
+                        <InfoItem label="Precio unitario" value={`${productoCotizado.cotizacionVersion.moneda} ${Number(productoCotizado.cotizacionDetalle.precio_unitario).toFixed(2)}`} />
+                        <InfoItem label="Descuento" value={`${Number(productoCotizado.cotizacionDetalle.descuento_porcentaje ?? 0).toFixed(2)}%`} />
+                        <InfoItem label="Subtotal de línea" value={`${productoCotizado.cotizacionVersion.moneda} ${Number(productoCotizado.cotizacionDetalle.precio_total).toFixed(2)}`} />
+                        <InfoItem label="Peso" value={productoCotizado.cotizacionDetalle.peso_kg ? `${productoCotizado.cotizacionDetalle.peso_kg} kg` : "No especificado"} />
+                    </div>
+                </section>
+            )}
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {/* ========================================================
@@ -316,19 +544,19 @@ export default function RequerimientoDetallePage() {
                         title="Producto"
                     >
                         <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-                            {productoCotizado && (
+                            {productoVersion && (
                                 <>
                                     <InfoItem
                                         label="Código"
-                                        value={productoCotizado.producto?.codigo}
+                                        value={productoCotizado?.producto?.codigo}
                                     />
                                     <InfoItem
                                         label="Producto de catálogo"
-                                        value={productoCotizado.producto?.nombre}
+                                        value={productoCotizado?.producto?.nombre}
                                     />
                                     <InfoItem
                                         label="Categoría"
-                                        value={productoCotizado.categoria?.nombre || "—"}
+                                        value={productoCotizado?.categoria?.nombre || "—"}
                                     />
                                     <InfoItem
                                         label="Versión de catálogo"
@@ -336,6 +564,11 @@ export default function RequerimientoDetallePage() {
                                     />
                                 </>
                             )}
+                            {especificacionVersionada && <>
+                                <InfoItem label="Código de producto" value="Sin código definitivo" />
+                                <InfoItem label="Versión técnica solicitada" value={`V${especificacionVersionada.version}`} />
+                                <InfoItem label="Categoría" value={categoriaProducto} />
+                            </>}
                             <InfoItem
                                 label="Material"
                                 value={getMaterialLabel(
@@ -850,6 +1083,7 @@ export default function RequerimientoDetallePage() {
                 <ComunicacionesModal
                     open={showComunicaciones}
                     solicitudId={solicitudId}
+                    cotizacionVersionId={versionEnviada?.id ?? null}
                     onClose={() => setShowComunicaciones(false)}
 
                 />

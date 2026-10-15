@@ -170,6 +170,8 @@ export interface ProductoCotizadoEnSolicitud {
     | "descuento_porcentaje"
     | "precio_unitario"
     | "precio_total"
+    | "unidad_comercial"
+    | "peso_kg"
   >;
   producto: {
     id: number;
@@ -182,8 +184,8 @@ export interface ProductoCotizadoEnSolicitud {
     estado: string;
     created_at: string;
     updated_at: string;
-  };
-  categoria: ProductoCategoria;
+  } | null;
+  categoria: ProductoCategoria | null;
   productoVersion: {
     id: number;
     producto: number;
@@ -203,9 +205,58 @@ export interface ProductoCotizadoEnSolicitud {
     observaciones: string;
     created_at: string;
     updated_at: string;
-  };
+  } | null;
   especificacionBolsa: EspecificacionBolsaCatalogo | null;
   especificacionBobina: EspecificacionBobinaCatalogo | null;
+  especificacionProductoSolicitadoVersion: {
+    id: number;
+    version: number;
+    especificacion_producto_solicitado: number;
+    categoria_producto: number;
+    material: string;
+    capas: string;
+    apto_alimento: boolean;
+    micraje: string | null;
+    color_bolsa: string;
+    impresion: boolean;
+    color_impresion: string[];
+    tipo_impresion: string;
+    tratamiento_impresion: string;
+    cara_impresion: string;
+    posicion_impresion: string | null;
+    distancia_impresion_superior: string | number | null;
+    distancia_impresion_inferior: string | number | null;
+    distancia_impresion_izquierda: string | number | null;
+    distancia_impresion_derecha: string | number | null;
+    opacidad: string;
+    tratamientos_acabados_especiales: string[];
+    otras_caracteristicas: string;
+    especificacionBolsa: {
+      ancho_doblado: string | number;
+      ancho_desdoblado: string | number | null;
+      largo_doblado: string | number;
+      largo_desdoblado: string | number | null;
+      fuelle: boolean;
+      fuelle_izquierdo: string | number | null;
+      fuelle_derecho: string | number | null;
+      fuelle_inferior: string | number | null;
+      fuelle_superior: string | number | null;
+      tipo_troquel: string;
+      tipo_sello: string;
+      pestana: string;
+      acabado_especial: string;
+      otras_caracteristicas: string;
+    } | null;
+    especificacionBobina: {
+      ancho: string | number;
+      diametro: string | number | null;
+      diametro_nucleo: string | number | null;
+      tipo_nucleo: string;
+      peso: string | number | null;
+      longitud: string | number | null;
+      otras_caracteristicas: string;
+    } | null;
+  } | null;
 }
 
 // ============================================================
@@ -227,6 +278,31 @@ export type EstadoSolicitud =
   | "convertida"
   | "cancelada";
 
+
+export type TipoLugarEntrega =
+  | "casa_matriz"
+  | "cliente"
+  | "envio_interior"
+  | "sucursal";
+
+
+export type DepartamentoBolivia =
+  | "LP"
+  | "CB"
+  | "SC"
+  | "OR"
+  | "PT"
+  | "CH"
+  | "TJ"
+  | "BN"
+  | "PD";
+
+
+export type SucursalEntrega =
+  | "montes"
+  | "sucursal_santa_cruz";
+
+
 export interface SolicitudComercial {
   id: number;
 
@@ -236,10 +312,17 @@ export interface SolicitudComercial {
   fecha: string;
   descripcion: string;
 
-  cantidad_unidades: string;
-  cantidad_kg: string;
+  cantidad_unidades: string | null;
+  cantidad_kg: string | null;
   fecha_entrega: string | null;
+
+  // Entrega
   lugar_entrega: string;
+  tipo_lugar_entrega: TipoLugarEntrega;
+  departamento_entrega: DepartamentoBolivia | "";
+  empresa_transporte: string;
+  sucursal_entrega: SucursalEntrega | "";
+
   observaciones: string;
 
   prioridad: PrioridadSolicitud;
@@ -249,25 +332,41 @@ export interface SolicitudComercial {
   updated_at: string;
 }
 
+// ============================================================
+// CREAR SOLICITUD COMERCIAL
+// ============================================================
+
 export interface SolicitudComercialCreate {
   cuenta_comercial: number;
 
   fecha: string;
   descripcion: string;
 
-  cantidad_unidades: string;
-  cantidad_kg: string;
+  cantidad_unidades?: string | null;
+  cantidad_kg?: string | null;
   fecha_entrega?: string | null;
+
+  // Entrega
   lugar_entrega?: string;
+  tipo_lugar_entrega?: TipoLugarEntrega;
+  departamento_entrega?: DepartamentoBolivia | "";
+  empresa_transporte?: string;
+  sucursal_entrega?: SucursalEntrega | "";
+
   observaciones?: string;
 
   prioridad?: PrioridadSolicitud;
 
-  estado: EstadoSolicitud;
+  estado?: EstadoSolicitud;
 }
+
+// ============================================================
+// ACTUALIZAR SOLICITUD COMERCIAL
+// ============================================================
 
 export type SolicitudComercialUpdate =
   Partial<SolicitudComercialCreate>;
+
 // ============================================================
 // VARIANTE DE COLOR SOLICITADA
 // ============================================================
@@ -698,6 +797,7 @@ export interface Comunicacion {
 
 export interface ComunicacionCreate {
   solicitud_comercial: number;
+  actividad_comercial_id?: number | null;
   tipo: string;
   medio: string;
   direccion: DireccionComunicacion;
@@ -866,6 +966,8 @@ export interface CotizacionDetalle {
   descuento_porcentaje: string;
   precio_unitario: string;
   precio_total: string;
+  unidad_comercial: string;
+  peso_kg: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -878,6 +980,8 @@ export interface CotizacionDetalleCreate {
   costo_estimado?: string | null;
   precio_lista: string;
   descuento_porcentaje?: string;
+  unidad_comercial?: string;
+  peso_kg?: string | null;
 }
 
 export type CotizacionDetalleUpdate =
@@ -939,6 +1043,8 @@ export interface PedidoDetalle {
   cantidad: string;
   precio_unitario: string;
   precio_total: string;
+  unidad_comercial: string;
+  peso_kg: string | null;
   fecha_entrega_comprometida: string;
   observaciones: string;
   created_at: string;
@@ -969,6 +1075,7 @@ export interface ProductoBusquedaResultado {
   producto_codigo: string;
   producto_nombre: string;
   producto_descripcion: string;
+  unidad_medida: "unidad" | "fajo" | "metro";
   categoria: string | null;
   subcategoria_id: number | null;
   subcategoria: string | null;
@@ -1102,8 +1209,9 @@ export interface AgregarDetalleCotizacionResponse {
 }
 
 export interface FormalizarCotizacionWizardPayload {
+  cotizacion_version_id?: number;
   solicitud: Omit<SolicitudComercialCreate, "estado">;
-  tipo_producto: "bolsa" | "bobina";
+  tipo_producto?: "bolsa" | "bobina";
   producto_version_id?: number;
   especificacion?: Record<string, unknown>;
   especificacion_bolsa?: Record<string, unknown>;
@@ -1113,12 +1221,25 @@ export interface FormalizarCotizacionWizardPayload {
     observaciones?: string;
     moneda: Moneda;
   };
-  detalle: {
+  detalle?: {
     cantidad: string;
     precio_lista: string;
     descuento_porcentaje: string;
     costo_estimado?: string | null;
   };
+  detalles?: Array<{
+    tipo_producto: "bolsa" | "bobina";
+    producto_version_id?: number;
+    especificacion?: Record<string, unknown>;
+    especificacion_bolsa?: Record<string, unknown>;
+    especificacion_bobina?: Record<string, unknown>;
+    cantidad: string;
+    precio_lista: string;
+    descuento_porcentaje: string;
+    costo_estimado?: string | null;
+    unidad_comercial: string;
+    peso_kg?: string | null;
+  }>;
 }
 
 export interface FormalizarCotizacionWizardResponse {
@@ -1128,8 +1249,8 @@ export interface FormalizarCotizacionWizardResponse {
   cotizacion: number;
   numero: string;
   cotizacion_version: number;
-  especificacion_producto_solicitado_version: number | null;
-  evaluacion_viabilidad: number;
+  detalles: AgregarDetalleCotizacionResponse[];
+  precio_total: string;
 }
 
 export interface EspecificacionProductoSolicitadoVersionCreateRequest {

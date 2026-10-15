@@ -3,11 +3,15 @@
 //Guarda todos los datos del formulario
 //Decide que paso mostrar step1, ....
 /////////////////////////
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Toast from "@/components/ui/Toast";
 import {
   useCuentasComerciales,
   useFormalizarCotizacionDesdeWizard,
+  useCotizacionVersion,
+  useCotizacion,
+  useSolicitudComercial,
 } from "@/features/comercial/comercial.hooks";
 
 import CotizacionModal, {
@@ -28,10 +32,13 @@ import type {
   TipoCapa,
   CaraImpresion,
   TipoPestana,
+  TipoLugarEntrega,
+  DepartamentoBolivia,
+  SucursalEntrega,
 } from "../comercial.types";
-import { 
+import {
   useProductosCategorias,
- } from "@/features/productos/productos.hooks";
+} from "@/features/productos/productos.hooks";
 import RequerimientoSteps from "../components/requerimientos/RequerimientoSteps";
 import RequerimientoStepProducto, {
   type ProductType,
@@ -45,6 +52,7 @@ import ProductoConfirmacionModal from "../components/requerimientos/ProductoConf
 
 import type {
   ProductoBusquedaResultado,
+  FormalizarCotizacionWizardPayload,
 } from "@/features/comercial/comercial.types";
 
 import type { EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
@@ -55,7 +63,29 @@ import ViabilidadResultado from "@/features/viabilidad/requerimientos/Viabilidad
 
 export type RequirementStep = 1 | 2 | 3 | 4 | 5;
 
+type CotizacionLineaBorrador = NonNullable<FormalizarCotizacionWizardPayload["detalles"]>[number] & {
+  key: string;
+  nombre: string;
+  codigo: string;
+};
+
+interface CotizacionMetaBorrador extends CotizacionFormData {
+  prioridad: PrioridadSolicitud;
+  fechaEntrega: string;
+  lugarEntrega: string;
+  tipoLugarEntrega: TipoLugarEntrega;
+  departamentoEntrega: DepartamentoBolivia | "";
+  empresaTransporte: string;
+  sucursalEntrega: SucursalEntrega | "";
+}
+
 export default function RequerimientosPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const cotizacionVersionId = Number(searchParams.get("cotizacion_version_id") || 0);
+  const { data: versionEnEdicion } = useCotizacionVersion(cotizacionVersionId);
+  const { data: cotizacionEnEdicion } = useCotizacion(versionEnEdicion?.cotizacion || 0);
+  const { data: solicitudEnEdicion } = useSolicitudComercial(cotizacionEnEdicion?.solicitud_comercial || 0);
   const [step, setStep] = useState<RequirementStep>(1);
   /*
    * Cliente
@@ -87,6 +117,8 @@ export default function RequerimientosPage() {
    * Cotizacion
    */
   const [mostrarCotizacion, setMostrarCotizacion] = useState(false);
+  const [lineasCotizacion, setLineasCotizacion] = useState<CotizacionLineaBorrador[]>([]);
+  const [datosCotizacion, setDatosCotizacion] = useState<CotizacionMetaBorrador | null>(null);
 
   /*
    * Selección de producto del catálogo
@@ -231,25 +263,30 @@ export default function RequerimientosPage() {
   const [peso, setPeso] = useState("");
   const [longitud, setLongitud] = useState("");
   /*
-   * Entrega
-   */
-  const [cantidadUnidades, setCantidadUnidades] =
-    useState("");
-
-  const [cantidadKg, setCantidadKg] =
-    useState("");
+ * Entrega
+ */
+  const [cantidadUnidades, setCantidadUnidades] = useState("");
+  const [cantidadKg, setCantidadKg] = useState("");
 
   const [prioridad, setPrioridad] =
     useState<PrioridadSolicitud>("normal");
 
-  const [fechaEntrega, setFechaEntrega] =
+  const [fechaEntrega, setFechaEntrega] = useState("");
+  const [lugarEntrega, setLugarEntrega] = useState("");
+
+  const [tipoLugarEntrega, setTipoLugarEntrega] =
+    useState<TipoLugarEntrega>("casa_matriz");
+
+  const [departamentoEntrega, setDepartamentoEntrega] =
+    useState<DepartamentoBolivia | "">("");
+
+  const [empresaTransporte, setEmpresaTransporte] =
     useState("");
 
-  const [lugarEntrega, setLugarEntrega] =
-    useState("");
+  const [sucursalEntrega, setSucursalEntrega] =
+    useState<SucursalEntrega | "">("");
 
-  const [observaciones, setObservaciones] =
-    useState("");
+  const [observaciones, setObservaciones] = useState("");
 
   //TOAST
   const [toast, setToast] = useState(false);
@@ -261,6 +298,47 @@ export default function RequerimientosPage() {
     setToastDescription(description);
     setToast(true);
   };
+
+  useEffect(() => {
+    if (!cotizacionVersionId || !versionEnEdicion || !cotizacionEnEdicion || !solicitudEnEdicion) return;
+    if (versionEnEdicion.estado !== "borrador") {
+      mostrarToast("Versión bloqueada", "Solo se pueden agregar productos a una versión en borrador.");
+      navigate(`/comercial/requerimientos/${solicitudEnEdicion.solicitud.id}`);
+      return;
+    }
+    setCuentaComercialId(solicitudEnEdicion.solicitud.id);
+    setDatosCotizacion((actual) => actual ?? {
+      cantidad: "",
+      moneda: versionEnEdicion.moneda,
+      precioLista: "",
+      descuentoPorcentaje: "0",
+      precioUnitario: "0.00",
+      precioTotal: versionEnEdicion.precio_total,
+      fechaVencimiento: cotizacionEnEdicion.fecha_vencimiento || "",
+      observaciones: "",
+
+      prioridad: solicitudEnEdicion.solicitud.prioridad,
+      fechaEntrega: solicitudEnEdicion.solicitud.fecha_entrega || "",
+      lugarEntrega: solicitudEnEdicion.solicitud.lugar_entrega || "",
+
+      tipoLugarEntrega: solicitudEnEdicion.solicitud.tipo_lugar_entrega,
+      departamentoEntrega: solicitudEnEdicion.solicitud.departamento_entrega || "CB",
+      empresaTransporte: solicitudEnEdicion.solicitud.empresa_transporte || "",
+      sucursalEntrega: solicitudEnEdicion.solicitud.sucursal_entrega || "montes",
+
+      observacionesSolicitud: solicitudEnEdicion.solicitud.observaciones,
+    });
+    const solicitud = solicitudEnEdicion.solicitud;
+
+      setTipoLugarEntrega(solicitud.tipo_lugar_entrega || "casa_matriz");
+      setDepartamentoEntrega(solicitud.departamento_entrega || "");
+      setEmpresaTransporte(solicitud.empresa_transporte || "");
+      setSucursalEntrega(solicitud.sucursal_entrega || "");
+      setLugarEntrega(solicitud.lugar_entrega || "");
+      setFechaEntrega(solicitud.fecha_entrega || "");
+      setPrioridad(solicitud.prioridad);
+      setObservaciones(solicitud.observaciones || "");
+  }, [cotizacionVersionId, versionEnEdicion, cotizacionEnEdicion, solicitudEnEdicion, navigate]);
 
   /*
    * Cliente seleccionado
@@ -313,7 +391,7 @@ export default function RequerimientosPage() {
         ) as RequirementStep,
     );
   };
-  
+
 
   /*
    * Manejo de selección de producto
@@ -426,7 +504,7 @@ export default function RequerimientosPage() {
     nextStep();
   };
 
- const handleCrearCotizacion = async (
+  const handleCrearCotizacion = async (
     data: CotizacionFormData
   ) => {
     try {
@@ -463,72 +541,67 @@ export default function RequerimientosPage() {
         tratamientos_acabados_especiales: tratamientosAcabadosEspeciales,
       } : undefined;
 
-      const resultado = await formalizarCotizacion.mutateAsync({
-        solicitud: {
-          cuenta_comercial: cuentaComercialId,
-          fecha: new Date().toISOString(),
-          descripcion: descripcion.trim() || `Solicitud de cotización - ${tipoProducto === "bolsa" ? "Bolsa" : "Bobina"}`,
-          cantidad_unidades: cantidadUnidades || "0",
-          cantidad_kg: cantidadKg || "0",
-          fecha_entrega: fechaEntrega || null,
-          lugar_entrega: lugarEntrega,
-          observaciones,
-          prioridad,
-        },
+      const especificacionBolsa = esProductoNuevo && tipoProducto === "bolsa" ? {
+        ancho_doblado: anchoDoblado,
+        ancho_desdoblado: anchoDesdoblado || null,
+        largo_doblado: largoDoblado,
+        largo_desdoblado: largoDesdoblado || null,
+        fuelle,
+        fuelle_izquierdo: fuelleIzquierdo || null,
+        fuelle_derecho: fuelleDerecho || null,
+        fuelle_inferior: fuelleInferior || null,
+        fuelle_superior: fuelleSuperior || null,
+        tipo_troquel: tipoTroquel || "normal",
+        tipo_sello: tipoSello,
+        pestana: tipoPestana || "sin_pestana",
+        acabado_especial: tratamientosAcabadosEspeciales.join(","),
+        otras_caracteristicas: otrasCaracteristicas,
+      } : undefined;
+      const especificacionBobina = esProductoNuevo && tipoProducto === "bobina" ? {
+        ancho: anchoBobina,
+        diametro: diametro || null,
+        diametro_nucleo: diametroNucleo || null,
+        longitud: longitud || null,
+        tipo_nucleo: tipoNucleo,
+        peso: peso || null,
+        otras_caracteristicas: otrasCaracteristicas,
+      } : undefined;
+      const linea: CotizacionLineaBorrador = {
+        key: `${Date.now()}-${Math.random()}`,
         tipo_producto: tipoProducto,
         producto_version_id: esProductoNuevo ? undefined : productoSeleccionado!.version_id,
         especificacion,
-        especificacion_bolsa: esProductoNuevo && tipoProducto === "bolsa" ? {
-          ancho_doblado: anchoDoblado,
-          ancho_desdoblado: anchoDesdoblado || null,
-          largo_doblado: largoDoblado,
-          largo_desdoblado: largoDesdoblado || null,
-          fuelle,
-          fuelle_izquierdo: fuelleIzquierdo || null,
-          fuelle_derecho: fuelleDerecho || null,
-          fuelle_inferior: fuelleInferior || null,
-          fuelle_superior: fuelleSuperior || null,
-          tipo_troquel: tipoTroquel || "normal",
-          tipo_sello: tipoSello,
-          pestana: tipoPestana || "sin_pestana",
-          acabado_especial: tratamientosAcabadosEspeciales.join(","),
-          otras_caracteristicas: otrasCaracteristicas,
-        } : undefined,
-        especificacion_bobina: esProductoNuevo && tipoProducto === "bobina" ? {
-          ancho: anchoBobina,
-          diametro: diametro || null,
-          diametro_nucleo: diametroNucleo || null,
-          longitud: longitud || null,
-          tipo_nucleo: tipoNucleo,
-          peso: peso || null,
-          otras_caracteristicas: otrasCaracteristicas,
-        } : undefined,
-        cotizacion: {
-          fecha_vencimiento: data.fechaVencimiento || null,
-          observaciones: data.observaciones || "",
-          moneda: data.moneda,
-        },
-        detalle: {
-          cantidad: data.cantidad,
-          precio_lista: data.precioLista,
-          descuento_porcentaje: data.descuentoPorcentaje || "0",
-          costo_estimado: null,
-        },
+        especificacion_bolsa: especificacionBolsa,
+        especificacion_bobina: especificacionBobina,
+        cantidad: data.cantidad,
+        precio_lista: data.precioLista,
+        descuento_porcentaje: data.descuentoPorcentaje || "0",
+        costo_estimado: null,
+        unidad_comercial: esProductoNuevo
+          ? (tipoProducto === "bobina" ? "kg" : "unidad")
+          : productoSeleccionado!.unidad_medida,
+        peso_kg: tipoProducto === "bobina" ? (peso || null) : null,
+        nombre: esProductoNuevo
+          ? descripcion.trim() || `Producto solicitado (${tipoProducto})`
+          : productoSeleccionado!.producto_nombre,
+        codigo: esProductoNuevo ? "Sin código definitivo" : productoSeleccionado!.producto_codigo,
+      };
+      setLineasCotizacion((actuales) => [...actuales, linea]);
+      setDatosCotizacion((actual) => actual ?? {
+        ...data,
+        prioridad,
+        fechaEntrega,
+        lugarEntrega,
+        tipoLugarEntrega,
+        departamentoEntrega: departamentoEntrega || "CB",
+        empresaTransporte,
+        sucursalEntrega: sucursalEntrega || "montes",
+        observacionesSolicitud: observaciones,
       });
-
-      // ============================================================
-      // 6. ÉXITO
-      // ============================================================
-
+      const clienteId = cuentaComercialId;
       setMostrarCotizacion(false);
-
-      mostrarToast(
-        "Cotización creada",
-        `Cotización ${resultado.numero} creada correctamente.`
-      );
-
       resetWizard();
-
+      setCuentaComercialId(clienteId);
     } catch (error: unknown) {
       console.error(
         "Error al crear cotización:",
@@ -544,9 +617,59 @@ export default function RequerimientosPage() {
       mostrarToast(
         "Error",
         apiMessage ||
-          (error instanceof Error ? error.message : "") ||
-          "No se pudo crear la cotización."
+        (error instanceof Error ? error.message : "") ||
+        "No se pudo crear la cotización."
       );
+    }
+  };
+
+  const guardarCotizacion = async () => {
+    if (!cuentaComercialId || !lineasCotizacion.length || !datosCotizacion) return;
+    try {
+      const unidades = lineasCotizacion
+        .filter((linea) => linea.unidad_comercial === "unidad")
+        .reduce((total, linea) => total + Number(linea.cantidad || 0), 0);
+      const kilos = lineasCotizacion
+        .filter((linea) => linea.unidad_comercial === "kg")
+        .reduce((total, linea) => total + Number(linea.cantidad || 0), 0);
+      const resultado = await formalizarCotizacion.mutateAsync({
+        cotizacion_version_id: cotizacionVersionId || undefined,
+        solicitud: {
+          cuenta_comercial: cuentaComercialId,
+          fecha: new Date().toISOString(),
+          descripcion: `Cotización comercial (${lineasCotizacion.length} líneas)`,
+
+          cantidad_unidades: unidades ? String(unidades) : "0",
+          cantidad_kg: kilos ? String(kilos) : "0",
+
+          fecha_entrega: datosCotizacion.fechaEntrega || null,
+          lugar_entrega: datosCotizacion.lugarEntrega,
+
+          tipo_lugar_entrega: datosCotizacion.tipoLugarEntrega,
+          departamento_entrega: datosCotizacion.departamentoEntrega,
+          empresa_transporte: datosCotizacion.empresaTransporte,
+          sucursal_entrega: datosCotizacion.sucursalEntrega,
+
+          observaciones: datosCotizacion.observaciones,
+          prioridad: datosCotizacion.prioridad,
+        },
+        cotizacion: {
+          fecha_vencimiento: datosCotizacion.fechaVencimiento || null,
+          observaciones: datosCotizacion.observaciones || "",
+          moneda: datosCotizacion.moneda,
+        },
+        detalles: lineasCotizacion.map(({ key: _key, nombre: _nombre, codigo: _codigo, ...linea }) => linea),
+      });
+      setLineasCotizacion([]);
+      setDatosCotizacion(null);
+      resetWizard();
+      mostrarToast("Cotización creada", `Cotización ${resultado.numero} creada con ${resultado.detalles.length} líneas.`);
+      if (cotizacionVersionId && solicitudEnEdicion) {
+        navigate(`/comercial/requerimientos/${solicitudEnEdicion.solicitud.id}`);
+      }
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje;
+      mostrarToast("Error", message || "No se pudo guardar la cotización.");
     }
   };
 
@@ -671,50 +794,54 @@ export default function RequerimientosPage() {
           datos_especificacion: {
             tipo_producto: tipoProducto,
             especificacion: {
-            categoria_producto: categoriaSeleccionada.id,
-            material,
-            capas: capas || "monocapa",
-            apto_alimento: aptoAlimento,
-            micraje: micraje || null,
-            color_bolsa: colorBolsa,
-            impresion,
-            color_impresion: colorImpresion.split(",").map((color) => color.trim()).filter(Boolean),
-            tipo_impresion: tipoImpresion,
-            tratamiento_impresion: tratamientoImpresion,
-            posicion_impresion: posicionImpresion,
-            cara_impresion: caraImpresion,
-            distancia_impresion_superior: distanciaImpresionSuperior || null,
-            distancia_impresion_inferior: distanciaImpresionInferior || null,
-            distancia_impresion_izquierda: distanciaImpresionIzquierda || null,
-            distancia_impresion_derecha: distanciaImpresionDerecha || null,
-            otras_caracteristicas: otrasCaracteristicas,
-            opacidad,
-            tratamientos_acabados_especiales: tratamientosAcabadosEspeciales,
+              categoria_producto: categoriaSeleccionada.id,
+              material,
+              capas: capas || "monocapa",
+              apto_alimento: aptoAlimento,
+              micraje: micraje || null,
+              color_bolsa: colorBolsa,
+              impresion,
+              color_impresion: colorImpresion.split(",").map((color) => color.trim()).filter(Boolean),
+              tipo_impresion: tipoImpresion,
+              tratamiento_impresion: tratamientoImpresion,
+              posicion_impresion: posicionImpresion,
+              cara_impresion: caraImpresion,
+              distancia_impresion_superior: distanciaImpresionSuperior || null,
+              distancia_impresion_inferior: distanciaImpresionInferior || null,
+              distancia_impresion_izquierda: distanciaImpresionIzquierda || null,
+              distancia_impresion_derecha: distanciaImpresionDerecha || null,
+              otras_caracteristicas: otrasCaracteristicas,
+              opacidad,
+              tratamientos_acabados_especiales: tratamientosAcabadosEspeciales,
             },
-            ...(tipoProducto === "bolsa" ? { especificacion_bolsa: {
-              ancho_doblado: anchoDoblado,
-              ancho_desdoblado: anchoDesdoblado || null,
-              largo_doblado: largoDoblado,
-              largo_desdoblado: largoDesdoblado || null,
-              fuelle,
-              fuelle_izquierdo: fuelleIzquierdo || null,
-              fuelle_derecho: fuelleDerecho || null,
-              fuelle_inferior: fuelleInferior || null,
-              fuelle_superior: fuelleSuperior || null,
-              tipo_troquel: tipoTroquel || "normal",
-              tipo_sello: tipoSello,
-              pestana: tipoPestana || "sin_pestana",
-              acabado_especial: tratamientosAcabadosEspeciales.join(","),
-              otras_caracteristicas: otrasCaracteristicas,
-            } } : { especificacion_bobina: {
-              ancho: anchoBobina,
-              diametro: diametro || null,
-              diametro_nucleo: diametroNucleo || null,
-              longitud: longitud || null,
-              tipo_nucleo: tipoNucleo,
-              peso: peso || null,
-              otras_caracteristicas: otrasCaracteristicas,
-            } }),
+            ...(tipoProducto === "bolsa" ? {
+              especificacion_bolsa: {
+                ancho_doblado: anchoDoblado,
+                ancho_desdoblado: anchoDesdoblado || null,
+                largo_doblado: largoDoblado,
+                largo_desdoblado: largoDesdoblado || null,
+                fuelle,
+                fuelle_izquierdo: fuelleIzquierdo || null,
+                fuelle_derecho: fuelleDerecho || null,
+                fuelle_inferior: fuelleInferior || null,
+                fuelle_superior: fuelleSuperior || null,
+                tipo_troquel: tipoTroquel || "normal",
+                tipo_sello: tipoSello,
+                pestana: tipoPestana || "sin_pestana",
+                acabado_especial: tratamientosAcabadosEspeciales.join(","),
+                otras_caracteristicas: otrasCaracteristicas,
+              }
+            } : {
+              especificacion_bobina: {
+                ancho: anchoBobina,
+                diametro: diametro || null,
+                diametro_nucleo: diametroNucleo || null,
+                longitud: longitud || null,
+                tipo_nucleo: tipoNucleo,
+                peso: peso || null,
+                otras_caracteristicas: otrasCaracteristicas,
+              }
+            }),
           },
         });
       }
@@ -750,13 +877,85 @@ export default function RequerimientosPage() {
       {/* Encabezado */}
       <div>
         <h1 className="text-2xl font-semibold text-foreground">
-          Nueva cotización
+          {cotizacionVersionId ? `Agregar productos a ${cotizacionEnEdicion?.numero ?? "la cotización"} · versión ${versionEnEdicion?.version ?? ""}` : "Nueva cotización"}
         </h1>
 
         <p className="mt-1 text-sm text-muted-foreground">
           Registra la solicitud del cliente, evalúa la viabilidad técnica y genera la cotización económica.
         </p>
       </div>
+
+      <section className="rounded-xl border border-border bg-card p-4">
+        <label className="mb-2 block text-sm font-medium">Cliente de esta cotización</label>
+        <select
+          value={cuentaComercialId ?? ""}
+          onChange={(event) => setCuentaComercialId(event.target.value ? Number(event.target.value) : null)}
+          className="w-full max-w-xl rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+        >
+          <option value="">Seleccionar cliente</option>
+          {(cuentas ?? []).map((cuenta) => (
+            <option key={cuenta.id} value={cuenta.id}>
+              {cuenta.razon_social || `${cuenta.nombres} ${cuenta.apellido_paterno}`.trim()} · #{cuenta.codigo_cliente}
+            </option>
+          ))}
+        </select>
+      </section>
+
+      {lineasCotizacion.length > 0 && (
+        <section className="space-y-4 rounded-xl border border-primary/30 bg-card p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Carrito de cotización</h2>
+              <p className="text-sm text-muted-foreground">{lineasCotizacion.length} líneas · Los importes se recalculan al guardar.</p>
+            </div>
+            <button
+              type="button"
+              onClick={guardarCotizacion}
+              disabled={formalizarCotizacion.isPending || !cuentaComercialId}
+              className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {formalizarCotizacion.isPending ? "Guardando…" : "Guardar cotización"}
+            </button>
+          </div>
+          <div className="space-y-3">
+            {lineasCotizacion.map((linea, index) => {
+              const unitario = Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100);
+              const subtotal = Number(linea.cantidad || 0) * unitario;
+              return (
+                <div key={linea.key} className="grid gap-3 rounded-lg border border-border p-4 lg:grid-cols-[minmax(200px,2fr)_110px_120px_110px_120px_130px_auto] lg:items-end">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Línea {index + 1} · {linea.tipo_producto}</p>
+                    <p className="truncate font-medium">{linea.nombre}</p>
+                    <p className="text-xs text-muted-foreground">{linea.codigo} · {linea.producto_version_id ? "Versión de catálogo conservada" : "Especificación técnica solicitada"}</p>
+                  </div>
+                  <label className="text-xs text-muted-foreground">Cantidad
+                    <input type="number" min="0.01" step="0.01" value={linea.cantidad} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, cantidad: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
+                  </label>
+                  <label className="text-xs text-muted-foreground">Unidad comercial
+                    <select value={linea.unidad_comercial} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, unidad_comercial: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground">
+                      <option value="unidad">Unidad</option><option value="kg">Kilogramo</option><option value="bobina">Bobina</option><option value="fajo">Fajo</option><option value="metro">Metro</option>
+                    </select>
+                  </label>
+                  <label className="text-xs text-muted-foreground">Precio de lista
+                    <input type="number" min="0" step="0.01" value={linea.precio_lista} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, precio_lista: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
+                  </label>
+                  <label className="text-xs text-muted-foreground">Descuento %
+                    <input type="number" min="0" max="100" step="0.01" value={linea.descuento_porcentaje} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, descuento_porcentaje: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
+                  </label>
+                  <div><p className="text-xs text-muted-foreground">Subtotal preliminar</p><p className="font-semibold">{datosCotizacion?.moneda ?? "BOB"} {subtotal.toFixed(2)}</p></div>
+                  <button type="button" onClick={() => setLineasCotizacion((items) => items.filter((item) => item.key !== linea.key))} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted">Quitar</button>
+                  <label className="text-xs text-muted-foreground lg:col-start-2">Peso kg (opcional)
+                    <input type="number" min="0.001" step="0.001" value={linea.peso_kg ?? ""} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, peso_kg: event.target.value || null } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-end border-t border-border pt-3 text-right">
+            <div><p className="text-xs text-muted-foreground">Total preliminar · sin impuestos añadidos</p><p className="text-xl font-semibold">{datosCotizacion?.moneda ?? "BOB"} {lineasCotizacion.reduce((sum, linea) => sum + Number(linea.cantidad || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100), 0).toFixed(2)}</p></div>
+          </div>
+        </section>
+      )}
 
       {/* Progreso */}
       <RequerimientoSteps step={step} />
@@ -957,15 +1156,20 @@ export default function RequerimientosPage() {
                 cantidadUnidades={cantidadUnidades}
                 setCantidadUnidades={setCantidadUnidades}
 
-                cantidadKg={cantidadKg}
-                setCantidadKg={setCantidadKg}
-
                 prioridad={prioridad}
                 setPrioridad={setPrioridad}
                 fechaEntrega={fechaEntrega}
                 setFechaEntrega={setFechaEntrega}
                 lugarEntrega={lugarEntrega}
                 setLugarEntrega={setLugarEntrega}
+                tipoLugarEntrega={tipoLugarEntrega}
+                setTipoLugarEntrega={setTipoLugarEntrega}
+                departamentoEntrega={departamentoEntrega}
+                setDepartamentoEntrega={setDepartamentoEntrega}
+                empresaTransporte={empresaTransporte}
+                setEmpresaTransporte={setEmpresaTransporte}
+                sucursalEntrega={sucursalEntrega}
+                setSucursalEntrega={setSucursalEntrega}
                 observaciones={observaciones}
                 setObservaciones={setObservaciones}
               />
@@ -1034,7 +1238,7 @@ export default function RequerimientosPage() {
           </>
         )}
       </div>
-      
+
       {/* Navegación */}
       {!analizandoViabilidad &&
         !resultadoViabilidad &&

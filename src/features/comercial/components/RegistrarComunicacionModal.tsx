@@ -17,6 +17,7 @@ interface RegistrarComunicacionModalProps {
   onClose: () => void;
   solicitudInicial?: number;
   cotizacionVersionInicial?: number | null;
+  actividadComercialInicial?: number | null;
 }
 
 export default function RegistrarComunicacionModal({
@@ -24,6 +25,7 @@ export default function RegistrarComunicacionModal({
   onClose,
   solicitudInicial,
   cotizacionVersionInicial,
+  actividadComercialInicial,
 }: RegistrarComunicacionModalProps) {
   const createComunicacion = useCreateComunicacion();
 
@@ -111,6 +113,7 @@ export default function RegistrarComunicacionModal({
         asunto: asunto.trim() || null,
         contenido: contenido.trim(),
         cotizacion_version_id: cotizacionVersionInicial ?? null,
+        actividad_comercial_id: actividadComercialInicial ?? null,
         accion_cotizacion: cotizacionVersionInicial
           ? accionCotizacion
           : "ninguna",
@@ -381,13 +384,18 @@ export default function RegistrarComunicacionModal({
                 </option>
 
                 <option value="aceptar">
-                  Registrar aceptación
+                  Registrar aceptación del cliente
                 </option>
               </select>
 
               <p className="text-xs text-muted-foreground">
                 Cotización versión #{cotizacionVersionInicial}
               </p>
+              {accionCotizacion === "aceptar" && (
+                <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                  Registra la aceptación expresa aunque se haya recibido por llamada. Al guardar, se aceptará esta versión y se generará su pedido.
+                </p>
+              )}
             </div>
           )}
 

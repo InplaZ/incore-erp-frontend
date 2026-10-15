@@ -559,6 +559,8 @@ export const cotizacionesVersionesApi = {
       costo_estimado?: string | null;
       precio_lista: string;
       descuento_porcentaje?: string;
+      unidad_comercial?: string;
+      peso_kg?: string | null;
     },
   ): Promise<AgregarDetalleCotizacionResponse> => {
     return api.post<AgregarDetalleCotizacionResponse>(
@@ -594,6 +596,12 @@ export const cotizacionesVersionesApi = {
       { motivo },
     );
   },
+
+  pdf: async (versionId: number): Promise<Blob> =>
+    api.get<Blob>(
+      `/comercial/cotizaciones-versiones/${versionId}/pdf/`,
+      { config: { responseType: "blob" } },
+    ),
 
   update: async (
     id: number,

@@ -1,11 +1,14 @@
 import type {
   PrioridadSolicitud,
   ProductoBusquedaResultado,
+  TipoLugarEntrega,
+  DepartamentoBolivia,
+  SucursalEntrega,
 } from "../../comercial.types";
 
 import { useCuentasComerciales } from "@/features/comercial/comercial.hooks";
-import  NuevoClienteModal from "@/features/comercial/components/NuevoClienteModal"; 
-import { useState } from "react";
+import NuevoClienteModal from "@/features/comercial/components/NuevoClienteModal";
+import { useState, useEffect } from "react";
 
 interface RequerimientoStepEntregaProps {
   cuentaComercialId: number | null;
@@ -25,6 +28,20 @@ interface RequerimientoStepEntregaProps {
 
   observaciones: string;
   setObservaciones: (value: string) => void;
+
+  tipoLugarEntrega: TipoLugarEntrega;
+  setTipoLugarEntrega: (value: TipoLugarEntrega) => void;
+
+  departamentoEntrega: DepartamentoBolivia | "";
+  setDepartamentoEntrega: (
+    value: DepartamentoBolivia | ""
+  ) => void;
+
+  empresaTransporte: string;
+  setEmpresaTransporte: (value: string) => void;
+
+  sucursalEntrega: SucursalEntrega | "";
+  setSucursalEntrega: (value: SucursalEntrega | "") => void;
 }
 
 export default function RequerimientoStepEntrega({
@@ -41,9 +58,28 @@ export default function RequerimientoStepEntrega({
   setLugarEntrega,
   observaciones,
   setObservaciones,
+  tipoLugarEntrega,
+  setTipoLugarEntrega,
+  departamentoEntrega,
+  setDepartamentoEntrega,
+  empresaTransporte,
+  setEmpresaTransporte,
+  sucursalEntrega,
+  setSucursalEntrega,
 }: RequerimientoStepEntregaProps) {
   const { data: cuentas = [] } = useCuentasComerciales();
-  const [ showNuevoClienteModal, setShowNuevoClienteModal ] = useState(false);
+  const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
+
+  // Cuando se selecciona "Ubicación del cliente", autocompletar con la dirección del cliente
+  useEffect(() => {
+    if (tipoLugarEntrega === "cliente" && cuentaComercialId) {
+      const clienteSeleccionado = cuentas.find((cuenta) => cuenta.id === cuentaComercialId);
+      if (clienteSeleccionado?.direccion) {
+        setLugarEntrega(clienteSeleccionado.direccion);
+      }
+    }
+  }, [tipoLugarEntrega, cuentaComercialId, cuentas, setLugarEntrega]);
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -177,9 +213,115 @@ export default function RequerimientoStepEntrega({
             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
         </div>
-        <div>
+        <div className="sm:col-span-2">
           <label className="mb-2 block text-sm font-medium">
-            Lugar de entrega
+            Tipo de entrega
+          </label>
+
+          <select
+            value={tipoLugarEntrega}
+            onChange={(event) =>
+              setTipoLugarEntrega(
+                event.target.value as TipoLugarEntrega
+              )
+            }
+            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+          >
+            <option value="casa_matriz">
+              INPLAZ - Casa Matriz
+            </option>
+            <option value="cliente">
+              Ubicación del cliente
+            </option>
+            <option value="envio_interior">
+              Envío al interior
+            </option>
+            <option value="sucursal">
+              Recojo en sucursal
+            </option>
+          </select>
+        </div>
+
+        {tipoLugarEntrega === "envio_interior" && (
+          <>
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Departamento de destino
+              </label>
+
+              <select
+                value={departamentoEntrega}
+                onChange={(event) =>
+                  setDepartamentoEntrega(
+                    event.target.value as DepartamentoBolivia | ""
+                  )
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+              >
+                <option value="">Seleccionar departamento</option>
+                <option value="LP">La Paz</option>
+                <option value="CB">Cochabamba</option>
+                <option value="SC">Santa Cruz</option>
+                <option value="OR">Oruro</option>
+                <option value="PT">Potosí</option>
+                <option value="CH">Chuquisaca</option>
+                <option value="TJ">Tarija</option>
+                <option value="BN">Beni</option>
+                <option value="PD">Pando</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Empresa de transporte
+              </label>
+
+              <input
+                type="text"
+                value={empresaTransporte}
+                onChange={(event) =>
+                  setEmpresaTransporte(event.target.value)
+                }
+                placeholder="Ej. Transporte elegido por el cliente"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+              />
+            </div>
+          </>
+        )}
+
+        {tipoLugarEntrega === "sucursal" && (
+          <div className="sm:col-span-2">
+            <label className="mb-2 block text-sm font-medium">
+              Sucursal de recojo
+            </label>
+
+            <select
+              value={sucursalEntrega}
+              onChange={(event) =>
+                setSucursalEntrega(
+                  event.target.value as SucursalEntrega | ""
+                )
+              }
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+            >
+              <option value="">Seleccionar sucursal</option>
+              <option value="montes">Sucursal Av. Montes</option>
+              <option value="sucursal_santa_cruz">
+                Sucursal Santa Cruz
+              </option>
+            </select>
+          </div>
+        )}
+
+        <div className="sm:col-span-2">
+          <label className="mb-2 block text-sm font-medium">
+            {tipoLugarEntrega === "cliente"
+              ? "Dirección del cliente"
+              : tipoLugarEntrega === "envio_interior"
+                ? "Dirección o destino de envío"
+                : tipoLugarEntrega === "sucursal"
+                  ? "Detalles adicionales del recojo"
+                  : "Dirección o detalle de entrega"}
           </label>
 
           <textarea
@@ -188,10 +330,11 @@ export default function RequerimientoStepEntrega({
               setLugarEntrega(event.target.value)
             }
             rows={3}
-            placeholder="Ej. Planta INPLAZ, almacén del cliente..."
+            placeholder="Ingresa la dirección o los detalles necesarios..."
             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
         </div>
+
       </div>
 
       <div>

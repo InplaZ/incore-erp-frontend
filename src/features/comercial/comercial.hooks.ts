@@ -693,6 +693,12 @@ export function useCreateComunicacion() {
         queryKey:
           comercialQueryKeys.comunicaciones(),
       });
+      queryClient.invalidateQueries({
+        queryKey: comercialQueryKeys.actividades(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: comercialQueryKeys.solicitudes(),
+      });
     },
   });
 }
@@ -1026,6 +1032,8 @@ export function useAgregarDetalleCotizacion() {
         costo_estimado?: string | null;
         precio_lista: string;
         descuento_porcentaje?: string;
+        unidad_comercial?: string;
+        peso_kg?: string | null;
       };
     }) =>
       cotizacionesVersionesApi.agregarDetalle(

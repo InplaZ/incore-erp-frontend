@@ -74,12 +74,15 @@ export default function CotizacionModal({
   productoNombre,
   productType,
   cantidadUnidades,
+  cantidadKg,
   fechaEntrega,
   observaciones,
   resultadoViabilidad,
   onCrear,
 }: CotizacionModalProps) {
-  const [cantidad, setCantidad] = useState(cantidadUnidades || "");
+  const [cantidad, setCantidad] = useState(
+    productType === "roll" ? cantidadKg || "" : cantidadUnidades || "",
+  );
   const [moneda, setMoneda] = useState<Moneda>("BOB");
   const [precioLista, setPrecioLista] = useState("");
   const [descuentoPorcentaje, setDescuentoPorcentaje] = useState("0");
@@ -704,7 +707,9 @@ export default function CotizacionModal({
                 !cantidad ||
                 !precioLista ||
                 Number(precioLista) < 0 ||
-                Number(cantidad) <= 0
+                    Number(cantidad) <= 0 ||
+                    Number(descuentoPorcentaje) < 0 ||
+                    Number(descuentoPorcentaje) > 100
               }
               className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
