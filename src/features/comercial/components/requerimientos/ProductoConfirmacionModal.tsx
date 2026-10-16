@@ -1,7 +1,7 @@
 import { Package, X, ArrowRight, Search } from "lucide-react";
 
 import type { ProductoBusquedaResultado } from "@/features/comercial/comercial.types";
-import type { ProductType } from "./RequerimientoStepProducto";
+import type { ProductType } from "@/features/comercial/comercial.types";
 
 interface ProductoConfirmacionModalProps {
   open: boolean;
@@ -24,7 +24,7 @@ export default function ProductoConfirmacionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-lg">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-lg sm:p-6">
         {/* Encabezado */}
         <div className="mb-6 flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -59,24 +59,54 @@ export default function ProductoConfirmacionModal({
           </button>
         </div>
 
-        {/* Detalles del producto */}
-        <div className="mb-6 rounded-lg border border-border bg-secondary/30 p-4">
-          <div className="mb-4">
-            <p className="text-sm font-semibold text-foreground">
-              {producto.producto_nombre}
-            </p>
+        {/* Resumen visual y detalles del producto */}
+        <div className="mb-6 overflow-hidden rounded-xl border border-border bg-secondary/20">
+          {producto.imagen && (
+            <div className="flex h-40 items-center justify-center border-b border-border bg-background p-3">
+              <img
+                src={producto.imagen}
+                alt={producto.producto_nombre}
+                className="h-full max-w-full object-contain"
+              />
+            </div>
+          )}
+          <div className="p-4">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-base font-bold text-foreground">
+                  {producto.producto_nombre}
+                </p>
 
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {producto.producto_codigo}
-            </p>
-          </div>
-
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Versión:</span>
-              <span className="font-medium text-foreground">V{producto.version_numero}</span>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Código: {producto.producto_codigo}
+                </p>
+                {producto.producto_descripcion && (
+                  <p className="mt-2 text-sm leading-5 text-muted-foreground">
+                    {producto.producto_descripcion}
+                  </p>
+                )}
+              </div>
+              <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                Versión V{producto.version_numero}
+              </span>
             </div>
 
+            {(producto.categoria || producto.subcategoria) && (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {producto.categoria && (
+                  <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground">
+                    {producto.categoria}
+                  </span>
+                )}
+                {producto.subcategoria && (
+                  <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary">
+                    {producto.subcategoria}
+                  </span>
+                )}
+              </div>
+            )}
+
+          <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Material:</span>
               <span className="font-medium text-foreground">{producto.material}</span>
@@ -182,6 +212,7 @@ export default function ProductoConfirmacionModal({
                 )}
               </>
             )}
+          </div>
           </div>
         </div>
 

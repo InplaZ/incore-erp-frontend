@@ -39,10 +39,9 @@ import type {
 import {
   useProductosCategorias,
 } from "@/features/productos/productos.hooks";
+import type { ProductType } from "@/features/comercial/comercial.types";
 import RequerimientoSteps from "../components/requerimientos/RequerimientoSteps";
-import RequerimientoStepProducto, {
-  type ProductType,
-} from "../components/requerimientos/RequerimientoStepProducto";
+import RequerimientoStepProducto from "@/features/comercial/components/requerimientos/RequerimientoStepProducto";
 import RequerimientoStepBusquedaProducto from "../components/requerimientos/RequerimientoStepBusquedaProducto";
 import RequerimientoStepDetalles from "../components/requerimientos/RequerimientoStepDetalles";
 import RequerimientoStepEntrega from "../components/requerimientos/RequerimientoStepEntrega";
