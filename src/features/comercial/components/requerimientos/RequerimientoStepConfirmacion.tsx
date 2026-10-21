@@ -82,8 +82,6 @@ interface RequerimientoStepConfirmacionProps {
 export default function RequerimientoStepConfirmacion({
   cuentaSeleccionada,
   product,
-  cantidadUnidades,
-  cantidadKg,
   prioridad,
   fechaEntrega,
   descripcion,
@@ -211,7 +209,9 @@ export default function RequerimientoStepConfirmacion({
     sin_pestana: "Sin pestaña",
     superior: "Superior",
     inferior: "Inferior",
-    ambas: "Ambas",
+    anverso: "Una cara · anverso (registro anterior)",
+    reverso: "Una cara · reverso (registro anterior)",
+    ambas: "Dos caras (registro anterior)",
   };
 
   const capasLabels: Record<string, string> = {
@@ -221,8 +221,8 @@ export default function RequerimientoStepConfirmacion({
   };
 
   const caraImpresionLabels: Record<string, string> = {
-    anverso: "Anverso",
-    reverso: "Reverso",
+    una_cara: "Una cara",
+    dos_caras: "Dos caras",
     ambas: "Ambas",
   };
 
@@ -318,21 +318,8 @@ export default function RequerimientoStepConfirmacion({
             />
 
             <InfoItem
-              label="Unidades"
-              value={
-                cantidadUnidades
-                  ? `${cantidadUnidades} unidades`
-                  : "—"
-              }
-            />
-
-            <InfoItem
-              label="Cantidad"
-              value={
-                cantidadKg
-                  ? `${cantidadKg} kg`
-                  : "—"
-              }
+              label="Configuración comercial"
+              value="Cantidad, unidad y precio se definen al preparar la cotización."
             />
 
             <InfoItem

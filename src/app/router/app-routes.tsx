@@ -35,6 +35,8 @@ const ProductosPage = lazy(
   () => import("../../features/productos/ProductosPage"),
 );
 
+const WipPage = lazy(() => import("../../features/produccion/WipPage"));
+
 // Error
 const NotFoundPage = lazy(
   () => import("../../pages/not-found/not-found-page"),
@@ -82,6 +84,10 @@ export const appRoutes: AppRoute[] = [
       {
         path: "/productos",
         element: <ProductosPage />,
+      },
+      {
+        path: "/wip",
+        element: <WipPage />,
       },
       ...comercialRoutes,
     ],

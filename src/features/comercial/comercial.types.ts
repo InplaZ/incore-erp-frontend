@@ -220,6 +220,7 @@ export interface ProductoCotizadoEnSolicitud {
     color_bolsa: string;
     impresion: boolean;
     color_impresion: string[];
+    archivo_color_impresion: string | null;
     tipo_impresion: string;
     tratamiento_impresion: string;
     cara_impresion: string;
@@ -423,9 +424,8 @@ export type TipoImpresion =
   | "dimensionada";
 
 export type CaraImpresion =
-  | "anverso"
-  | "reverso"
-  | "ambas";
+  | "una_cara"
+  | "dos_caras";
 
 export type TratamientoImpresion = 
   | "solido"
@@ -453,6 +453,7 @@ export interface EspecificacionProductoSolicitado {
   color_bolsa: string;
   impresion: boolean;
   color_impresion: string[];
+  archivo_color_impresion: string | null;
   tipo_impresion: TipoImpresion;
   tratamiento_impresion: TratamientoImpresion;
   posicion_impresion: PosicionImpresion;
@@ -479,6 +480,7 @@ export interface EspecificacionProductoSolicitadoCreate {
   color_bolsa: string;
   impresion: boolean;
   color_impresion: string[];
+  archivo_color_impresion?: string | null;
   tipo_impresion: TipoImpresion;
   tratamiento_impresion: TratamientoImpresion;
   posicion_impresion?: PosicionImpresion;
@@ -512,6 +514,7 @@ export interface EspecificacionProductoSolicitadoVersion {
   color_bolsa: string;
   impresion: boolean;
   color_impresion: string[];
+  archivo_color_impresion: string | null;
   tipo_impresion: TipoImpresion;
   tratamiento_impresion: TratamientoImpresion;
   posicion_impresion: PosicionImpresion;

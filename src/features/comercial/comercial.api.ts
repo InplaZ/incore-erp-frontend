@@ -252,6 +252,17 @@ export const especificacionesProductoApi = {
     return response;
   },
 
+  subirArchivoColorImpresion: async (archivo: File, ids: { versionId?: number; especificacionId?: number }) => {
+    const formData = new FormData();
+    formData.append("archivo", archivo);
+    if (ids.versionId) formData.append("version_id", String(ids.versionId));
+    if (ids.especificacionId) formData.append("especificacion_id", String(ids.especificacionId));
+    return api.post<{ archivo_color_impresion: string }>(
+      "/comercial/especificacion-producto-solicitado/archivo-color-impresion/",
+      formData,
+    );
+  },
+
   remove: async (id: number): Promise<void> => {
     await api.delete(
       `/comercial/especificacion-producto-solicitado/${id}/`,

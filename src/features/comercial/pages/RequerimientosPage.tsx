@@ -4,8 +4,11 @@
 //Decide que paso mostrar step1, ....
 /////////////////////////
 import { useEffect, useState } from "react";
+import { Search, UserPlus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Toast from "@/components/ui/Toast";
+import { api } from "@/api/api.config";
+import { especificacionesProductoApi } from "@/features/comercial/comercial.api";
 import {
   useCuentasComerciales,
   useFormalizarCotizacionDesdeWizard,
@@ -40,7 +43,6 @@ import {
   useProductosCategorias,
 } from "@/features/productos/productos.hooks";
 import type { ProductType } from "@/features/comercial/comercial.types";
-import RequerimientoSteps from "../components/requerimientos/RequerimientoSteps";
 import RequerimientoStepProducto from "@/features/comercial/components/requerimientos/RequerimientoStepProducto";
 import RequerimientoStepBusquedaProducto from "../components/requerimientos/RequerimientoStepBusquedaProducto";
 import RequerimientoStepDetalles from "../components/requerimientos/RequerimientoStepDetalles";
@@ -48,13 +50,14 @@ import RequerimientoStepEntrega from "../components/requerimientos/Requerimiento
 import RequerimientoStepConfirmacion from "../components/requerimientos/RequerimientoStepConfirmacion";
 import RequerimientoNavigation from "../components/requerimientos/RequerimientoNavigation";
 import ProductoConfirmacionModal from "../components/requerimientos/ProductoConfirmacionModal";
+import NuevoClienteModal from "../components/NuevoClienteModal";
 
 import type {
   ProductoBusquedaResultado,
   FormalizarCotizacionWizardPayload,
 } from "@/features/comercial/comercial.types";
 
-import type { EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
+import type { EvaluarViabilidadPayload, EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
 import { useEvaluarViabilidad } from "@/features/viabilidad/viabilidad.hook";
 
 import ViabilidadAnalizando from "@/features/viabilidad/requerimientos/ViabilidadAnalizando";
@@ -66,7 +69,13 @@ type CotizacionLineaBorrador = NonNullable<FormalizarCotizacionWizardPayload["de
   key: string;
   nombre: string;
   codigo: string;
+  archivo_color_impresion?: File | null;
 };
+
+interface PesosProductoResponse {
+  peso_unitario_kg: string | null;
+  peso_total_kg: string | null;
+}
 
 interface CotizacionMetaBorrador extends CotizacionFormData {
   prioridad: PrioridadSolicitud;
@@ -91,6 +100,9 @@ export default function RequerimientosPage() {
    */
   const [cuentaComercialId, setCuentaComercialId] =
     useState<number | null>(null);
+  const [buscarCliente, setBuscarCliente] = useState("");
+  const [mostrarSugerenciasCliente, setMostrarSugerenciasCliente] = useState(false);
+  const [mostrarNuevoCliente, setMostrarNuevoCliente] = useState(false);
 
   /**
    * Viabilidad
@@ -124,6 +136,7 @@ export default function RequerimientosPage() {
    */
   const [productoSeleccionado, setProductoSeleccionado] =
     useState<ProductoBusquedaResultado | null>(null);
+  const [modoCatalogoExistente, setModoCatalogoExistente] = useState(false);
 
   const [esProductoNuevo, setEsProductoNuevo] =
     useState(false);
@@ -178,6 +191,7 @@ export default function RequerimientosPage() {
 
   const [colorImpresion, setColorImpresion] =
     useState("");
+  const [archivoColorImpresion, setArchivoColorImpresion] = useState<File | null>(null);
 
   const [tipoImpresion, setTipoImpresion] =
     useState<TipoImpresion>("corrida");
@@ -352,6 +366,23 @@ export default function RequerimientosPage() {
     (cuenta) =>
       cuenta.id === cuentaComercialId,
   );
+  const clientesFiltrados = (cuentas ?? []).filter((cuenta) => {
+    const consulta = buscarCliente.trim().toLocaleLowerCase();
+    if (!consulta) return true;
+    const nombreCompleto = [cuenta.nombres, cuenta.apellido_paterno, cuenta.apellido_materno]
+      .filter(Boolean)
+      .join(" ");
+    return [nombreCompleto, cuenta.razon_social, String(cuenta.codigo_cliente)]
+      .some((valor) => valor?.toLocaleLowerCase().includes(consulta));
+  });
+
+  const nombreVisibleCliente = (cuenta: NonNullable<typeof cuentas>[number]) => {
+    const nombreCompleto = [cuenta.nombres, cuenta.apellido_paterno, cuenta.apellido_materno]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    return [...new Set([nombreCompleto, cuenta.razon_social.trim()].filter(Boolean))].join(" · ") || `Cliente #${cuenta.codigo_cliente}`;
+  };
 
   const { data: categorias = [] } =
     useProductosCategorias();
@@ -397,7 +428,39 @@ export default function RequerimientosPage() {
    */
   const handleProductoSelect = (producto: ProductoBusquedaResultado) => {
     setProductoSeleccionado(producto);
-    setShowConfirmacionModal(true);
+  };
+
+  const agregarProductoAlCarrito = (producto: ProductoBusquedaResultado) => {
+    if (lineasCotizacion.some((linea) => linea.producto_version_id === producto.version_id)) {
+      mostrarToast("Producto ya agregado", `${producto.producto_codigo} ya está en el carrito.`);
+      return;
+    }
+    setModoCatalogoExistente(true);
+    setEsProductoNuevo(false);
+    setProductoSeleccionado(producto);
+    setLineasCotizacion((actuales) => [...actuales, {
+      key: `catalogo-${producto.version_id}`,
+      tipo_producto: producto.especificacion_bobina ? "bobina" : "bolsa",
+      producto_version_id: producto.version_id,
+      cantidad: "",
+      precio_lista: "",
+      descuento_porcentaje: "0",
+      costo_estimado: null,
+      unidad_comercial: producto.unidad_medida,
+      peso_kg: null,
+      nombre: producto.producto_nombre,
+      codigo: producto.producto_codigo,
+    }]);
+  };
+
+  const continuarConfiguracionExistentes = () => {
+    setDatosCotizacion((actual) => actual ?? {
+      cantidad: "", moneda: "BOB", precioLista: "", descuentoPorcentaje: "0", precioUnitario: "0.00", precioTotal: "0.00",
+      fechaVencimiento: "", observaciones: observaciones,
+      prioridad, fechaEntrega, lugarEntrega, tipoLugarEntrega, departamentoEntrega: departamentoEntrega || "CB",
+      empresaTransporte, sucursalEntrega: sucursalEntrega || "montes", observacionesSolicitud: observaciones,
+    });
+    setStep(4);
   };
 
   const cargarProductoExistente = (
@@ -498,6 +561,11 @@ export default function RequerimientosPage() {
   };
 
   const handleCrearProductoNuevo = () => {
+    if (modoCatalogoExistente && lineasCotizacion.length) {
+      mostrarToast("Finaliza la cotización actual", "Guarda o retira los productos del carrito antes de iniciar una solicitud de producto nuevo.");
+      return;
+    }
+    setModoCatalogoExistente(false);
     setEsProductoNuevo(true);
     setProductoSeleccionado(null);
     nextStep();
@@ -570,6 +638,7 @@ export default function RequerimientosPage() {
         tipo_producto: tipoProducto,
         producto_version_id: esProductoNuevo ? undefined : productoSeleccionado!.version_id,
         especificacion,
+        archivo_color_impresion: esProductoNuevo && impresion ? archivoColorImpresion : null,
         especificacion_bolsa: especificacionBolsa,
         especificacion_bobina: especificacionBobina,
         cantidad: data.cantidad,
@@ -657,12 +726,24 @@ export default function RequerimientosPage() {
           observaciones: datosCotizacion.observaciones || "",
           moneda: datosCotizacion.moneda,
         },
-        detalles: lineasCotizacion.map(({ key: _key, nombre: _nombre, codigo: _codigo, ...linea }) => linea),
+        detalles: lineasCotizacion.map(({ key: _key, nombre: _nombre, codigo: _codigo, archivo_color_impresion: _archivo, ...linea }) => linea),
       });
+      let archivoPendiente = false;
+      for (const [index, linea] of lineasCotizacion.entries()) {
+        const archivo = linea.archivo_color_impresion;
+        const versionId = resultado.detalles[index]?.especificacion_version;
+        if (archivo && versionId) {
+          try {
+            await especificacionesProductoApi.subirArchivoColorImpresion(archivo, { versionId });
+          } catch {
+            archivoPendiente = true;
+          }
+        }
+      }
       setLineasCotizacion([]);
       setDatosCotizacion(null);
       resetWizard();
-      mostrarToast("Cotización creada", `Cotización ${resultado.numero} creada con ${resultado.detalles.length} líneas.`);
+      mostrarToast(archivoPendiente ? "Cotización creada; PDF pendiente" : "Cotización creada", archivoPendiente ? `Cotización ${resultado.numero} creada, pero no se pudo adjuntar uno o más PDF. Edítala para cargarlos.` : `Cotización ${resultado.numero} creada con ${resultado.detalles.length} líneas.`);
       if (cotizacionVersionId && solicitudEnEdicion) {
         navigate(`/comercial/requerimientos/${solicitudEnEdicion.solicitud.id}`);
       }
@@ -679,6 +760,7 @@ export default function RequerimientosPage() {
   const resetWizard = () => {
     setStep(1);
     setCuentaComercialId(null);
+    setModoCatalogoExistente(false);
     setResultadoViabilidad(null);
     setErrorViabilidad(null);
     setAnalizandoViabilidad(false);
@@ -708,6 +790,7 @@ export default function RequerimientosPage() {
      */
     setImpresion(false);
     setColorImpresion("");
+    setArchivoColorImpresion(null);
     setTipoImpresion("corrida");
     setTratamientoImpresion("solido");
 
@@ -780,16 +863,16 @@ export default function RequerimientosPage() {
       //Mostrar pantalla de análisis
       setAnalizandoViabilidad(true);
 
-      let resultado: EvaluarViabilidadResponse;
+      let payload: EvaluarViabilidadPayload;
       if (!esProductoNuevo) {
-        resultado = await evaluarViabilidad.mutateAsync({
+        payload = {
           producto_version: productoSeleccionado!.version_id,
           previsualizar: true,
-        });
+        };
       } else {
         if (!categoriaSeleccionada) throw new Error("No se encontró la categoría de producto seleccionada.");
         const tipoProducto = product === "bag" ? "bolsa" : "bobina";
-        resultado = await evaluarViabilidad.mutateAsync({
+        payload = {
           datos_especificacion: {
             tipo_producto: tipoProducto,
             especificacion: {
@@ -842,10 +925,28 @@ export default function RequerimientosPage() {
               }
             }),
           },
-        });
+        };
       }
 
-      console.log("Resultado viabilidad:", resultado);
+      const resultado = await evaluarViabilidad.mutateAsync(payload);
+      console.groupCollapsed("INCORE · Diagnóstico de viabilidad");
+      console.info("Datos técnicos enviados:", payload.datos_especificacion ?? { producto_version: payload.producto_version });
+      console.info("Ruta evaluada:", resultado.ruta);
+      console.info("Procesos no viables:", resultado.procesos_no_viables);
+      for (const [proceso, detalle] of Object.entries(resultado.resultados_por_proceso ?? {})) {
+        const maquinas = detalle.resultados_evaluacion ?? detalle.resultados ?? [];
+        const criteriosFallidos = maquinas.flatMap((maquina) =>
+          (maquina.criterios ?? maquina.criterios_evaluados ?? [])
+            .filter((criterio) => !criterio.cumple)
+            .map((criterio) => ({ equipo: maquina.equipo ?? "Máquina", criterio: criterio.criterio, mensaje: criterio.mensaje ?? "No cumple", solicitado: criterio.valor_solicitado, capacidad: criterio.valor_capacidad })),
+        );
+        console.groupCollapsed(`${proceso}: ${detalle.viable ? "viable" : "no viable"}`);
+        if (criteriosFallidos.length) console.table(criteriosFallidos);
+        else if (!maquinas.length) console.warn("No hay capacidades o máquinas registradas para este proceso.");
+        else console.info("No se recibieron criterios fallidos en la respuesta.");
+        console.groupEnd();
+      }
+      console.groupEnd();
 
       setResultadoViabilidad(resultado);
 
@@ -854,6 +955,7 @@ export default function RequerimientosPage() {
         "Error al evaluar viabilidad:",
         error
       );
+      console.error("Respuesta del servidor al evaluar viabilidad:", (error as { response?: { data?: unknown } })?.response?.data);
 
       const apiMessage = (error as {
         response?: { data?: { mensaje?: string; detail?: string } };
@@ -886,18 +988,69 @@ export default function RequerimientosPage() {
 
       <section className="rounded-xl border border-border bg-card p-4">
         <label className="mb-2 block text-sm font-medium">Cliente de esta cotización</label>
-        <select
-          value={cuentaComercialId ?? ""}
-          onChange={(event) => setCuentaComercialId(event.target.value ? Number(event.target.value) : null)}
-          className="w-full max-w-xl rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
-        >
-          <option value="">Seleccionar cliente</option>
-          {(cuentas ?? []).map((cuenta) => (
-            <option key={cuenta.id} value={cuenta.id}>
-              {cuenta.razon_social || `${cuenta.nombres} ${cuenta.apellido_paterno}`.trim()} · #{cuenta.codigo_cliente}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="w-full max-w-xl">
+            <label htmlFor="buscar-cliente-cotizacion" className="mb-1.5 block text-xs text-muted-foreground">Buscar cliente</label>
+            <div className="relative" onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                setMostrarSugerenciasCliente(false);
+              }
+            }}>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                id="buscar-cliente-cotizacion"
+                type="search"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={mostrarSugerenciasCliente}
+                aria-controls="sugerencias-clientes-cotizacion"
+                value={buscarCliente}
+                onFocus={() => setMostrarSugerenciasCliente(true)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setMostrarSugerenciasCliente(false);
+                }}
+                onChange={(event) => {
+                  setCuentaComercialId(null);
+                  setBuscarCliente(event.target.value);
+                  setMostrarSugerenciasCliente(true);
+                }}
+                placeholder="Nombre, razón social o código…"
+                className="w-full rounded-lg border border-border bg-background py-2.5 pl-9 pr-3 text-sm"
+              />
+              {mostrarSugerenciasCliente && (
+                <div id="sugerencias-clientes-cotizacion" role="listbox" aria-label="Clientes coincidentes" className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-lg">
+                  {clientesFiltrados.length ? clientesFiltrados.slice(0, 8).map((cuenta) => (
+                    <button
+                      key={cuenta.id}
+                      type="button"
+                      role="option"
+                      aria-selected={cuenta.id === cuentaComercialId}
+                      onClick={() => {
+                        setCuentaComercialId(cuenta.id);
+                        setBuscarCliente(nombreVisibleCliente(cuenta));
+                        setMostrarSugerenciasCliente(false);
+                      }}
+                      className="flex w-full flex-col items-start rounded-md px-3 py-2 text-left transition hover:bg-muted focus:bg-muted focus:outline-none"
+                    >
+                      <span className="text-sm font-medium text-foreground">{nombreVisibleCliente(cuenta)}</span>
+                      <span className="text-xs text-muted-foreground">Cliente #{cuenta.codigo_cliente}</span>
+                    </button>
+                  )) : (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">No se encontraron clientes.</p>
+                  )}
+                </div>
+              )}
+            </div>
+            {cuentaSeleccionada && <p className="mt-1.5 text-xs text-primary">Cliente seleccionado: {nombreVisibleCliente(cuentaSeleccionada)}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={() => setMostrarNuevoCliente(true)}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-primary/30 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/5"
+          >
+            <UserPlus className="h-4 w-4" /> Nuevo cliente
+          </button>
+        </div>
       </section>
 
       {lineasCotizacion.length > 0 && (
@@ -905,16 +1058,16 @@ export default function RequerimientosPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">Carrito de cotización</h2>
-              <p className="text-sm text-muted-foreground">{lineasCotizacion.length} líneas · Los importes se recalculan al guardar.</p>
+              <p className="text-sm text-muted-foreground">{lineasCotizacion.length} {lineasCotizacion.length === 1 ? "producto" : "productos"} · Los importes se recalculan al guardar.</p>
             </div>
-            <button
+            {modoCatalogoExistente && step === 2 ? <button type="button" onClick={continuarConfiguracionExistentes} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">Continuar a cantidades y entrega</button> : !modoCatalogoExistente && <button
               type="button"
               onClick={guardarCotizacion}
               disabled={formalizarCotizacion.isPending || !cuentaComercialId}
               className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
             >
               {formalizarCotizacion.isPending ? "Guardando…" : "Guardar cotización"}
-            </button>
+            </button>}
           </div>
           <div className="space-y-3">
             {lineasCotizacion.map((linea, index) => {
@@ -942,10 +1095,22 @@ export default function RequerimientosPage() {
                     <input type="number" min="0" max="100" step="0.01" value={linea.descuento_porcentaje} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, descuento_porcentaje: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
                   </label>
                   <div><p className="text-xs text-muted-foreground">Subtotal preliminar</p><p className="font-semibold">{datosCotizacion?.moneda ?? "BOB"} {subtotal.toFixed(2)}</p></div>
-                  <button type="button" onClick={() => setLineasCotizacion((items) => items.filter((item) => item.key !== linea.key))} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted">Quitar</button>
-                  <label className="text-xs text-muted-foreground lg:col-start-2">Peso kg (opcional)
-                    <input type="number" min="0.001" step="0.001" value={linea.peso_kg ?? ""} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, peso_kg: event.target.value || null } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
-                  </label>
+                  <button type="button" onClick={() => { setLineasCotizacion((items) => items.filter((item) => item.key !== linea.key)); if (lineasCotizacion.length === 1) setModoCatalogoExistente(false); }} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted">Quitar</button>
+                  {linea.producto_version_id ? (
+                    <PesoProductoCatalogo productoVersionId={linea.producto_version_id} cantidad={linea.cantidad} />
+                  ) : linea.especificacion ? (
+                    <PesoProductoNuevo
+                      tipoProducto={linea.tipo_producto}
+                      cantidad={linea.cantidad}
+                      especificacion={linea.especificacion}
+                      especificacionBolsa={linea.especificacion_bolsa}
+                      especificacionBobina={linea.especificacion_bobina}
+                    />
+                  ) : (
+                    <label className="text-xs text-muted-foreground lg:col-start-2">Peso total kg (opcional)
+                      <input type="number" min="0.001" step="0.001" value={linea.peso_kg ?? ""} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, peso_kg: event.target.value || null } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
+                    </label>
+                  )}
                 </div>
               );
             })}
@@ -955,9 +1120,6 @@ export default function RequerimientosPage() {
           </div>
         </section>
       )}
-
-      {/* Progreso */}
-      <RequerimientoSteps step={step} />
 
       {/* Contenido del paso */}
       <div className="min-h-[500px] rounded-xl border border-border bg-card p-6">
@@ -969,6 +1131,11 @@ export default function RequerimientosPage() {
             resultado={resultadoViabilidad}
             onContinuarCotizacion={() => {
               setMostrarCotizacion(true);
+            }}
+            onCompletarEspecificacion={() => {
+              setResultadoViabilidad(null);
+              setErrorViabilidad(null);
+              setStep(3);
             }}
           />
 
@@ -995,6 +1162,8 @@ export default function RequerimientosPage() {
               <RequerimientoStepBusquedaProducto
                 product={product}
                 onProductSelect={handleProductoSelect}
+                onAddToCart={agregarProductoAlCarrito}
+                versionesEnCarrito={lineasCotizacion.map((linea) => linea.producto_version_id).filter((id): id is number => id !== undefined)}
                 onCreateNew={handleCrearProductoNuevo}
               />
             )}
@@ -1006,12 +1175,6 @@ export default function RequerimientosPage() {
                 cuentaComercialId={cuentaComercialId}
                 setCuentaComercialId={setCuentaComercialId}
                 cantidadUnidades={cantidadUnidades}
-                setCantidadUnidades={setCantidadUnidades}
-                cantidadKg={cantidadKg}
-                setCantidadKg={setCantidadKg}
-
-                descripcion={descripcion}
-                setDescripcion={setDescripcion}
 
                 material={material}
                 setMaterial={setMaterial}
@@ -1043,6 +1206,8 @@ export default function RequerimientosPage() {
 
                 colorImpresion={colorImpresion}
                 setColorImpresion={setColorImpresion}
+                archivoColorImpresion={archivoColorImpresion}
+                setArchivoColorImpresion={setArchivoColorImpresion}
 
                 tipoImpresion={tipoImpresion}
                 setTipoImpresion={setTipoImpresion}
@@ -1171,6 +1336,8 @@ export default function RequerimientosPage() {
                 setSucursalEntrega={setSucursalEntrega}
                 observaciones={observaciones}
                 setObservaciones={setObservaciones}
+                showCantidad={false}
+                showCliente={false}
               />
             )}
 
@@ -1242,7 +1409,7 @@ export default function RequerimientosPage() {
       {!analizandoViabilidad &&
         !resultadoViabilidad &&
         !errorViabilidad && (
-          <RequerimientoNavigation
+        modoCatalogoExistente && step === 4 ? <div className="flex justify-between border-t border-border px-6 py-4"><button type="button" onClick={() => setStep(2)} className="rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-secondary">Volver al catálogo</button><button type="button" onClick={guardarCotizacion} disabled={formalizarCotizacion.isPending || !cuentaComercialId || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim() || Number(linea.precio_lista) < 0)} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50">{formalizarCotizacion.isPending ? "Guardando…" : "Guardar cotización"}</button></div> : !modoCatalogoExistente && (step !== 2 || esProductoNuevo) && <RequerimientoNavigation
             step={step}
             onNext={nextStep}
             onPrevious={previousStep}
@@ -1253,7 +1420,7 @@ export default function RequerimientosPage() {
         )}
 
       {/* Modal de confirmación de producto */}
-      {productoSeleccionado && (
+      {productoSeleccionado && !modoCatalogoExistente && (
         <ProductoConfirmacionModal
           open={showConfirmacionModal}
           producto={productoSeleccionado}
@@ -1263,6 +1430,12 @@ export default function RequerimientosPage() {
           onClose={handleBuscarOtroProducto}
         />
       )}
+
+      <NuevoClienteModal
+        open={mostrarNuevoCliente}
+        onClose={() => setMostrarNuevoCliente(false)}
+        onSuccess={() => setBuscarCliente("")}
+      />
 
       {mostrarCotizacion && <CotizacionModal
         open
@@ -1284,6 +1457,119 @@ export default function RequerimientosPage() {
         description={toastDescription}
         onClose={() => setToast(false)}
       />
+    </div>
+  );
+}
+
+function PesoProductoCatalogo({ productoVersionId, cantidad }: { productoVersionId: number; cantidad: string }) {
+  const [pesos, setPesos] = useState<PesosProductoResponse | null>(null);
+  const [calculando, setCalculando] = useState(false);
+  const cantidadNumerica = Number(cantidad);
+
+  useEffect(() => {
+    let vigente = true;
+    const temporizador = window.setTimeout(async () => {
+      if (!cantidad.trim() || !Number.isFinite(cantidadNumerica) || cantidadNumerica <= 0) {
+        setPesos(null);
+        setCalculando(false);
+        return;
+      }
+      setCalculando(true);
+      try {
+        const resultado = await api.post<PesosProductoResponse>(
+          "/comercial/cotizaciones/calcular-peso/",
+          { producto_version_id: productoVersionId, cantidad },
+        );
+        if (vigente) setPesos(resultado);
+      } catch (error) {
+        if (vigente) {
+          console.error("No se pudo calcular el peso del producto", error);
+          setPesos(null);
+        }
+      } finally {
+        if (vigente) setCalculando(false);
+      }
+    }, 250);
+
+    return () => {
+      vigente = false;
+      window.clearTimeout(temporizador);
+    };
+  }, [productoVersionId, cantidad, cantidadNumerica]);
+
+  return (
+    <div className="grid grid-cols-2 gap-2 lg:col-span-2 lg:col-start-2" aria-live="polite">
+      <label className="text-xs text-muted-foreground">Peso por unidad (kg)
+        <input type="text" readOnly value={pesos?.peso_unitario_kg ?? ""} placeholder={calculando ? "Calculando…" : "—"} className="mt-1 w-full rounded border border-border bg-muted px-2 py-2 text-sm text-foreground" />
+      </label>
+      <label className="text-xs text-muted-foreground">Peso total (kg)
+        <input type="text" readOnly value={pesos?.peso_total_kg ?? ""} placeholder={calculando ? "Calculando…" : "—"} className="mt-1 w-full rounded border border-border bg-muted px-2 py-2 text-sm font-medium text-foreground" />
+      </label>
+    </div>
+  );
+}
+
+function PesoProductoNuevo({
+  tipoProducto,
+  cantidad,
+  especificacion,
+  especificacionBolsa,
+  especificacionBobina,
+}: {
+  tipoProducto: "bolsa" | "bobina";
+  cantidad: string;
+  especificacion: Record<string, unknown>;
+  especificacionBolsa?: Record<string, unknown>;
+  especificacionBobina?: Record<string, unknown>;
+}) {
+  const [pesos, setPesos] = useState<PesosProductoResponse | null>(null);
+  const [calculando, setCalculando] = useState(false);
+  const especificacionPayload = {
+    tipo_producto: tipoProducto,
+    especificacion,
+    especificacion_bolsa: especificacionBolsa,
+    especificacion_bobina: especificacionBobina,
+  };
+
+  useEffect(() => {
+    let vigente = true;
+    const temporizador = window.setTimeout(async () => {
+      const cantidadNumerica = Number(cantidad);
+      if (!cantidad.trim() || !Number.isFinite(cantidadNumerica) || cantidadNumerica <= 0) {
+        setPesos(null);
+        setCalculando(false);
+        return;
+      }
+      setCalculando(true);
+      try {
+        const resultado = await api.post<PesosProductoResponse>(
+          "/comercial/cotizaciones/calcular-peso/",
+          { cantidad, datos_especificacion: especificacionPayload },
+        );
+        if (vigente) setPesos(resultado);
+      } catch (error) {
+        if (vigente) {
+          console.error("No se pudo calcular el peso de la especificación nueva", error);
+          setPesos(null);
+        }
+      } finally {
+        if (vigente) setCalculando(false);
+      }
+    }, 250);
+    return () => {
+      vigente = false;
+      window.clearTimeout(temporizador);
+    };
+  }, [cantidad, tipoProducto, especificacion, especificacionBolsa, especificacionBobina]);
+
+  return (
+    <div className="grid grid-cols-2 gap-2 lg:col-span-2 lg:col-start-2" aria-live="polite">
+      <label className="text-xs text-muted-foreground">Peso por unidad (kg)
+        <input type="text" readOnly value={pesos?.peso_unitario_kg ?? ""} placeholder={calculando ? "Calculando…" : "Complete material y medidas"} className="mt-1 w-full rounded border border-border bg-muted px-2 py-2 text-sm text-foreground" />
+      </label>
+      <label className="text-xs text-muted-foreground">Peso total (kg)
+        <input type="text" readOnly value={pesos?.peso_total_kg ?? ""} placeholder={calculando ? "Calculando…" : "—"} className="mt-1 w-full rounded border border-border bg-muted px-2 py-2 text-sm font-medium text-foreground" />
+      </label>
     </div>
   );
 }

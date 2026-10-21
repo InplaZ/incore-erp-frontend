@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Layers3, Package, Search, SlidersHorizontal, X } from "lucide-react";
+import { Eye, Layers3, Package, Ruler, Search, ShoppingCart, SlidersHorizontal, Tag, X } from "lucide-react";
 import { useState } from "react";
 
 import { useBuscarProductosCatalogo } from "@/features/productos/productos.hooks";
@@ -11,12 +11,14 @@ import type {
 
 interface RequerimientoStepBusquedaProductoProps {
   product: ProductType;
-  onProductSelect: (producto: ProductoBusquedaResultado) => void;
+  onProductSelect?: (producto: ProductoBusquedaResultado) => void;
+  versionesEnCarrito?: number[];
+  onAddToCart?: (producto: ProductoBusquedaResultado) => void;
   onCreateNew: () => void;
 }
 
 const inputClassName =
-  "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
+  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
 
 function formatLabel(value: string | null | undefined) {
   if (!value) return "";
@@ -25,9 +27,27 @@ function formatLabel(value: string | null | undefined) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function ActiveFilter({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-primary/20 bg-primary/5 py-1 pl-2 pr-1 text-xs font-medium text-primary">
+      <span className="truncate">{label}</span>
+      <button
+        type="button"
+        aria-label={`Quitar filtro ${label}`}
+        onClick={onRemove}
+        className="rounded p-0.5 hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </span>
+  );
+}
+
 export default function RequerimientoStepBusquedaProducto({
   product,
   onProductSelect,
+  versionesEnCarrito = [],
+  onAddToCart,
   onCreateNew,
 }: RequerimientoStepBusquedaProductoProps) {
   const [busqueda, setBusqueda] = useState("");
@@ -35,7 +55,8 @@ export default function RequerimientoStepBusquedaProducto({
   const [micraje, setMicraje] = useState("");
   const [capas, setCapas] = useState<TipoCapa | "">("");
   const [impresion, setImpresion] = useState<boolean | "">("");
-  const [mostrarFiltros, setMostrarFiltros] = useState(true);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [productoDetalle, setProductoDetalle] = useState<ProductoBusquedaResultado | null>(null);
 
   // La categoría se determina en el paso anterior y se conserva la API existente.
   const categoria = product === "bag" ? "bolsas" : product === "roll" ? "bobinas" : "";
@@ -70,54 +91,39 @@ export default function RequerimientoStepBusquedaProducto({
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6">
-      {/* Encabezado del catálogo */}
-      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-5 py-6 sm:px-7">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-                <Package className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                  Catálogo INCORE
-                </p>
-                <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                  Encuentra el producto ideal
-                </h2>
-                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                  Explora {tipoProductoLabel} existentes, revisa sus especificaciones y selecciona la versión que necesita tu cliente.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={onCreateNew}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-background px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary/5"
-            >
-              <Package className="h-4 w-4" />
-              Crear producto nuevo
-            </button>
-          </div>
+    <div className="mx-auto w-full max-w-7xl space-y-4">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Catálogo de productos</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">Busca y agrega {tipoProductoLabel} a la cotización.</p>
         </div>
+        <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
+          <span className="text-sm text-muted-foreground" aria-live="polite">
+            {catalogoLoading ? "Buscando…" : `${cantidad} ${cantidad === 1 ? "producto encontrado" : "productos encontrados"}`}
+          </span>
+          <button
+            type="button"
+            onClick={onCreateNew}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition hover:border-primary/40 hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          >
+            <Package className="h-4 w-4" />
+            Crear producto nuevo
+          </button>
+        </div>
+      </header>
 
-        <div className="p-5 sm:p-7">
-          {/* Búsqueda principal */}
-          <label htmlFor="catalogo-producto-busqueda" className="mb-2 block text-sm font-semibold text-foreground">
-            Buscar en el catálogo
-          </label>
-          <div className="flex flex-col gap-3 sm:flex-row">
+      <section className="space-y-2 rounded-xl border border-border bg-card p-3 sm:p-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 id="catalogo-producto-busqueda"
                 type="search"
                 value={busqueda}
                 onChange={(event) => setBusqueda(event.target.value)}
                 placeholder="Escribe el nombre o código del producto..."
-                className="w-full rounded-xl border border-border bg-background py-3.5 pl-12 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
+                aria-label="Buscar producto por nombre o código"
+                className="w-full rounded-lg border border-border bg-background py-2.5 pl-9 pr-10 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
               />
               {busqueda && (
                 <button
@@ -134,7 +140,7 @@ export default function RequerimientoStepBusquedaProducto({
               type="button"
               onClick={() => setMostrarFiltros((visible) => !visible)}
               aria-expanded={mostrarFiltros}
-              className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+              className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
                 mostrarFiltros || filtrosActivos
                   ? "border-primary/30 bg-primary/5 text-primary"
                   : "border-border bg-background text-foreground hover:bg-secondary"
@@ -148,23 +154,20 @@ export default function RequerimientoStepBusquedaProducto({
                 </span>
               )}
             </button>
-          </div>
+        </div>
 
           {/* Filtros existentes: no se añaden parámetros que el backend no soporte */}
           {mostrarFiltros && (
-            <div className="mt-5 rounded-xl border border-border bg-secondary/25 p-4 sm:p-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="rounded-lg border border-border bg-background p-3">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Refinar resultados</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Combina los criterios para encontrar una versión compatible.
-                  </p>
+                  <h3 className="text-sm font-medium text-foreground">Filtrar resultados</h3>
                 </div>
                 {filtrosActivos && (
                   <button
                     type="button"
                     onClick={handleLimpiarFiltros}
-                    className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/10"
+                    className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-primary transition hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <X className="h-3.5 w-3.5" />
                     Limpiar filtros
@@ -243,66 +246,29 @@ export default function RequerimientoStepBusquedaProducto({
                 </div>
               </div>
 
-              {filtrosActivos && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {busqueda && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
-                      Búsqueda: {busqueda}
-                      <button type="button" aria-label="Quitar búsqueda" onClick={() => setBusqueda("")}>
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  )}
-                  {material && (
-                    <button type="button" onClick={() => setMaterial("")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground hover:border-primary/40">
-                      {material}<X className="h-3 w-3" />
-                    </button>
-                  )}
-                  {micraje && (
-                    <button type="button" onClick={() => setMicraje("")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground hover:border-primary/40">
-                      {micraje} µm<X className="h-3 w-3" />
-                    </button>
-                  )}
-                  {capas && (
-                    <button type="button" onClick={() => setCapas("")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground hover:border-primary/40">
-                      {formatLabel(capas)}<X className="h-3 w-3" />
-                    </button>
-                  )}
-                  {impresion !== "" && (
-                    <button type="button" onClick={() => setImpresion("")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground hover:border-primary/40">
-                      {impresion ? "Con impresión" : "Sin impresión"}<X className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
           )}
-        </div>
       </section>
 
-      {/* Resultados */}
-      <section className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-foreground">Productos disponibles</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {catalogoLoading
-                ? "Consultando el catálogo..."
-                : `${cantidad} ${cantidad === 1 ? "producto encontrado" : "productos encontrados"}`}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Check className="h-4 w-4 text-primary" />
-            Se conserva la versión seleccionada
-          </div>
+      {filtrosActivos && (
+        <div className="flex flex-wrap items-center gap-2" aria-label="Filtros activos">
+          {busqueda && <ActiveFilter label={`Búsqueda: ${busqueda}`} onRemove={() => setBusqueda("")} />}
+          {material && <ActiveFilter label={material} onRemove={() => setMaterial("")} />}
+          {micraje && <ActiveFilter label={`${micraje} µm`} onRemove={() => setMicraje("")} />}
+          {capas && <ActiveFilter label={formatLabel(capas)} onRemove={() => setCapas("")} />}
+          {impresion !== "" && <ActiveFilter label={impresion ? "Con impresión" : "Sin impresión"} onRemove={() => setImpresion("")} />}
+          <button type="button" onClick={handleLimpiarFiltros} className="px-2 py-1 text-xs font-medium text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary">Limpiar todo</button>
         </div>
+      )}
 
+      {/* Resultados */}
+      <section aria-label="Resultados del catálogo">
         {catalogoLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {[1, 2, 3].map((item) => (
               <div key={item} className="animate-pulse overflow-hidden rounded-2xl border border-border bg-card">
-                <div className="h-40 bg-secondary/70" />
-                <div className="space-y-3 p-4">
+                <div className="h-32 bg-secondary/70" />
+                <div className="space-y-3 p-3">
                   <div className="h-4 w-2/3 rounded bg-secondary" />
                   <div className="h-3 w-1/2 rounded bg-secondary" />
                   <div className="h-8 rounded-lg bg-secondary" />
@@ -311,19 +277,19 @@ export default function RequerimientoStepBusquedaProducto({
             ))}
           </div>
         ) : catalogoError ? (
-          <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-10 text-center">
-            <Package className="mx-auto h-9 w-9 text-destructive" />
-            <h4 className="mt-3 font-semibold text-foreground">No se pudo cargar el catálogo</h4>
+          <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-5 py-7 text-center">
+            <Package className="mx-auto h-8 w-8 text-destructive" />
+            <h4 className="mt-2 font-semibold text-foreground">No se pudo cargar el catálogo</h4>
             <p className="mt-1 text-sm text-muted-foreground">
               Verifica tu conexión e inténtalo nuevamente.
             </p>
           </div>
         ) : productos.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-12 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary">
+          <div className="rounded-xl border border-dashed border-border bg-card px-5 py-8 text-center">
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-secondary">
               <Search className="h-6 w-6 text-muted-foreground" />
             </div>
-            <h4 className="mt-4 font-semibold text-foreground">No encontramos productos</h4>
+            <h4 className="mt-3 font-semibold text-foreground">No encontramos productos</h4>
             <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
               Prueba con otro nombre, código o combinación de filtros. Si no existe una opción adecuada, puedes crear una nueva especificación.
             </p>
@@ -339,91 +305,68 @@ export default function RequerimientoStepBusquedaProducto({
             </div>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {productos.map((producto) => (
               <article
                 key={producto.version_id}
-                className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/40"
               >
-                <div className="relative flex h-44 items-center justify-center overflow-hidden bg-secondary/35">
+                <div className="relative flex h-32 items-center justify-center overflow-hidden bg-secondary/35">
                   {producto.imagen ? (
                     <img
                       src={producto.imagen}
                       alt={producto.producto_nombre}
                       loading="lazy"
-                      className="h-full w-full object-contain p-4 transition duration-300 group-hover:scale-[1.03]"
+                      className="h-full w-full object-contain p-3 transition duration-200 group-hover:scale-[1.02]"
                     />
                   ) : (
-                    <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-border bg-background text-primary/70">
-                      <Package className="h-10 w-10" strokeWidth={1.4} />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-border bg-background text-primary/70">
+                      <Package className="h-7 w-7" strokeWidth={1.4} />
                     </div>
                   )}
-                  <span className="absolute left-3 top-3 rounded-full border border-border/70 bg-background/95 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground backdrop-blur">
-                    {producto.subcategoria || producto.categoria || (product === "bag" ? "Bolsa" : "Bobina")}
-                  </span>
-                  <span className="absolute right-3 top-3 rounded-full bg-primary px-2.5 py-1 text-xs font-bold text-primary-foreground shadow-sm">
-                    V{producto.version_numero}
+                  <span className="absolute right-3 top-3 rounded-md border border-border/70 bg-background/95 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm backdrop-blur">
+                    {producto.producto_codigo}
                   </span>
                 </div>
 
-                <div className="flex flex-1 flex-col p-4">
+                <div className="flex flex-1 flex-col p-3">
                   <div className="min-w-0">
-                    <h4 className="line-clamp-2 min-h-10 text-base font-bold leading-5 text-foreground">
+                    <h4 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-foreground">
                       {producto.producto_nombre}
                     </h4>
-                    <p className="mt-1 text-xs font-medium tracking-wide text-muted-foreground">
-                      Código: {producto.producto_codigo}
-                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">{producto.subcategoria || producto.categoria || (product === "bag" ? "Bolsa" : "Bobina")}</p>
                     {producto.producto_descripcion && (
-                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                      <p className="mt-1 line-clamp-1 text-xs leading-4 text-muted-foreground">
                         {producto.producto_descripcion}
                       </p>
                     )}
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <div className="rounded-xl bg-secondary/50 p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Material</p>
-                      <p className="mt-1 text-sm font-bold text-foreground">{producto.material || "—"}</p>
-                    </div>
-                    <div className="rounded-xl bg-secondary/50 p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Micraje</p>
-                      <p className="mt-1 text-sm font-bold text-foreground">
-                        {producto.micraje ? `${producto.micraje} µm` : "—"}
-                      </p>
-                    </div>
+                  <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1.5 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5"><Tag className="h-3.5 w-3.5" />Material: <b className="font-medium text-foreground">{producto.material}</b></span>
+                    {producto.capas && <span className="inline-flex items-center gap-1.5"><Layers3 className="h-3.5 w-3.5" />Capas: <b className="font-medium text-foreground">{formatLabel(producto.capas)}</b></span>}
+                    <span className="inline-flex items-center gap-1.5"><Ruler className="h-3.5 w-3.5" />Dimensiones: <b className="font-medium text-foreground">{producto.especificacion_bolsa ? `${producto.especificacion_bolsa.ancho_doblado}×${producto.especificacion_bolsa.largo_doblado} cm` : producto.especificacion_bobina?.ancho ? `${producto.especificacion_bobina.ancho} cm` : "—"}</b></span>
+                    {producto.micraje != null && producto.micraje !== "" && <span className="inline-flex items-center gap-1.5"><Ruler className="h-3.5 w-3.5" />Micraje: <b className="font-medium text-foreground">{producto.micraje} µ</b></span>}
                   </div>
+                  <span className="mt-2 w-fit rounded bg-secondary px-2 py-1 text-[11px] text-muted-foreground">{producto.impresion ? "Con impresión" : "Sin impresión"}</span>
 
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {producto.capas && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                        <Layers3 className="h-3 w-3" />
-                        {formatLabel(producto.capas)}
-                      </span>
-                    )}
-                    <span className="rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                      {producto.impresion ? "Con impresión" : "Sin impresión"}
-                    </span>
-                    {product === "bag" && producto.especificacion_bolsa?.tipo_troquel && (
-                      <span className="rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                        {formatLabel(producto.especificacion_bolsa.tipo_troquel)}
-                      </span>
-                    )}
-                    {product === "roll" && producto.especificacion_bobina?.ancho && (
-                      <span className="rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                        Ancho {producto.especificacion_bobina.ancho} cm
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-auto pt-5">
+                  <div className="mt-auto flex gap-2 border-t border-border pt-3">
                     <button
                       type="button"
-                      onClick={() => onProductSelect(producto)}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                      onClick={() => { setProductoDetalle(producto); onProductSelect?.(producto); }}
+                      className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-secondary/50 px-3 py-2.5 text-sm font-semibold text-foreground transition hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                     >
-                      Ver y seleccionar
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                      Ver detalles
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={versionesEnCarrito.includes(producto.version_id)}
+                      onClick={() => onAddToCart?.(producto)}
+                      className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-default disabled:opacity-60"
+                    >
+                      {versionesEnCarrito.includes(producto.version_id) ? "En el carrito" : "Añadir"}
+                      <ShoppingCart className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -432,6 +375,58 @@ export default function RequerimientoStepBusquedaProducto({
           </div>
         )}
       </section>
+      {productoDetalle && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setProductoDetalle(null); }}>
+          <aside role="dialog" aria-modal="true" aria-label={`Detalles de ${productoDetalle.producto_nombre}`} className="flex h-full w-full max-w-xl flex-col overflow-hidden border-l border-border bg-card shadow-xl">
+            <div className="flex shrink-0 items-start justify-between border-b border-border px-4 py-3">
+              <div className="min-w-0"><p className="text-[11px] font-medium uppercase tracking-wide text-primary">Detalle del producto</p><h2 className="mt-0.5 truncate text-lg font-semibold">{productoDetalle.producto_nombre}</h2><p className="mt-0.5 text-xs text-muted-foreground">Código {productoDetalle.producto_codigo} · Versión {productoDetalle.version_numero}</p></div>
+              <button type="button" onClick={() => setProductoDetalle(null)} aria-label="Cerrar detalles" className="ml-3 rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary"><X className="h-4 w-4" /></button>
+            </div>
+            {productoDetalle.imagen && <img src={productoDetalle.imagen} alt={productoDetalle.producto_nombre} className="h-36 w-full shrink-0 border-b border-border bg-secondary/20 object-contain p-3" />}
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+              {productoDetalle.producto_descripcion && <p className="text-sm text-muted-foreground">{productoDetalle.producto_descripcion}</p>}
+              <section aria-label="Características generales">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Características generales</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <Detail label="Categoría" value={productoDetalle.categoria} /><Detail label="Subcategoría" value={productoDetalle.subcategoria} />
+                  <Detail label="Material" value={productoDetalle.material} /><Detail label="Micraje" value={productoDetalle.micraje == null ? null : `${productoDetalle.micraje} µm`} />
+                  <Detail label="Capas" value={formatLabel(productoDetalle.capas)} /><Detail label="Impresión" value={productoDetalle.impresion ? formatLabel(productoDetalle.tipo_impresion) || "Sí" : "Sin impresión"} />
+                </div>
+              </section>
+              {productoDetalle.especificacion_bolsa && <section aria-label="Especificaciones de bolsa">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Especificaciones de bolsa</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <Detail label="Ancho doblado" value={productoDetalle.especificacion_bolsa.ancho_doblado} unit="cm" /><Detail label="Ancho desdoblado" value={productoDetalle.especificacion_bolsa.ancho_desdoblado} unit="cm" />
+                  <Detail label="Largo doblado" value={productoDetalle.especificacion_bolsa.largo_doblado} unit="cm" /><Detail label="Largo desdoblado" value={productoDetalle.especificacion_bolsa.largo_desdoblado} unit="cm" />
+                  <Detail label="Tipo de sello" value={formatLabel(productoDetalle.especificacion_bolsa.tipo_sello)} /><Detail label="Tipo de troquel" value={formatLabel(productoDetalle.especificacion_bolsa.tipo_troquel)} />
+                  <Detail label="Fuelle" value={productoDetalle.especificacion_bolsa.fuelle ? [productoDetalle.especificacion_bolsa.fuelle_izquierdo, productoDetalle.especificacion_bolsa.fuelle_derecho, productoDetalle.especificacion_bolsa.fuelle_inferior, productoDetalle.especificacion_bolsa.fuelle_superior].filter(Boolean).join(" / ") || "Sí" : "No"} unit="cm" />
+                  <Detail label="Pestaña" value={formatLabel(productoDetalle.especificacion_bolsa.pestana)} />
+                  <Detail label="Acabado especial" value={productoDetalle.especificacion_bolsa.acabado_especial} />
+                  <Detail label="Otras características" value={productoDetalle.especificacion_bolsa.otras_caracteristicas} />
+                </div>
+              </section>}
+              {productoDetalle.especificacion_bobina && <section aria-label="Especificaciones de bobina">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Especificaciones de bobina</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <Detail label="Ancho" value={productoDetalle.especificacion_bobina.ancho} unit="cm" /><Detail label="Diámetro" value={productoDetalle.especificacion_bobina.diametro} unit="cm" />
+                  <Detail label="Diámetro núcleo" value={productoDetalle.especificacion_bobina.diametro_nucleo} unit="cm" /><Detail label="Tipo de núcleo" value={productoDetalle.especificacion_bobina.tipo_nucleo} />
+                  <Detail label="Peso" value={productoDetalle.especificacion_bobina.peso} unit="kg" /><Detail label="Longitud" value={productoDetalle.especificacion_bobina.longitud} unit="m" />
+                  <Detail label="Otras características" value={productoDetalle.especificacion_bobina.otras_caracteristicas} />
+                </div>
+              </section>}
+            </div>
+            <div className="flex shrink-0 gap-2 border-t border-border bg-card p-3">
+              <button type="button" onClick={() => setProductoDetalle(null)} className="flex-1 rounded-lg border border-border px-3 py-2.5 text-sm font-medium hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary">Seguir explorando</button>
+              <button type="button" disabled={versionesEnCarrito.includes(productoDetalle.version_id)} onClick={() => { onAddToCart?.(productoDetalle); setProductoDetalle(null); }} className="flex-1 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-default disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">{versionesEnCarrito.includes(productoDetalle.version_id) ? "Ya está en el carrito" : "Añadir al carrito"}</button>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
+}
+
+function Detail({ label, value, unit }: { label: string; value: string | number | boolean | null | undefined; unit?: string }) {
+  if (value === null || value === undefined || value === "") return null;
+  return <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-0.5 break-words text-sm font-medium text-foreground">{String(value)}{unit ? ` ${unit}` : ""}</p></div>;
 }

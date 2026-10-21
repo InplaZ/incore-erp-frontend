@@ -16,6 +16,7 @@ import {
 
 import {
   variantesColorApi,
+  especificacionesProductoApi,
 } from "../comercial.api";
 
 import type {
@@ -36,7 +37,6 @@ import type {
   PosicionImpresion,
   TipoCapa,
   CaraImpresion,
-  TipoPestana,
   ProductType,
 } from "../comercial.types";
 
@@ -101,9 +101,8 @@ const tiposCapa: { value: TipoCapa; label: string }[] = [
 ];
 
 const carasImpresion: { value: CaraImpresion; label: string }[] = [
-  { value: "anverso", label: "Anverso" },
-  { value: "reverso", label: "Reverso" },
-  { value: "ambas", label: "Ambas" },
+  { value: "una_cara", label: "Una cara" },
+  { value: "dos_caras", label: "Dos caras" },
 ];
 
 const tiposTroquel: { value: TipoTroquel; label: string }[] = [
@@ -121,13 +120,6 @@ const tiposSello: { value: TipoSello; label: string }[] = [
   { value: "ninguno", label: "Ninguno" },
   { value: "fondo", label: "Fondo" },
   { value: "lateral", label: "Lateral" },
-];
-
-const tiposPestana: { value: TipoPestana; label: string }[] = [
-  { value: "sin_pestana", label: "Sin pestaña" },
-  { value: "superior", label: "Superior" },
-  { value: "inferior", label: "Inferior" },
-  { value: "ambas", label: "Ambas" },
 ];
 
 const tratamientosAcabados: { value: TratamientoAcabadoEspecial; label: string; description: string }[] = [
@@ -174,6 +166,7 @@ export default function EditarRequerimientoModal({
   // Estado local del formulario
   const [solicitud, setSolicitud] = useState<Partial<SolicitudComercialUpdate>>({});
   const [especificacionProducto, setEspecificacionProducto] = useState<Partial<EspecificacionProductoSolicitadoUpdate>>({});
+  const [archivoColorImpresion, setArchivoColorImpresion] = useState<File | null>(null);
   const [especificacionBolsa, setEspecificacionBolsa] = useState<Partial<EspecificacionBolsaSolicitadaUpdate>>({});
   const [especificacionBobina, setEspecificacionBobina] = useState<Partial<EspecificacionBobinaSolicitadaUpdate>>({});
   const [variantesColor, setVariantesColor] = useState<Partial<VarianteColorSolicitadaUpdate>[]>([]);
@@ -285,6 +278,11 @@ export default function EditarRequerimientoModal({
 
       // Actualizar especificación de producto si existe
       if (requerimientoDetalle.especificacionProducto) {
+        if (archivoColorImpresion) {
+          await especificacionesProductoApi.subirArchivoColorImpresion(archivoColorImpresion, {
+            especificacionId: requerimientoDetalle.especificacionProducto.id,
+          });
+        }
         await updateEspecificacionProducto.mutateAsync({
           id: requerimientoDetalle.especificacionProducto.id,
           data: especificacionProducto as EspecificacionProductoSolicitadoUpdate,
@@ -705,6 +703,20 @@ export default function EditarRequerimientoModal({
                               disabled={isPending}
                               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                             />
+                          </div>
+                          <div>
+                            <label className="mb-1.5 block text-sm font-medium">Diseño de impresión (PDF)</label>
+                            {requerimientoDetalle?.especificacionProducto?.archivo_color_impresion && <a className="mb-2 block text-sm text-primary underline" href={requerimientoDetalle.especificacionProducto.archivo_color_impresion} target="_blank" rel="noreferrer">Ver PDF actual</a>}
+                            <input type="file" accept="application/pdf,.pdf" disabled={isPending} onChange={(event) => {
+                              const file = event.target.files?.[0] ?? null;
+                              if (file && (!file.name.toLowerCase().endsWith(".pdf") || file.size > 20 * 1024 * 1024)) {
+                                window.alert("Selecciona un archivo PDF de hasta 20 MB.");
+                                event.target.value = "";
+                                return;
+                              }
+                              setArchivoColorImpresion(file);
+                            }} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" />
+                            {archivoColorImpresion && <p className="mt-1 text-xs text-muted-foreground">Se reemplazará al guardar: {archivoColorImpresion.name}</p>}
                           </div>
                           <div>
                             <label className="mb-1.5 block text-sm font-medium">Largo doblado</label>

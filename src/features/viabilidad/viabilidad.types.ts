@@ -13,8 +13,26 @@ export interface EvaluarViabilidadPayload {
 
 export interface ResultadoProceso {
   viable: boolean;
-  resultados_evaluacion?: unknown[];
+  resultados_evaluacion?: ResultadoMaquinaViabilidad[];
+  resultados?: ResultadoMaquinaViabilidad[];
   [key: string]: unknown;
+}
+
+export interface CriterioViabilidad {
+  criterio: string;
+  cumple: boolean;
+  mensaje?: string;
+  valor_solicitado?: unknown;
+  valor_capacidad?: unknown;
+}
+
+export interface ResultadoMaquinaViabilidad {
+  equipo?: string;
+  resultado?: string;
+  viable?: boolean;
+  disponibilidad?: string;
+  criterios?: CriterioViabilidad[];
+  criterios_evaluados?: CriterioViabilidad[];
 }
 
 export interface EvaluarViabilidadResponse {

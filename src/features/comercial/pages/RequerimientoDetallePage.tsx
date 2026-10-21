@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     ArrowLeft,
     Check,
@@ -49,7 +49,62 @@ export default function RequerimientoDetallePage() {
     const [lineaEditandoId, setLineaEditandoId] = useState<number | null>(null);
     const [formLinea, setFormLinea] = useState<LineaEdicionForm | null>(null);
     const [guardandoLinea, setGuardandoLinea] = useState(false);
+    const [calculandoPeso, setCalculandoPeso] = useState(false);
     const crearVersionCotizacion = useCrearCotizacionVersion();
+    const cantidadPeso = formLinea?.cantidad;
+    const materialPeso = formLinea?.tecnica.material;
+    const micrajePeso = formLinea?.tecnica.micraje;
+    const anchoBolsaPeso = formLinea?.tecnica["especificacion_bolsa.ancho_doblado"];
+    const anchoDesdobladoBolsaPeso = formLinea?.tecnica["especificacion_bolsa.ancho_desdoblado"];
+    const largoBolsaPeso = formLinea?.tecnica["especificacion_bolsa.largo_doblado"];
+    const anchoBobinaPeso = formLinea?.tecnica["especificacion_bobina.ancho"];
+    const metrosBobinaPeso = formLinea?.tecnica["especificacion_bobina.longitud"];
+
+    useEffect(() => {
+        if (!lineaEditandoId || cantidadPeso == null) return;
+        let vigente = true;
+        const temporizador = window.setTimeout(async () => {
+            setCalculandoPeso(true);
+            const datosEspecificacion = {
+                material: materialPeso || undefined,
+                micraje: micrajePeso || undefined,
+                especificacion_bolsa: {
+                    ancho_doblado: anchoBolsaPeso || undefined,
+                    ancho_desdoblado: anchoDesdobladoBolsaPeso || undefined,
+                    largo_doblado: largoBolsaPeso || undefined,
+                },
+                especificacion_bobina: {
+                    ancho: anchoBobinaPeso || undefined,
+                    longitud: metrosBobinaPeso || undefined,
+                },
+            };
+            try {
+                const resultado = await api.post<{ peso_kg: string | null }>(
+                    `/comercial/cotizaciones-detalles/${lineaEditandoId}/calcular-peso/`,
+                    { cantidad: cantidadPeso, datos_especificacion: datosEspecificacion },
+                );
+                if (vigente) setFormLinea((actual) => actual ? { ...actual, peso_kg: resultado.peso_kg ?? "" } : actual);
+            } catch (error) {
+                if (vigente) console.error("No se pudo calcular el peso de la línea", error);
+            } finally {
+                if (vigente) setCalculandoPeso(false);
+            }
+        }, 250);
+        return () => {
+            vigente = false;
+            window.clearTimeout(temporizador);
+        };
+    }, [
+        lineaEditandoId,
+        cantidadPeso,
+        materialPeso,
+        micrajePeso,
+        anchoBolsaPeso,
+        anchoDesdobladoBolsaPeso,
+        largoBolsaPeso,
+        anchoBobinaPeso,
+        metrosBobinaPeso,
+    ]);
 
 
     const { data, isLoading, isError } =
@@ -60,8 +115,6 @@ export default function RequerimientoDetallePage() {
     //IMPRIMIR
 
     const handleImprimir = async () => {
-        let pdfUrl: string | null = null;
-
         try {
             const pdfBlob = await api.get<Blob>(
                 `/comercial/solicitudes/${solicitudId}/pdf/`,
@@ -72,7 +125,7 @@ export default function RequerimientoDetallePage() {
                 }
             );
 
-            pdfUrl = URL.createObjectURL(pdfBlob);
+            const pdfUrl = URL.createObjectURL(pdfBlob);
             window.open(pdfUrl, "_blank");
 
         } catch (error) {
@@ -189,11 +242,12 @@ export default function RequerimientoDetallePage() {
                 }
             }
             for (const [grupo, valores] of [["especificacion_bolsa", versionTecnica.especificacionBolsa], ["especificacion_bobina", versionTecnica.especificacionBobina]] as const) {
-                if (valores) Object.entries(valores).forEach(([campo, valor]) => { tecnica[`${grupo}.${campo}`] = (valor as string | number | null | boolean) ?? ""; });
+                if (valores) Object.entries(valores).forEach(([campo, valor]) => { tecnica[`${grupo}.${campo}`] = typeof valor === "boolean" ? valor : valor == null ? "" : String(valor); });
             }
         }
         setLineaSeleccionadaId(linea.cotizacionDetalle.id);
         setLineaEditandoId(linea.cotizacionDetalle.id);
+        setCalculandoPeso(false);
         setFormLinea({
             cantidad: String(linea.cotizacionDetalle.cantidad),
             precio_lista: String(linea.cotizacionDetalle.precio_lista ?? ""),
@@ -245,7 +299,6 @@ export default function RequerimientoDetallePage() {
                 precio_lista: formLinea.precio_lista,
                 descuento_porcentaje: formLinea.descuento_porcentaje,
                 unidad_comercial: formLinea.unidad_comercial,
-                peso_kg: formLinea.peso_kg || null,
                 motivo_cambio: formLinea.motivo_cambio,
                 ...(hayCambioTecnico ? { datos_especificacion: datosEspecificacion } : {}),
             });
@@ -402,7 +455,7 @@ export default function RequerimientoDetallePage() {
                                                         <label className="text-xs text-muted-foreground">Precio lista<input required type="number" min="0" step="0.01" value={formLinea.precio_lista} onChange={(event) => setFormLinea({ ...formLinea, precio_lista: event.target.value })} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" /></label>
                                                         <label className="text-xs text-muted-foreground">Descuento %<input required type="number" min="0" max="100" step="0.01" value={formLinea.descuento_porcentaje} onChange={(event) => setFormLinea({ ...formLinea, descuento_porcentaje: event.target.value })} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" /></label>
                                                         <label className="text-xs text-muted-foreground">Unidad comercial<select required value={formLinea.unidad_comercial} onChange={(event) => setFormLinea({ ...formLinea, unidad_comercial: event.target.value })} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground"><option value="unidad">Unidad</option><option value="kg">Kilogramo</option><option value="bobina">Bobina</option><option value="fajo">Fajo</option><option value="metro">Metro</option></select></label>
-                                                        <label className="text-xs text-muted-foreground">Peso kg<input type="number" min="0.001" step="0.001" value={formLinea.peso_kg} onChange={(event) => setFormLinea({ ...formLinea, peso_kg: event.target.value })} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" /></label>
+                                                        <label className="text-xs text-muted-foreground">Peso total calculado (kg)<input type="number" step="0.001" value={formLinea.peso_kg} readOnly aria-readonly="true" placeholder={calculandoPeso ? "Calculando…" : "Sin datos para calcular"} className="mt-1 w-full rounded border border-border bg-muted px-2 py-2 text-sm text-foreground" /><span className="mt-1 block text-[11px]">{calculandoPeso ? "Actualizando cálculo…" : "Cálculo automático según material, medidas y cantidad."}</span></label>
                                                     </div>
                                                     {versionTecnica && <div className="space-y-4 rounded-lg border border-border p-3">
                                                         <p className="font-medium">Características técnicas · versión actual V{versionTecnica.version}</p>
@@ -440,7 +493,7 @@ export default function RequerimientoDetallePage() {
                         <InfoItem label="Precio unitario" value={`${productoCotizado.cotizacionVersion.moneda} ${Number(productoCotizado.cotizacionDetalle.precio_unitario).toFixed(2)}`} />
                         <InfoItem label="Descuento" value={`${Number(productoCotizado.cotizacionDetalle.descuento_porcentaje ?? 0).toFixed(2)}%`} />
                         <InfoItem label="Subtotal de línea" value={`${productoCotizado.cotizacionVersion.moneda} ${Number(productoCotizado.cotizacionDetalle.precio_total).toFixed(2)}`} />
-                        <InfoItem label="Peso" value={productoCotizado.cotizacionDetalle.peso_kg ? `${productoCotizado.cotizacionDetalle.peso_kg} kg` : "No especificado"} />
+                        <InfoItem label="Peso total" value={productoCotizado.cotizacionDetalle.peso_kg ? `${productoCotizado.cotizacionDetalle.peso_kg} kg` : "No especificado"} />
                     </div>
                 </section>
             )}
@@ -908,6 +961,12 @@ export default function RequerimientoDetallePage() {
                                                     : "—"
                                             }
                                         />
+                                        {"archivo_color_impresion" in datosTecnicos && datosTecnicos.archivo_color_impresion && (
+                                            <div className="sm:col-span-2">
+                                                <span className="text-xs text-muted-foreground">Diseño de impresión</span>
+                                                <a className="mt-1 flex items-center gap-2 text-sm font-medium text-primary underline" href={datosTecnicos.archivo_color_impresion} target="_blank" rel="noreferrer"><FileText className="h-4 w-4" /> Ver archivo PDF</a>
+                                            </div>
+                                        )}
 
                                         <InfoItem
                                             label="Tipo"
@@ -926,7 +985,7 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Posición"
                                             value={getPosicionLabel(
-                                                datosTecnicos.posicion_impresion,
+                                                datosTecnicos.posicion_impresion ?? "",
                                             )}
                                         />
 
@@ -1333,9 +1392,8 @@ function getTratamientoImpresionLabel(value: string) {
 }
 function getCaraImpresionLabel(value: string) {
     const labels: Record<string, string> = {
-        anverso: "Anverso",
-        reverso: "Reverso",
-        ambos: "Ambos",
+        una_cara: "Una cara",
+        dos_caras: "Dos caras",
     };
 
     return labels[value] ?? value;

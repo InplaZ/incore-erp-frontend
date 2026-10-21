@@ -7,7 +7,6 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  CircleHelp,
   Package,
   Palette,
   Ruler,
@@ -32,8 +31,6 @@ import type {
 
 import type { ProductType } from "./RequerimientoStepProducto";
 import { Select } from "@/components/ui";
-import { useCuentasComerciales } from "@/features/comercial/comercial.hooks";
-
 interface RequerimientoStepDetallesProps {
   product: ProductType;
 
@@ -44,13 +41,8 @@ interface RequerimientoStepDetallesProps {
 
   // Cantidad solicitada
   cantidadUnidades: string;
-  setCantidadUnidades: (value: string) => void;
-  cantidadKg: string;
-  setCantidadKg: (value: string) => void;
 
   // Información general
-  descripcion: string;
-  setDescripcion: (value: string) => void;
   material: MaterialProducto;
   setMaterial: (value: MaterialProducto) => void;
   micraje: string;
@@ -87,6 +79,8 @@ interface RequerimientoStepDetallesProps {
   setImpresion: (value: boolean) => void;
   colorImpresion: string;
   setColorImpresion: (value: string) => void;
+  archivoColorImpresion: File | null;
+  setArchivoColorImpresion: (value: File | null) => void;
   tipoImpresion: TipoImpresion;
   setTipoImpresion: (value: TipoImpresion) => void;
   tratamientoImpresion: TratamientoImpresion;
@@ -277,15 +271,7 @@ export default function RequerimientoStepDetalles(
 ) {
   const {
     product,
-    esProductoNuevo,
-    cuentaComercialId,
-    setCuentaComercialId,
     cantidadUnidades,
-    setCantidadUnidades,
-    cantidadKg,
-    setCantidadKg,
-    descripcion,
-    setDescripcion,
     material,
     setMaterial,
     micraje,
@@ -298,8 +284,10 @@ export default function RequerimientoStepDetalles(
     setTratamientosAcabadosEspeciales,
     impresion,
     setImpresion,
-    colorImpresion,
-    setColorImpresion,
+    //colorImpresion,
+    //setColorImpresion,
+    archivoColorImpresion,
+    setArchivoColorImpresion,
     tipoImpresion,
     setTipoImpresion,
     tratamientoImpresion,
@@ -353,9 +341,7 @@ export default function RequerimientoStepDetalles(
     setCaraImpresion,
   } = props;
 
-  const { data: cuentas = [] } = useCuentasComerciales();
   const [fuelleDerechoEditado, setFuelleDerechoEditado] = useState(false);
-  const [mostrarAvanzado, setMostrarAvanzado] = useState(false);
   const [mostrarOtras, setMostrarOtras] = useState(false);
   const fuelleInicialRef = useRef(false);
 
@@ -537,96 +523,10 @@ export default function RequerimientoStepDetalles(
           </span>
         </div>
         <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-          Indica primero cuánto necesita el cliente y después las características
-          del producto. Solo completa lo que conozcas.
+          Completa las características conocidas. La cantidad, unidad comercial y precio se configuran en la cotización.
         </p>
       </div>
-      {esProductoNuevo && (
-        <Section
-          icon={Package}
-          title="Cliente"
-          description="Selecciona el cliente para quien se está creando esta cotización."
-        >
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">
-              Cliente
-            </label>
-
-            <select
-              value={cuentaComercialId ?? ""}
-              onChange={(event) => {
-                const value = event.target.value;
-
-                setCuentaComercialId(
-                  value ? Number(value) : null
-                );
-              }}
-              className={inputClass}
-            >
-              <option value="">
-                Seleccionar cliente
-              </option>
-
-              {cuentas.map((cuenta) => (
-              <option
-                key={cuenta.id}
-                value={cuenta.id}
-              >
-                {cuenta.razon_social
-                  ? `${cuenta.razon_social} — ${cuenta.nombres ?? ""} ${cuenta.apellido_paterno ?? ""}`.trim()
-                  : `${cuenta.nombres ?? ""} ${cuenta.apellido_paterno ?? ""}`.trim()}
-              </option>
-            ))}
-            </select>
-
-            <button
-              type="button"
-              className="
-          mt-3 inline-flex items-center
-          rounded-lg border border-border
-          px-3 py-2
-          text-sm font-medium
-          hover:bg-muted/40 
-        "
-              onClick={() => {
-                // TODO: conectar modal Nuevo Cliente
-              }}
-            >
-              + Nuevo cliente
-            </button>
-          </div>
-        </Section>
-      )}
-
-      {/* 1. CANTIDAD */}
-      <Section
-        icon={Package}
-        title="¿Cuánto necesita?"
-        description="Esta es la cantidad solicitada por el cliente."
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            label="Cantidad de unidades"
-            value={cantidadUnidades}
-            onChange={setCantidadUnidades}
-            placeholder="Ej. 10000"
-            suffix="unid."
-            type="number"
-            hint="Número de bolsas, piezas o unidades solicitadas."
-          />
-          <Field
-            label="Cantidad en kilogramos"
-            value={cantidadKg}
-            onChange={setCantidadKg}
-            placeholder="Ej. 250"
-            suffix="kg"
-            type="number"
-            hint="Puedes dejarlo vacío si todavía no se conoce."
-          />
-        </div>
-      </Section>
-
-      {/* 2. INFORMACIÓN */}
+      {/* INFORMACIÓN */}
 
       <Section
         icon={Palette}
@@ -1129,12 +1029,27 @@ export default function RequerimientoStepDetalles(
 
         {impresion && (
           <div className="mt-4 grid gap-4 rounded-xl bg-muted/30 p-4 sm:grid-cols-2">
+            {/**
             <Field
               label="Colores de impresión"
               value={colorImpresion}
               onChange={setColorImpresion}
               placeholder="Ej. rojo, azul y negro"
             />
+             */}
+            <div>
+              <label htmlFor="archivo-color-impresion" className="mb-1 block text-sm font-medium">Diseño de impresión (PDF)</label>
+              <input id="archivo-color-impresion" type="file" accept="application/pdf,.pdf" onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                if (file && (!file.name.toLowerCase().endsWith(".pdf") || file.size > 20 * 1024 * 1024)) {
+                  window.alert("Selecciona un archivo PDF de hasta 20 MB.");
+                  event.target.value = "";
+                  return;
+                }
+                setArchivoColorImpresion(file);
+              }} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" />
+              <p className="mt-1 text-xs text-muted-foreground">Opcional · máximo 20 MB{archivoColorImpresion ? ` · ${archivoColorImpresion.name}` : ""}</p>
+            </div>
             <Field
               label="Tipo de impresión"
               value={tipoImpresion}
@@ -1152,9 +1067,8 @@ export default function RequerimientoStepDetalles(
               type="select"
               options={[
                 { value: "", label: "Seleccionar" },
-                { value: "anverso", label: "Anverso" },
-                { value: "reverso", label: "Reverso" },
-                { value: "ambas", label: "Ambas" },
+                { value: "una_cara", label: "Una cara" },
+                { value: "dos_caras", label: "Dos caras" },
               ]}
             />
             <div className="sm:col-span-2">
@@ -1269,49 +1183,8 @@ export default function RequerimientoStepDetalles(
 
       {/* 8. DESCRIPCIÓN Y AVANZADO */}
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div>
         <button
-          type="button"
-          onClick={() => setMostrarAvanzado(!mostrarAvanzado)}
-          className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-muted/20"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <CircleHelp className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="font-semibold">Descripción y detalles adicionales</p>
-              <p className="text-xs text-muted-foreground">
-                Usa esta sección para indicaciones especiales del cliente.
-              </p>
-            </div>
-          </div>
-          {mostrarAvanzado ? (
-            <ChevronUp className="h-5 w-5 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-          )}
-        </button>
-
-        {mostrarAvanzado && (
-          <div className="space-y-5 border-t border-border p-5">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">
-                Descripción del producto / diseño
-              </label>
-              <textarea
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
-                rows={3}
-                placeholder='Ej. Bolsa con diseño de "osito de hielo", según muestra del cliente...'
-                className={`${inputClass} resize-none`}
-              />
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Aquí puedes describir el diseño, uso o cualquier indicación que
-                ayude a entender el pedido.
-              </p>
-            </div>
-
-            <button
               type="button"
               onClick={() => setMostrarOtras(!mostrarOtras)}
               className="flex w-full items-center justify-between rounded-xl border border-border px-4 py-3 text-left hover:bg-muted/30"
@@ -1333,9 +1206,9 @@ export default function RequerimientoStepDetalles(
                 className={`${inputClass} resize-none`}
               />
             )}
-          </div>
-        )}
-      </section>
+          </div>  
+      </section>  
+
 
       <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
         <span className="font-medium text-foreground">Consejo:</span>{" "}

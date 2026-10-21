@@ -42,6 +42,8 @@ interface RequerimientoStepEntregaProps {
 
   sucursalEntrega: SucursalEntrega | "";
   setSucursalEntrega: (value: SucursalEntrega | "") => void;
+  showCantidad?: boolean;
+  showCliente?: boolean;
 }
 
 export default function RequerimientoStepEntrega({
@@ -66,19 +68,52 @@ export default function RequerimientoStepEntrega({
   setEmpresaTransporte,
   sucursalEntrega,
   setSucursalEntrega,
+  showCantidad = true,
+  showCliente = true,
 }: RequerimientoStepEntregaProps) {
   const { data: cuentas = [] } = useCuentasComerciales();
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
 
   // Cuando se selecciona "Ubicación del cliente", autocompletar con la dirección del cliente
   useEffect(() => {
-    if (tipoLugarEntrega === "cliente" && cuentaComercialId) {
-      const clienteSeleccionado = cuentas.find((cuenta) => cuenta.id === cuentaComercialId);
-      if (clienteSeleccionado?.direccion) {
-        setLugarEntrega(clienteSeleccionado.direccion);
-      }
-    }
-  }, [tipoLugarEntrega, cuentaComercialId, cuentas, setLugarEntrega]);
+  if (tipoLugarEntrega === "cliente" && cuentaComercialId) {
+    const clienteSeleccionado = cuentas.find(
+      (cuenta) => cuenta.id === cuentaComercialId
+    );
+
+    setLugarEntrega(clienteSeleccionado?.direccion ?? "");
+    return;
+  }
+
+  if (tipoLugarEntrega === "sucursal") {
+    const direccionesSucursal: Record<SucursalEntrega, string> = {
+      montes: "Sucursal Av. Montes",
+      sucursal_santa_cruz: "Sucursal Santa Cruz",
+    };
+
+    setLugarEntrega(
+      sucursalEntrega
+        ? direccionesSucursal[sucursalEntrega]
+        : ""
+    );
+    return;
+  }
+
+  if (tipoLugarEntrega === "casa_matriz") {
+    setLugarEntrega("");
+    return;
+  }
+
+  if (tipoLugarEntrega === "envio_interior") {
+    setLugarEntrega("");
+  }
+}, [
+  tipoLugarEntrega,
+  cuentaComercialId,
+  cuentas,
+  sucursalEntrega,
+  setLugarEntrega,
+]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -92,7 +127,7 @@ export default function RequerimientoStepEntrega({
         </p>
 
       </div>
-      {productoSeleccionado && (
+      {showCliente && productoSeleccionado && (
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4">
             <h4 className="font-semibold text-foreground">
@@ -159,7 +194,7 @@ export default function RequerimientoStepEntrega({
         </div>
       )}
       <div className="grid gap-5 sm:grid-cols-2">
-        <div>
+        {showCantidad && <div>
           <label className="mb-2 block text-sm font-medium">
             Cantidad
           </label>
@@ -175,7 +210,7 @@ export default function RequerimientoStepEntrega({
             placeholder="Ej. 5000"
             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
-        </div>
+        </div>}
 
 
         <div>
