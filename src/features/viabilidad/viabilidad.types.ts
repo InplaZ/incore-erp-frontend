@@ -13,14 +13,18 @@ export interface EvaluarViabilidadPayload {
 
 export interface ResultadoProceso {
   viable: boolean;
+  estado?: "viable" | "no_viable" | "pendiente";
   resultados_evaluacion?: ResultadoMaquinaViabilidad[];
   resultados?: ResultadoMaquinaViabilidad[];
+  pendientes?: ResultadoMaquinaViabilidad[];
+  no_viables?: ResultadoMaquinaViabilidad[];
   [key: string]: unknown;
 }
 
 export interface CriterioViabilidad {
   criterio: string;
-  cumple: boolean;
+  cumple: boolean | null;
+  estado?: "evaluado" | "pendiente";
   mensaje?: string;
   valor_solicitado?: unknown;
   valor_capacidad?: unknown;
@@ -29,6 +33,7 @@ export interface CriterioViabilidad {
 export interface ResultadoMaquinaViabilidad {
   equipo?: string;
   resultado?: string;
+  estado?: "viable" | "no_viable" | "pendiente";
   viable?: boolean;
   disponibilidad?: string;
   criterios?: CriterioViabilidad[];
@@ -41,8 +46,10 @@ export interface EvaluarViabilidadResponse {
   ruta: string[];
   descripcion_ruta: string;
   viable_global: boolean;
+  estado_global?: "viable" | "no_viable" | "pendiente";
   procesos_viables: string[];
   procesos_no_viables: string[];
+  procesos_pendientes?: string[];
   resultados_por_proceso: Record<string, ResultadoProceso>;
 }
 

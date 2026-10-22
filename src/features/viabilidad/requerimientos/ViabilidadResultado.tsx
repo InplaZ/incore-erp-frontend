@@ -6,6 +6,7 @@ import {
   Route,
   ShieldCheck,
   AlertTriangle,
+  Clock3,
 } from "lucide-react";
 
 import type {
@@ -173,7 +174,12 @@ export default function ViabilidadResultado({
     return null;
   }
 
-  const viable = resultado.viable_global;
+  const estado = resultado.estado_global ?? (
+    resultado.viable_global ? "viable" :
+      resultado.procesos_pendientes?.length ? "pendiente" : "no_viable"
+  );
+  const viable = estado === "viable";
+  const pendiente = estado === "pendiente";
 
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -189,11 +195,13 @@ export default function ViabilidadResultado({
             "flex h-14 w-14 items-center justify-center rounded-full",
             viable
               ? "bg-emerald-100"
-              : "bg-red-100",
+              : pendiente ? "bg-amber-100" : "bg-red-100",
           ].join(" ")}
         >
           {viable ? (
             <Check className="h-7 w-7 text-emerald-600" />
+          ) : pendiente ? (
+            <Clock3 className="h-7 w-7 text-amber-600" />
           ) : (
             <span className="text-xl font-semibold text-red-600">
               !
@@ -206,18 +214,18 @@ export default function ViabilidadResultado({
             "mt-4 text-2xl font-semibold",
             viable
               ? "text-emerald-700"
-              : "text-red-700",
+              : pendiente ? "text-amber-700" : "text-red-700",
           ].join(" ")}
         >
           {viable
             ? "Producto viable"
-            : "Producto no viable"}
+            : pendiente ? "Evaluación pendiente" : "Producto no viable"}
         </h2>
 
         <p className="mt-1 text-sm text-muted-foreground">
           {viable
             ? "El requerimiento puede producirse con la siguiente ruta"
-            : "El requerimiento no puede producirse con la ruta evaluada"}
+            : pendiente ? "Faltan datos técnicos para confirmar todos los procesos" : "El requerimiento no puede producirse con la ruta evaluada"}
         </p>
       </div>
 
@@ -368,7 +376,65 @@ export default function ViabilidadResultado({
           RESULTADO NO VIABLE
           ===================================================== */}
 
-      {!viable && (
+      {pendiente && (
+        <div className="mt-8 rounded-lg border border-amber-200 bg-amber-50 p-5">
+          <h3 className="text-sm font-semibold text-amber-900">Faltan datos para completar la evaluación</h3>
+          <p className="mt-2 text-sm text-amber-800">
+            La información disponible todavía no permite confirmar la viabilidad. Completa los criterios pendientes y vuelve a evaluar.
+          </p>
+          {resultado.procesos_pendientes?.length ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {resultado.procesos_pendientes.map((proceso) => (
+                <span key={proceso} className="rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                  {obtenerNombreProceso(proceso)} · pendiente
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {resultado.procesos_pendientes?.map((proceso) => {
+            const detalle = resultado.resultados_por_proceso?.[proceso];
+            const maquinas = [
+              ...(detalle?.resultados_evaluacion ?? detalle?.resultados ?? []),
+              ...(detalle?.pendientes ?? []),
+            ];
+            const criteriosPendientes = maquinas.flatMap((maquina) =>
+              (maquina.criterios ?? maquina.criterios_evaluados ?? [])
+                .filter((criterio) => criterio.estado === "pendiente" || criterio.cumple === null)
+                .map((criterio) => ({ equipo: maquina.equipo, criterio })),
+            );
+            return (
+              <section key={`pendiente-${proceso}`} className="mt-4">
+                <h4 className="text-sm font-semibold text-amber-900">Datos pendientes de {obtenerNombreProceso(proceso)}</h4>
+                {criteriosPendientes.length ? (
+                  <ul className="mt-2 space-y-1 text-sm text-amber-800">
+                    {criteriosPendientes.map(({ equipo, criterio }, index) => (
+                      <li key={`${proceso}-${index}`}>
+                        <span className="font-medium">{equipo ? `${equipo} · ` : ""}{criterio.criterio.replaceAll("_", " ")}:</span>{" "}
+                        {criterio.mensaje ?? "Completa este dato para evaluar el criterio."}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-sm text-amber-800">Completa la especificación técnica para continuar.</p>
+                )}
+              </section>
+            );
+          })}
+          <div className="mt-6 flex justify-end">
+            <button
+              type="button"
+              onClick={onCompletarEspecificacion}
+              disabled={!onCompletarEspecificacion}
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-background px-5 py-2.5 text-sm font-medium text-foreground hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver a completar datos
+            </button>
+          </div>
+        </div>
+      )}
+
+      {estado === "no_viable" && (
 
         <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-5">
 

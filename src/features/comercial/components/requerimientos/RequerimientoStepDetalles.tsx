@@ -31,8 +31,13 @@ import type {
 
 import type { ProductType } from "./RequerimientoStepProducto";
 import { Select } from "@/components/ui";
+import type { EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
+import ViabilidadPreviaPanel from "@/features/viabilidad/requerimientos/ViabilidadPreviaPanel";
 interface RequerimientoStepDetallesProps {
   product: ProductType;
+  viabilidadPrevia?: EvaluarViabilidadResponse | null;
+  evaluandoViabilidadPrevia?: boolean;
+  errorViabilidadPrevia?: string | null;
 
   // Cliente
   esProductoNuevo: boolean;
@@ -172,35 +177,56 @@ const tratamientosDisponibles: {
   ];
 
 const inputClass =
-  "w-full rounded-xl border border-border bg-background px-3.5 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:ring-4 focus:ring-primary/10";
+  "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/15";
 
 function Section({
   icon: Icon,
   title,
   description,
+  summary,
+  defaultOpen = false,
   children,
 }: {
   icon: typeof Package;
   title: string;
   description?: string;
+  summary?: string;
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-start gap-3 border-b border-border bg-muted/20 px-5 py-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Icon className="h-4.5 w-4.5" />
-        </div>
-        <div>
-          <h4 className="font-semibold text-foreground">{title}</h4>
+    <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm shadow-black/[0.02]">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="text-sm font-semibold text-foreground">{title}</span>
+            {!open && summary && (
+              <span className="max-w-full truncate text-xs text-muted-foreground">{summary}</span>
+            )}
+          </span>
           {description && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <span className="mt-0.5 block text-xs text-muted-foreground">
               {description}
-            </p>
+            </span>
           )}
-        </div>
-      </div>
-      <div className="p-5">{children}</div>
+        </span>
+        {open ? (
+          <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
+      </button>
+      <div className={open ? "border-t border-border px-4 py-4" : "hidden"}>{children}</div>
     </section>
   );
 }
@@ -271,6 +297,9 @@ export default function RequerimientoStepDetalles(
 ) {
   const {
     product,
+    viabilidadPrevia,
+    evaluandoViabilidadPrevia = false,
+    errorViabilidadPrevia = null,
     cantidadUnidades,
     material,
     setMaterial,
@@ -342,7 +371,6 @@ export default function RequerimientoStepDetalles(
   } = props;
 
   const [fuelleDerechoEditado, setFuelleDerechoEditado] = useState(false);
-  const [mostrarOtras, setMostrarOtras] = useState(false);
   const fuelleInicialRef = useRef(false);
 
   useEffect(() => {
@@ -508,10 +536,10 @@ export default function RequerimientoStepDetalles(
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="mx-auto max-w-7xl space-y-4">
       <div>
         <div className="flex items-center gap-2">
-          <h3 className="text-xl font-semibold">
+          <h3 className="text-lg font-semibold tracking-tight">
             {product === "roll"
               ? "Detalles de la bobina"
               : product === "bag"
@@ -519,22 +547,26 @@ export default function RequerimientoStepDetalles(
                 : "Detalles del producto"}
           </h3>
           <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
-            Paso 3
+            Especificación técnica
           </span>
         </div>
-        <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Completa las características conocidas. La cantidad, unidad comercial y precio se configuran en la cotización.
         </p>
       </div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+      <div className="order-last min-w-0 space-y-3 lg:order-first">
       {/* INFORMACIÓN */}
 
       <Section
         icon={Palette}
         title="Características generales"
         description="Información básica del material y su apariencia."
+        summary={`${material} · ${capas || "Capas pendientes"} · ${micraje ? `${micraje} µm` : "Micraje pendiente"}`}
+        defaultOpen
       >
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
 
           <Field
             label="Material"
@@ -786,8 +818,9 @@ export default function RequerimientoStepDetalles(
           icon={Ruler}
           title="Medidas de la bolsa"
           description="Ingresa las medidas principales. El ancho total se calcula automáticamente cuando hay fuelle."
+          summary={`${anchoDoblado || "—"} × ${largoDoblado || "—"} cm`}
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field
               label="Ancho"
               value={anchoDoblado}
@@ -826,8 +859,9 @@ export default function RequerimientoStepDetalles(
           icon={Ruler}
           title="Características de la bobina"
           description="Indica las medidas principales solicitadas por el cliente."
+          summary={`Ancho ${anchoBobina || "—"} cm · Longitud ${longitud || "—"} m`}
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field
               label="Ancho de bobina"
               value={anchoBobina}
@@ -856,6 +890,7 @@ export default function RequerimientoStepDetalles(
           icon={Ruler}
           title="¿La bolsa tiene fuelle?"
           description="El fuelle agrega profundidad a la bolsa."
+          summary={fuelle ? "Con fuelle" : "Sin fuelle"}
         >
           <div className="grid gap-3 sm:grid-cols-2">
             {[
@@ -893,7 +928,7 @@ export default function RequerimientoStepDetalles(
                 <p className="text-sm font-medium">Medidas del fuelle</p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <Field
                   label="Fuelle A"
                   value={fuelleIzquierdo}
@@ -946,8 +981,9 @@ export default function RequerimientoStepDetalles(
           icon={Settings2}
           title="Configuración de la bolsa"
           description="Selecciona la forma y el tipo de sellado."
+          summary={`${tipoTroquel || "Troquel pendiente"} · Sello ${tipoSello || "pendiente"}`}
         >
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             <Field
               label="Tipo de bolsa / troquel"
               value={tipoTroquel}
@@ -997,6 +1033,7 @@ export default function RequerimientoStepDetalles(
         icon={Palette}
         title="¿Necesita impresión?"
         description="Activa esta opción solo si el cliente quiere imprimir un diseño."
+        summary={impresion ? `Requiere impresión${archivoColorImpresion ? ` · ${archivoColorImpresion.name}` : " · PDF opcional"}` : "Sin impresión"}
       >
         <button
           type="button"
@@ -1147,6 +1184,7 @@ export default function RequerimientoStepDetalles(
         icon={Sparkles}
         title="Tratamientos y acabados"
         description="Selecciona todos los que correspondan."
+        summary={tratamientosAcabadosEspeciales.length ? `${tratamientosAcabadosEspeciales.length} seleccionado(s)` : "Ninguno seleccionado"}
       >
         <div className="grid gap-3 sm:grid-cols-2">
           {tratamientosDisponibles.map((item) => {
@@ -1182,38 +1220,33 @@ export default function RequerimientoStepDetalles(
       </Section>
 
       {/* 8. DESCRIPCIÓN Y AVANZADO */}
-      <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div>
-        <button
-              type="button"
-              onClick={() => setMostrarOtras(!mostrarOtras)}
-              className="flex w-full items-center justify-between rounded-xl border border-border px-4 py-3 text-left hover:bg-muted/30"
-            >
-              <span className="text-sm font-medium">Otras características</span>
-              {mostrarOtras ? (
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              )}
-            </button>
+      <Section
+        icon={Settings2}
+        title="Otras características"
+        description="Detalles adicionales que ayuden a comprender la solicitud."
+        summary={otrasCaracteristicas ? "Información agregada" : "Opcional"}
+      >
+        <textarea
+          value={otrasCaracteristicas}
+          onChange={(e) => setOtrasCaracteristicas(e.target.value)}
+          rows={3}
+          placeholder="Agrega cualquier otra característica relevante..."
+          className={`${inputClass} resize-y`}
+        />
+      </Section>
+      </div>
 
-            {mostrarOtras && (
-              <textarea
-                value={otrasCaracteristicas}
-                onChange={(e) => setOtrasCaracteristicas(e.target.value)}
-                rows={4}
-                placeholder="Indica cualquier otra característica que deba conocer el área comercial o producción..."
-                className={`${inputClass} resize-none`}
-              />
-            )}
-          </div>  
-      </section>  
-
-
-      <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">Consejo:</span>{" "}
-        si un dato todavía no lo conoce el cliente, puedes dejarlo vacío y
-        completarlo posteriormente.
+      <aside className="order-first space-y-3 lg:order-last lg:sticky lg:top-4">
+        <div className="rounded-xl border border-primary/15 bg-primary/[0.03] px-4 py-3 text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">Tip:</span>{" "}
+          abre cada sección cuando necesites completar esos datos. Puedes dejar vacíos los campos que aún no conoces.
+        </div>
+        <ViabilidadPreviaPanel
+          resultado={viabilidadPrevia ?? null}
+          cargando={evaluandoViabilidadPrevia}
+          error={errorViabilidadPrevia}
+        />
+      </aside>
       </div>
 
       {/* Mantener compatibilidad con el modelo: los campos desdoblados se

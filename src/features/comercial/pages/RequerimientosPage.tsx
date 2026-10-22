@@ -3,7 +3,7 @@
 //Guarda todos los datos del formulario
 //Decide que paso mostrar step1, ....
 /////////////////////////
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Toast from "@/components/ui/Toast";
@@ -43,7 +43,6 @@ import {
   useProductosCategorias,
 } from "@/features/productos/productos.hooks";
 import type { ProductType } from "@/features/comercial/comercial.types";
-import RequerimientoStepProducto from "@/features/comercial/components/requerimientos/RequerimientoStepProducto";
 import RequerimientoStepBusquedaProducto from "../components/requerimientos/RequerimientoStepBusquedaProducto";
 import RequerimientoStepDetalles from "../components/requerimientos/RequerimientoStepDetalles";
 import RequerimientoStepEntrega from "../components/requerimientos/RequerimientoStepEntrega";
@@ -59,9 +58,11 @@ import type {
 
 import type { EvaluarViabilidadPayload, EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
 import { useEvaluarViabilidad } from "@/features/viabilidad/viabilidad.hook";
+import { viabilidadApi } from "@/features/viabilidad/viabilidad.api";
 
 import ViabilidadAnalizando from "@/features/viabilidad/requerimientos/ViabilidadAnalizando";
 import ViabilidadResultado from "@/features/viabilidad/requerimientos/ViabilidadResultado";
+import RequerimientoStepProducto from "@/features/comercial/components/requerimientos/RequerimientoStepProducto";
 
 export type RequirementStep = 1 | 2 | 3 | 4 | 5;
 
@@ -112,6 +113,13 @@ export default function RequerimientosPage() {
 
   const [errorViabilidad, setErrorViabilidad] =
     useState<string | null>(null);
+  const [resultadoViabilidadPrevia, setResultadoViabilidadPrevia] =
+    useState<EvaluarViabilidadResponse | null>(null);
+  const [errorViabilidadPrevia, setErrorViabilidadPrevia] =
+    useState<string | null>(null);
+  const [evaluandoViabilidadPrevia, setEvaluandoViabilidadPrevia] =
+    useState(false);
+  const solicitudViabilidadPrevia = useRef(0);
   /**
    * Análisis viabilidad
    */
@@ -343,14 +351,14 @@ export default function RequerimientosPage() {
     });
     const solicitud = solicitudEnEdicion.solicitud;
 
-      setTipoLugarEntrega(solicitud.tipo_lugar_entrega || "casa_matriz");
-      setDepartamentoEntrega(solicitud.departamento_entrega || "");
-      setEmpresaTransporte(solicitud.empresa_transporte || "");
-      setSucursalEntrega(solicitud.sucursal_entrega || "");
-      setLugarEntrega(solicitud.lugar_entrega || "");
-      setFechaEntrega(solicitud.fecha_entrega || "");
-      setPrioridad(solicitud.prioridad);
-      setObservaciones(solicitud.observaciones || "");
+    setTipoLugarEntrega(solicitud.tipo_lugar_entrega || "casa_matriz");
+    setDepartamentoEntrega(solicitud.departamento_entrega || "");
+    setEmpresaTransporte(solicitud.empresa_transporte || "");
+    setSucursalEntrega(solicitud.sucursal_entrega || "");
+    setLugarEntrega(solicitud.lugar_entrega || "");
+    setFechaEntrega(solicitud.fecha_entrega || "");
+    setPrioridad(solicitud.prioridad);
+    setObservaciones(solicitud.observaciones || "");
   }, [cotizacionVersionId, versionEnEdicion, cotizacionEnEdicion, solicitudEnEdicion, navigate]);
 
   /*
@@ -841,8 +849,117 @@ export default function RequerimientosPage() {
     setObservaciones("");
   };
 
-  // La evaluación previa solo ejecuta reglas técnicas; no formaliza entidades
-  // comerciales ni persiste evaluaciones.
+  const payloadViabilidadPrevia = useMemo<EvaluarViabilidadPayload | null>(() => {
+    if (!esProductoNuevo) {
+      return productoSeleccionado
+        ? { producto_version: productoSeleccionado.version_id, previsualizar: true }
+        : null;
+    }
+    if (!categoriaSeleccionada || !product) return null;
+
+    const tipoProducto = product === "bag" ? "bolsa" : "bobina";
+    return {
+      datos_especificacion: {
+        tipo_producto: tipoProducto,
+        especificacion: {
+          categoria_producto: categoriaSeleccionada.id,
+          material,
+          capas,
+          apto_alimento: aptoAlimento,
+          micraje: micraje || null,
+          color_bolsa: colorBolsa,
+          impresion,
+          tipo_impresion: tipoImpresion,
+          tratamiento_impresion: tratamientoImpresion,
+          posicion_impresion: posicionImpresion,
+          cara_impresion: impresion ? caraImpresion : "",
+          distancia_impresion_superior: distanciaImpresionSuperior || null,
+          distancia_impresion_inferior: distanciaImpresionInferior || null,
+          distancia_impresion_izquierda: distanciaImpresionIzquierda || null,
+          distancia_impresion_derecha: distanciaImpresionDerecha || null,
+          otras_caracteristicas: otrasCaracteristicas,
+          opacidad,
+          tratamientos_acabados_especiales: tratamientosAcabadosEspeciales,
+        },
+        ...(tipoProducto === "bolsa" ? {
+          especificacion_bolsa: {
+            ancho_doblado: anchoDoblado,
+            ancho_desdoblado: anchoDesdoblado || null,
+            largo_doblado: largoDoblado,
+            largo_desdoblado: largoDesdoblado || null,
+            fuelle,
+            fuelle_izquierdo: fuelleIzquierdo || null,
+            fuelle_derecho: fuelleDerecho || null,
+            fuelle_inferior: fuelleInferior || null,
+            fuelle_superior: fuelleSuperior || null,
+            tipo_troquel: tipoTroquel || "",
+            tipo_sello: tipoSello,
+            pestana: tipoPestana || "",
+            acabado_especial: tratamientosAcabadosEspeciales.join(","),
+            otras_caracteristicas: otrasCaracteristicas,
+          },
+        } : {
+          especificacion_bobina: {
+            ancho: anchoBobina,
+            diametro: diametro || null,
+            diametro_nucleo: diametroNucleo || null,
+            longitud: longitud || null,
+            tipo_nucleo: tipoNucleo,
+            peso: peso || null,
+            otras_caracteristicas: otrasCaracteristicas,
+          },
+        }),
+      },
+    };
+  }, [
+    esProductoNuevo, productoSeleccionado, categoriaSeleccionada?.id, product,
+    material, capas, aptoAlimento, micraje, colorBolsa, impresion,
+    tipoImpresion, tratamientoImpresion, posicionImpresion, caraImpresion,
+    distanciaImpresionSuperior, distanciaImpresionInferior,
+    distanciaImpresionIzquierda, distanciaImpresionDerecha, otrasCaracteristicas,
+    opacidad, tratamientosAcabadosEspeciales, anchoDoblado, anchoDesdoblado,
+    largoDoblado, largoDesdoblado, fuelle, fuelleIzquierdo, fuelleDerecho,
+    fuelleInferior, fuelleSuperior, tipoTroquel, tipoSello, tipoPestana,
+    anchoBobina, diametro, diametroNucleo, longitud, tipoNucleo, peso,
+  ]);
+
+  useEffect(() => {
+    const idSolicitud = ++solicitudViabilidadPrevia.current;
+    if (step !== 2 || !esProductoNuevo || !payloadViabilidadPrevia?.datos_especificacion) {
+      setResultadoViabilidadPrevia(null);
+      setErrorViabilidadPrevia(null);
+      setEvaluandoViabilidadPrevia(false);
+      return;
+    }
+
+    const controlador = new AbortController();
+    setResultadoViabilidadPrevia(null);
+    setErrorViabilidadPrevia(null);
+    setEvaluandoViabilidadPrevia(true);
+    const temporizador = window.setTimeout(async () => {
+      try {
+        const resultado = await viabilidadApi.evaluarProducto(payloadViabilidadPrevia, controlador.signal);
+        if (idSolicitud === solicitudViabilidadPrevia.current) {
+          setResultadoViabilidadPrevia(resultado);
+        }
+      } catch (error) {
+        if (!controlador.signal.aborted && idSolicitud === solicitudViabilidadPrevia.current) {
+          const respuesta = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
+          setErrorViabilidadPrevia(respuesta?.mensaje || respuesta?.detail || (error instanceof Error ? error.message : "No se pudo consultar la viabilidad."));
+        }
+      } finally {
+        if (idSolicitud === solicitudViabilidadPrevia.current) setEvaluandoViabilidadPrevia(false);
+      }
+    }, 500);
+
+    return () => {
+      window.clearTimeout(temporizador);
+      controlador.abort();
+    };
+  }, [step, esProductoNuevo, payloadViabilidadPrevia]);
+
+  // La evaluación al avanzar conserva el flujo actual; esta misma carga técnica
+  // también alimenta la previsualización en vivo sin crear registros.
   const handleAnalizarViabilidad = async () => {
     try {
       if (!cuentaComercialId) {
@@ -863,70 +980,8 @@ export default function RequerimientosPage() {
       //Mostrar pantalla de análisis
       setAnalizandoViabilidad(true);
 
-      let payload: EvaluarViabilidadPayload;
-      if (!esProductoNuevo) {
-        payload = {
-          producto_version: productoSeleccionado!.version_id,
-          previsualizar: true,
-        };
-      } else {
-        if (!categoriaSeleccionada) throw new Error("No se encontró la categoría de producto seleccionada.");
-        const tipoProducto = product === "bag" ? "bolsa" : "bobina";
-        payload = {
-          datos_especificacion: {
-            tipo_producto: tipoProducto,
-            especificacion: {
-              categoria_producto: categoriaSeleccionada.id,
-              material,
-              capas: capas || "monocapa",
-              apto_alimento: aptoAlimento,
-              micraje: micraje || null,
-              color_bolsa: colorBolsa,
-              impresion,
-              color_impresion: colorImpresion.split(",").map((color) => color.trim()).filter(Boolean),
-              tipo_impresion: tipoImpresion,
-              tratamiento_impresion: tratamientoImpresion,
-              posicion_impresion: posicionImpresion,
-              cara_impresion: caraImpresion,
-              distancia_impresion_superior: distanciaImpresionSuperior || null,
-              distancia_impresion_inferior: distanciaImpresionInferior || null,
-              distancia_impresion_izquierda: distanciaImpresionIzquierda || null,
-              distancia_impresion_derecha: distanciaImpresionDerecha || null,
-              otras_caracteristicas: otrasCaracteristicas,
-              opacidad,
-              tratamientos_acabados_especiales: tratamientosAcabadosEspeciales,
-            },
-            ...(tipoProducto === "bolsa" ? {
-              especificacion_bolsa: {
-                ancho_doblado: anchoDoblado,
-                ancho_desdoblado: anchoDesdoblado || null,
-                largo_doblado: largoDoblado,
-                largo_desdoblado: largoDesdoblado || null,
-                fuelle,
-                fuelle_izquierdo: fuelleIzquierdo || null,
-                fuelle_derecho: fuelleDerecho || null,
-                fuelle_inferior: fuelleInferior || null,
-                fuelle_superior: fuelleSuperior || null,
-                tipo_troquel: tipoTroquel || "normal",
-                tipo_sello: tipoSello,
-                pestana: tipoPestana || "sin_pestana",
-                acabado_especial: tratamientosAcabadosEspeciales.join(","),
-                otras_caracteristicas: otrasCaracteristicas,
-              }
-            } : {
-              especificacion_bobina: {
-                ancho: anchoBobina,
-                diametro: diametro || null,
-                diametro_nucleo: diametroNucleo || null,
-                longitud: longitud || null,
-                tipo_nucleo: tipoNucleo,
-                peso: peso || null,
-                otras_caracteristicas: otrasCaracteristicas,
-              }
-            }),
-          },
-        };
-      }
+      const payload = payloadViabilidadPrevia;
+      if (!payload) throw new Error("No hay datos técnicos suficientes para preparar la evaluación.");
 
       const resultado = await evaluarViabilidad.mutateAsync(payload);
       console.groupCollapsed("INCORE · Diagnóstico de viabilidad");
@@ -1053,6 +1108,18 @@ export default function RequerimientosPage() {
         </div>
       </section>
 
+      <section className="rounded-xl border border-border bg-card p-4">
+        <label className="mb-3 block text-sm font-medium">
+          Producto de esta cotización
+        </label>
+
+        <RequerimientoStepProducto
+          product={product}
+          setProduct={setProduct}
+        />
+      </section>
+
+
       {lineasCotizacion.length > 0 && (
         <section className="space-y-4 rounded-xl border border-primary/30 bg-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1135,7 +1202,7 @@ export default function RequerimientosPage() {
             onCompletarEspecificacion={() => {
               setResultadoViabilidad(null);
               setErrorViabilidad(null);
-              setStep(3);
+              setStep(2);
             }}
           />
 
@@ -1144,21 +1211,13 @@ export default function RequerimientosPage() {
             error={errorViabilidad}
             onCompletarEspecificacion={() => {
               setErrorViabilidad(null);
-              setStep(3);
+              setStep(2);
             }}
           />
 
         ) : (
           <>
             {step === 1 && (
-              <RequerimientoStepProducto
-                product={product}
-                setProduct={setProduct}
-                onNext={nextStep}
-              />
-            )}
-
-            {step === 2 && (
               <RequerimientoStepBusquedaProducto
                 product={product}
                 onProductSelect={handleProductoSelect}
@@ -1168,9 +1227,12 @@ export default function RequerimientosPage() {
               />
             )}
 
-            {step === 3 && (
+            {step === 2 && (
               <RequerimientoStepDetalles
                 product={product}
+                viabilidadPrevia={resultadoViabilidadPrevia}
+                evaluandoViabilidadPrevia={evaluandoViabilidadPrevia}
+                errorViabilidadPrevia={errorViabilidadPrevia}
                 esProductoNuevo={esProductoNuevo}
                 cuentaComercialId={cuentaComercialId}
                 setCuentaComercialId={setCuentaComercialId}
@@ -1311,7 +1373,7 @@ export default function RequerimientosPage() {
               />
             )}
 
-            {step === 4 && (
+            {step === 3 && (
               <RequerimientoStepEntrega
                 cuentaComercialId={cuentaComercialId}
                 setCuentaComercialId={setCuentaComercialId}
@@ -1341,7 +1403,7 @@ export default function RequerimientosPage() {
               />
             )}
 
-            {step === 5 && (
+            {step === 4 && (
               <RequerimientoStepConfirmacion
                 cuentaSeleccionada={cuentaSeleccionada}
                 product={product}
@@ -1409,7 +1471,7 @@ export default function RequerimientosPage() {
       {!analizandoViabilidad &&
         !resultadoViabilidad &&
         !errorViabilidad && (
-        modoCatalogoExistente && step === 4 ? <div className="flex justify-between border-t border-border px-6 py-4"><button type="button" onClick={() => setStep(2)} className="rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-secondary">Volver al catálogo</button><button type="button" onClick={guardarCotizacion} disabled={formalizarCotizacion.isPending || !cuentaComercialId || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim() || Number(linea.precio_lista) < 0)} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50">{formalizarCotizacion.isPending ? "Guardando…" : "Guardar cotización"}</button></div> : !modoCatalogoExistente && (step !== 2 || esProductoNuevo) && <RequerimientoNavigation
+          modoCatalogoExistente && step === 3 ? <div className="flex justify-between border-t border-border px-6 py-4"><button type="button" onClick={() => setStep(1)} className="rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-secondary">Volver al catálogo</button><button type="button" onClick={guardarCotizacion} disabled={formalizarCotizacion.isPending || !cuentaComercialId || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim() || Number(linea.precio_lista) < 0)} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50">{formalizarCotizacion.isPending ? "Guardando…" : "Guardar cotización"}</button></div> : !modoCatalogoExistente && (step !== 1 || esProductoNuevo) && <RequerimientoNavigation
             step={step}
             onNext={nextStep}
             onPrevious={previousStep}

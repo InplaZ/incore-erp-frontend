@@ -22,10 +22,12 @@ export const viabilidadApi = {
 
   evaluarProducto: async (
     data: EvaluarViabilidadPayload,
+    signal?: AbortSignal,
   ): Promise<EvaluarViabilidadResponse> => {
     return api.post<EvaluarViabilidadResponse>(
       "/viabilidad/evaluacion-viabilidad/evaluar-producto/",
       data,
+      { signal },
     );
   },
 
