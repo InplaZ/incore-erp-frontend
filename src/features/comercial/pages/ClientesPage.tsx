@@ -99,6 +99,12 @@ export default function ClientesPage() {
    * isError    → indica si ocurrió un error
    * error      → contiene el error
    */
+
+  //Ordenar cliente
+  const [orden, setOrden] = useState<
+    "recientes" | "alfabetico"
+  >("recientes");
+
   const {
     data,
     isLoading,
@@ -133,6 +139,26 @@ export default function ClientesPage() {
    * cuando todavía no llegó la respuesta del backend.
    */
   const clients = data ?? [];
+
+  const clientsOrdenados = useMemo(() => {
+    const resultado = [...clients];
+
+    if (orden === "recientes") {
+      return resultado.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() -
+          new Date(a.created_at).getTime()
+      );
+    }
+
+    return resultado.sort((a, b) =>
+      getClientName(a).localeCompare(
+        getClientName(b),
+        "es",
+        { sensitivity: "base" }
+      )
+    );
+  }, [clients, orden]);
 
   /**
    * RESUMEN DE CLIENTES
@@ -298,6 +324,8 @@ export default function ClientesPage() {
     setClientToActivate(null);
   };
 
+
+
   return (
     <div className="space-y-6">
       {/* ========================================================
@@ -392,6 +420,31 @@ export default function ClientesPage() {
               className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
             />
           </div>
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="orden-clientes"
+              className="text-sm text-muted-foreground whitespace-nowrap"
+            >
+              Ordenar por:
+            </label>
+
+            <select
+              id="orden-clientes"
+              value={orden}
+              onChange={(e) =>
+                setOrden(
+                  e.target.value as
+                  | "recientes"
+                  | "alfabetico"
+                )
+              }
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            >
+              <option value="recientes">Más recientes</option>
+              <option value="alfabetico">Nombre A–Z</option>
+              <option value="antiguos">Más antiguos</option>
+            </select>
+          </div>
 
           <div className="flex gap-2">
             <button className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
@@ -479,7 +532,7 @@ export default function ClientesPage() {
 
               {/* FILAS */}
 
-              {clients.map((client) => (
+              {clientsOrdenados.map((client) => (
                 <ClientRow
                   key={client.id}
                   client={client}

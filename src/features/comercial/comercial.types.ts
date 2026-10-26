@@ -1,4 +1,8 @@
 //=================================
+//DEFINE LA ESTRUCTURA DE LOS DATOS
+//================================
+
+//=================================
 //Tipos Generales
 //================================
 export interface PaginatedResponse<T>{
@@ -92,6 +96,34 @@ export interface CuentaComercialCreate {
 
 export type CuentaComercialUpdate = Partial<CuentaComercialCreate>
 
+export interface ContactoComercial {
+  id: number;
+  cuenta_comercial: number;
+  nombres: string;
+  apellido_paterno: string;
+  apellido_materno: string;
+  cargo: string;
+  area: string;
+  telefono: string;
+  correo: string;
+  direccion: string;
+  es_principal: boolean;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ContactoComercialCreate = Omit<
+  ContactoComercial,
+  "id" | "created_at" | "updated_at"
+>;
+
+export type ContactoComercialUpdate = Partial<
+  Omit<
+    ContactoComercial,
+    "id" | "cuenta_comercial" | "created_at" | "updated_at"
+  >
+>;
 // ============================================================
 // ACTIVIDADES COMERCIALES
 // ============================================================

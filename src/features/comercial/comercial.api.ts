@@ -1,3 +1,7 @@
+//=====================================
+//REALIZA LAS PETICIONES AL BACKEND, llama las peticiones, endpoints
+//=======================================
+
 import { api } from "@/api/api.config";
 import type { ApiQueryParams } from "@/api/api.types";
 import type {
@@ -51,6 +55,9 @@ import type {
   AgregarDetalleCotizacionResponse,
   FormalizarCotizacionWizardPayload,
   FormalizarCotizacionWizardResponse,
+  ContactoComercial,
+  ContactoComercialCreate,
+  ContactoComercialUpdate,
 } from "./comercial.types";
 
 // ============================================================
@@ -104,6 +111,52 @@ export const cuentasComercialesApi = {
 
   remove: async (id: number): Promise<void> => {
     await api.delete(`/comercial/cuentas-comerciales/${id}/`);
+  },
+};
+
+export const contactosComercialesApi = {
+  list: async (
+    cuentaComercialId: number,
+    incluirInactivos = false,
+  ): Promise<ContactoComercial[]> => {
+    return api.get<ContactoComercial[]>(
+      "/comercial/contacto-comercial/",
+      {
+        params: {
+          cuenta_comercial: cuentaComercialId,
+          ...(incluirInactivos && { incluir_inactivos: "true" }),
+        },
+      },
+    );
+  },
+
+  get: async (id: number): Promise<ContactoComercial> => {
+    return api.get<ContactoComercial>(
+      `/comercial/contacto-comercial/${id}/`,
+    );
+  },
+
+  create: async (
+    data: ContactoComercialCreate,
+  ): Promise<ContactoComercial> => {
+    return api.post<ContactoComercial>(
+      "/comercial/contacto-comercial/",
+      data,
+    );
+  },
+
+  update: async (
+    id: number,
+    data: ContactoComercialUpdate,
+  ): Promise<ContactoComercial> => {
+    return api.patch<ContactoComercial>(
+      `/comercial/contacto-comercial/${id}/`,
+      data,
+    );
+  },
+
+  desactivar: async (id: number): Promise<void> => {
+    await api.delete(`/comercial/contacto-comercial/${id}/`);
   },
 };
 

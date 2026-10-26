@@ -1,3 +1,7 @@
+//=================================
+//CONECTA LA API CON REACT QUERY
+//================================
+
 import {
   useMutation,
   useQuery,
@@ -18,6 +22,7 @@ import {
   pedidosDetallesApi,
   solicitudesComercialesApi,
   ejecutivosComercialesApi,
+  contactosComercialesApi
 } from "./comercial.api";
 
 import type {
@@ -49,6 +54,9 @@ import type {
   SolicitudComercialCreate,
   SolicitudComercialUpdate,
   CuentaComercial,
+  ContactoComercial,
+  ContactoComercialCreate,
+  ContactoComercialUpdate, 
 } from "./comercial.types";
 
 import type { ApiQueryParams } from "@/api/api.types";
@@ -133,6 +141,12 @@ export const comercialQueryKeys = {
   pedidoDetalle: (id: number) =>
     [...comercialQueryKeys.pedidosDetalles(), id] as const,
 
+  contactos: (cuentaComercialId: number) =>
+    [...comercialQueryKeys.all, "contactos", cuentaComercialId] as const,
+
+contacto: (id: number) =>
+    [...comercialQueryKeys.all, "contacto", id] as const,
+  
 };
 
 
@@ -257,6 +271,91 @@ export function useDeleteCuentaComercial() {
     },
   });
 }
+
+//========================
+//CONTACTOS COMERCIALES
+//=========================
+export function useContactosComerciales(
+  cuentaComercialId: number,
+  incluirInactivos = false,
+) {
+  return useQuery<ContactoComercial[]>({
+    queryKey: [
+      ...comercialQueryKeys.contactos(cuentaComercialId),
+      incluirInactivos,
+    ],
+    queryFn: () =>
+      contactosComercialesApi.list(
+        cuentaComercialId,
+        incluirInactivos,
+      ),
+    enabled: !!cuentaComercialId,
+  });
+}
+
+export function useCreateContactoComercial() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: ContactoComercialCreate) =>
+      contactosComercialesApi.create(data),
+
+    onSuccess: (contacto) => {
+      queryClient.invalidateQueries({
+        queryKey: comercialQueryKeys.contactos(
+          contacto.cuenta_comercial,
+        ),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: comercialQueryKeys.cuentas(),
+      });
+    },
+  });
+}
+
+export function useUpdateContactoComercial() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: ContactoComercialUpdate;
+    }) => contactosComercialesApi.update(id, data),
+
+    onSuccess: (contacto) => {
+      queryClient.invalidateQueries({
+        queryKey: comercialQueryKeys.contactos(
+          contacto.cuenta_comercial,
+        ),
+      });
+
+      queryClient.setQueryData(
+        comercialQueryKeys.contacto(contacto.id),
+        contacto,
+      );
+    },
+  });
+}
+
+export function useDesactivarContactoComercial() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) =>
+      contactosComercialesApi.desactivar(id),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [...comercialQueryKeys.all, "contactos"],
+      });
+    },
+  });
+}
+
 // ============================================================
 // EJECUTIVOS COMERCIALES
 // ============================================================

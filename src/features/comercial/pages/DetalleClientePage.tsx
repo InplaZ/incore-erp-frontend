@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type FormEvent } from "react";
 
 import {
   ArrowLeft,
@@ -15,6 +15,11 @@ import {
   ShoppingCart,
   User,
   MessageCircle,
+  UserPlus,
+  Star,
+  Trash2,
+  Save,
+  X,
 } from "lucide-react";
 
 import {
@@ -23,6 +28,10 @@ import {
   useSolicitudesComerciales,
   usePedidos,
   useDeleteActividadComercial,
+  useContactosComerciales,
+  useCreateContactoComercial,
+  useUpdateContactoComercial,
+  useDesactivarContactoComercial,
 } from "../comercial.hooks";
 
 import type {
@@ -30,6 +39,9 @@ import type {
   ActividadComercial,
   SolicitudComercial,
   Pedido,
+  ContactoComercial,
+  ContactoComercialCreate,
+  ContactoComercialUpdate,
 } from "../comercial.types";
 
 import NuevoClienteModal from "@/features/comercial/components/NuevoClienteModal";
@@ -485,6 +497,12 @@ function DetallesCliente() {
       </section>
 
       {/* ======================================================
+          CONTACTOS COMERCIALES
+      ======================================================= */}
+
+      <ContactosComercialesSection cuentaComercialId={clienteId} />
+
+      {/* ======================================================
           NAVEGACIÓN COMERCIAL
       ======================================================= */}
 
@@ -823,6 +841,469 @@ function DetallesCliente() {
         />
       )}
     </div>
+  );
+}
+
+/* ============================================================
+   CONTACTOS COMERCIALES DE LA CUENTA
+============================================================ */
+
+type ContactoFormState = {
+  nombres: string;
+  apellido_paterno: string;
+  apellido_materno: string;
+  cargo: string;
+  area: string;
+  telefono: string;
+  correo: string;
+  direccion: string;
+  es_principal: boolean;
+};
+
+const contactoFormInicial: ContactoFormState = {
+  nombres: "",
+  apellido_paterno: "",
+  apellido_materno: "",
+  cargo: "",
+  area: "",
+  telefono: "",
+  correo: "",
+  direccion: "",
+  es_principal: false,
+};
+
+function nombreContacto(contacto: ContactoComercial): string {
+  return [
+    contacto.nombres,
+    contacto.apellido_paterno,
+    contacto.apellido_materno,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function ContactosComercialesSection({
+  cuentaComercialId,
+}: {
+  cuentaComercialId: number;
+}) {
+  const {
+    data: contactos = [],
+    isLoading,
+    isError,
+    error,
+  } = useContactosComerciales(cuentaComercialId);
+
+  const crearContacto = useCreateContactoComercial();
+  const actualizarContacto = useUpdateContactoComercial();
+  const desactivarContacto = useDesactivarContactoComercial();
+
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [contactoEditar, setContactoEditar] =
+    useState<ContactoComercial | null>(null);
+  const [contactoDesactivar, setContactoDesactivar] =
+    useState<ContactoComercial | null>(null);
+  const [formulario, setFormulario] =
+    useState<ContactoFormState>(contactoFormInicial);
+  const [errorFormulario, setErrorFormulario] = useState("");
+
+  const guardando =
+    crearContacto.isPending || actualizarContacto.isPending;
+
+  const abrirNuevo = () => {
+    setContactoEditar(null);
+    setFormulario(contactoFormInicial);
+    setErrorFormulario("");
+    setMostrarFormulario(true);
+  };
+
+  const abrirEdicion = (contacto: ContactoComercial) => {
+    setContactoEditar(contacto);
+    setFormulario({
+      nombres: contacto.nombres ?? "",
+      apellido_paterno: contacto.apellido_paterno ?? "",
+      apellido_materno: contacto.apellido_materno ?? "",
+      cargo: contacto.cargo ?? "",
+      area: contacto.area ?? "",
+      telefono: contacto.telefono ?? "",
+      correo: contacto.correo ?? "",
+      direccion: contacto.direccion ?? "",
+      es_principal: contacto.es_principal,
+    });
+    setErrorFormulario("");
+    setMostrarFormulario(true);
+  };
+
+  const cerrarFormulario = () => {
+    setMostrarFormulario(false);
+    setContactoEditar(null);
+    setFormulario(contactoFormInicial);
+    setErrorFormulario("");
+  };
+
+  const cambiarCampo = (
+    campo: keyof ContactoFormState,
+    valor: string | boolean,
+  ) => {
+    setFormulario((actual) => ({ ...actual, [campo]: valor }));
+  };
+
+  const guardarContacto = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorFormulario("");
+
+    if (!formulario.nombres.trim()) {
+      setErrorFormulario("Ingresa el nombre del contacto.");
+      return;
+    }
+
+    const datos = {
+      nombres: formulario.nombres.trim(),
+      apellido_paterno: formulario.apellido_paterno.trim(),
+      apellido_materno: formulario.apellido_materno.trim(),
+      cargo: formulario.cargo.trim(),
+      area: formulario.area.trim(),
+      telefono: formulario.telefono.trim(),
+      correo: formulario.correo.trim(),
+      direccion: formulario.direccion.trim(),
+      es_principal: formulario.es_principal,
+    };
+
+    try {
+      if (contactoEditar) {
+        const cambios: ContactoComercialUpdate = datos;
+        await actualizarContacto.mutateAsync({
+          id: contactoEditar.id,
+          data: cambios,
+        });
+      } else {
+        const nuevoContacto: ContactoComercialCreate = {
+          cuenta_comercial: cuentaComercialId,
+          ...datos,
+          activo: true,
+        };
+        await crearContacto.mutateAsync(nuevoContacto);
+      }
+      cerrarFormulario();
+    } catch (err) {
+      console.error("Error al guardar el contacto comercial:", err);
+      setErrorFormulario(
+        "No se pudo guardar el contacto. Verifica los datos e inténtalo nuevamente.",
+      );
+    }
+  };
+
+  const confirmarDesactivacion = async () => {
+    if (!contactoDesactivar) return;
+
+    try {
+      await desactivarContacto.mutateAsync(contactoDesactivar.id);
+      setContactoDesactivar(null);
+    } catch (err) {
+      console.error("Error al desactivar el contacto comercial:", err);
+      setErrorFormulario(
+        "No se pudo desactivar el contacto. Inténtalo nuevamente.",
+      );
+      setContactoDesactivar(null);
+    }
+  };
+
+  return (
+    <section className="rounded-xl border border-border bg-card">
+      <div className="flex flex-col justify-between gap-3 border-b border-border px-6 py-5 sm:flex-row sm:items-center">
+        <div>
+          <h2 className="font-semibold text-foreground">
+            Contactos comerciales
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Personas de contacto asociadas a esta empresa.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={abrirNuevo}
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          <UserPlus className="h-4 w-4" />
+          Agregar contacto
+        </button>
+      </div>
+
+      {isLoading ? (
+        <LoadingMessage />
+      ) : isError ? (
+        <div className="px-6 py-5">
+          <p className="text-sm text-destructive">
+            No se pudieron cargar los contactos comerciales.
+          </p>
+          {error instanceof Error && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {error.message}
+            </p>
+          )}
+        </div>
+      ) : contactos.length === 0 ? (
+        <EmptyState
+          title="No hay contactos registrados"
+          description="Agrega el primer contacto comercial de esta empresa."
+        />
+      ) : (
+        <div className="divide-y divide-border">
+          {contactos.map((contacto) => (
+            <div
+              key={contacto.id}
+              className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-start sm:justify-between"
+            >
+              <div className="flex min-w-0 gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <User className="h-5 w-5" />
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-foreground">
+                      {nombreContacto(contacto) || "Contacto sin nombre"}
+                    </p>
+                    {contacto.es_principal && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                        <Star className="h-3 w-3 fill-current" />
+                        Principal
+                      </span>
+                    )}
+                  </div>
+
+                  {(contacto.cargo || contacto.area) && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {[contacto.cargo, contacto.area]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  )}
+
+                  <div className="mt-2 flex flex-col gap-1 text-sm text-muted-foreground">
+                    {contacto.telefono && (
+                      <span className="inline-flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5" />
+                        {contacto.telefono}
+                      </span>
+                    )}
+                    {contacto.correo && (
+                      <span className="inline-flex items-center gap-2 break-all">
+                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                        {contacto.correo}
+                      </span>
+                    )}
+                    {contacto.direccion && (
+                      <span className="inline-flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {contacto.direccion}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2 sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => abrirEdicion(contacto)}
+                  className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setContactoDesactivar(contacto)}
+                  disabled={desactivarContacto.isPending}
+                  className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Desactivar
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {mostrarFormulario && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+          <div className="my-auto max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h3 className="font-semibold text-foreground">
+                  {contactoEditar ? "Editar contacto" : "Nuevo contacto"}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Completa los datos de la persona de contacto.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cerrarFormulario}
+                className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                aria-label="Cerrar formulario"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={guardarContacto} className="space-y-5 p-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <CampoContacto
+                  label="Nombres *"
+                  value={formulario.nombres}
+                  onChange={(value) => cambiarCampo("nombres", value)}
+                  required
+                />
+                <CampoContacto
+                  label="Apellido paterno"
+                  value={formulario.apellido_paterno}
+                  onChange={(value) => cambiarCampo("apellido_paterno", value)}
+                />
+                <CampoContacto
+                  label="Apellido materno"
+                  value={formulario.apellido_materno}
+                  onChange={(value) => cambiarCampo("apellido_materno", value)}
+                />
+                <CampoContacto
+                  label="Cargo"
+                  value={formulario.cargo}
+                  onChange={(value) => cambiarCampo("cargo", value)}
+                />
+                <CampoContacto
+                  label="Área"
+                  value={formulario.area}
+                  onChange={(value) => cambiarCampo("area", value)}
+                />
+                <CampoContacto
+                  label="Teléfono"
+                  value={formulario.telefono}
+                  onChange={(value) => cambiarCampo("telefono", value)}
+                  inputType="tel"
+                />
+                <CampoContacto
+                  label="Correo electrónico"
+                  value={formulario.correo}
+                  onChange={(value) => cambiarCampo("correo", value)}
+                  inputType="email"
+                />
+                <CampoContacto
+                  label="Dirección"
+                  value={formulario.direccion}
+                  onChange={(value) => cambiarCampo("direccion", value)}
+                />
+              </div>
+
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={formulario.es_principal}
+                  onChange={(event) =>
+                    cambiarCampo("es_principal", event.target.checked)
+                  }
+                  className="h-4 w-4 rounded border-border accent-primary"
+                />
+                Establecer como contacto principal
+              </label>
+
+              {errorFormulario && (
+                <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {errorFormulario}
+                </p>
+              )}
+
+              <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={cerrarFormulario}
+                  disabled={guardando}
+                  className="rounded-md border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={guardando}
+                  className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4" />
+                  {guardando
+                    ? "Guardando..."
+                    : contactoEditar
+                      ? "Guardar cambios"
+                      : "Registrar contacto"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {contactoDesactivar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
+            <h3 className="font-semibold text-foreground">
+              Desactivar contacto
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              ¿Deseas desactivar a{" "}
+              <strong>{nombreContacto(contactoDesactivar)}</strong>? El contacto
+              dejará de aparecer en la lista activa.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setContactoDesactivar(null)}
+                disabled={desactivarContacto.isPending}
+                className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarDesactivacion}
+                disabled={desactivarContacto.isPending}
+                className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white hover:bg-destructive/90 disabled:opacity-50"
+              >
+                {desactivarContacto.isPending ? "Desactivando..." : "Desactivar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CampoContacto({
+  label,
+  value,
+  onChange,
+  required = false,
+  inputType = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  inputType?: string;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="mb-1.5 block text-sm font-medium text-foreground">
+        {label}
+      </span>
+      <input
+        type={inputType}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required={required}
+        className="w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+      />
+    </label>
   );
 }
 
