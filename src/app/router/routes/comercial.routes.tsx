@@ -42,10 +42,6 @@ export const comercialRoutes: AppRoute[] = [
                 element: <ComercialPage />
             },
             {
-                path: "clientes",
-                element: <ClientesPage />
-            },
-            {
                 path: "requerimientoListPage",
                 element: <RequerimientoListPage />
             },
@@ -59,13 +55,18 @@ export const comercialRoutes: AppRoute[] = [
             },
             {
                 path: "requerimientos/",
-                element: <RequerimientosPage/>
+                element: <RequerimientosPage />
             },
             {
                 path: "requerimientos/:id",
-                element: <RequerimientoDetallePage/>
+                element: <RequerimientoDetallePage />
             }
 
         ]
-    }
+    },
+
+    {
+        path: "clientes",
+        element: <ClientesPage />
+    },
 ];

@@ -15,12 +15,14 @@ import { useNavigate } from "react-router-dom";
 
 import {
   ChevronDown,
-  Filter,
-  Pencil,
+  Building2,
+  BriefcaseBusiness,
+  ContactRound,
   Plus,
   Search,
-  UserCheck,
   UserX,
+  ArrowUpNarrowWide,
+  User,
 } from "lucide-react";
 
 /**
@@ -63,10 +65,12 @@ import type {
  * La diferencia está en si recibe o no la propiedad "client".
  */
 import NuevoClienteModal from "../components/NuevoClienteModal";
+import NuevaCuentaComercialWizard from "../components/NuevaCuentaComercialWizard";
 
 import ConfirmDialog from "@/components/feedback/ConfirmDialog";
 
 export default function ClientesPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
   /**
@@ -184,6 +188,7 @@ export default function ClientesPage() {
     return {
       activos,
       prospectos,
+      inactivos: clients.filter((client) => client.estado === "inactivo").length,
     };
   }, [clients]);
 
@@ -334,16 +339,12 @@ export default function ClientesPage() {
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            RELACIÓN COMERCIAL
-          </p>
-
           <h1 className="mt-1 text-2xl font-semibold text-foreground">
-            Clientes
+            Contactos y CRM
           </h1>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Gestiona tus relaciones y encuentra toda la historia comercial.
+            Organizaciones, interlocutores y estado de la relación comercial.
           </p>
         </div>
 
@@ -367,7 +368,7 @@ export default function ClientesPage() {
         >
           <Plus className="h-4 w-4" />
 
-          Nuevo cliente
+          Nuevo contacto / empresa
         </button>
       </div>
 
@@ -375,19 +376,11 @@ export default function ClientesPage() {
           RESUMEN
           ======================================================== */}
 
-      <div className="grid overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-2">
-        <SummaryItem
-          label="Clientes activos"
-          value={String(summary.activos)}
-          detail="Registros cargados"
-        />
-
-        <SummaryItem
-          label="Prospectos"
-          value={String(summary.prospectos)}
-          detail="Registros cargados"
-        />
-
+      <div className="grid gap-4 sm:grid-cols-4">
+        <CrmStatCard icon={<ContactRound className="h-5 w-5" />} label="Contacto" value={summary.activos} detail="Cuentas en seguimiento inicial" tone="blue" />
+        <CrmStatCard icon={<BriefcaseBusiness className="h-5 w-5" />} label="Lead" value={summary.activos} detail="Relaciones comerciales activas" tone="green" />
+        <CrmStatCard icon={<ArrowUpNarrowWide className="h-5 w-5" />} label="Opertunidad" value={summary.inactivos} detail="Cuentas conservadas en el sistema" tone="slate" />
+        <CrmStatCard icon={<User className="h-5 w-5" />} label="Cliente" value={summary.inactivos} detail="Cuentas conservadas en el sistema" tone="slate" />
       </div>
 
       {/* ========================================================
@@ -397,10 +390,10 @@ export default function ClientesPage() {
       <section className="overflow-hidden rounded-lg border border-border bg-card">
         {/* TOOLBAR */}
 
-        <div className="flex flex-col gap-3 border-b border-border p-4 md:flex-row md:items-center">
+        <div className="flex flex-col gap-4 border-b border-border p-5 lg:flex-row lg:items-center">
           {/* BUSCADOR */}
 
-          <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-border px-3 md:max-w-md">
+          <div className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-background px-3 lg:max-w-lg">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
 
             <input
@@ -416,7 +409,7 @@ export default function ClientesPage() {
               onChange={(event) =>
                 setSearch(event.target.value)
               }
-              placeholder="Buscar por nombre, NIT o contacto..."
+              placeholder="Buscar empresa, documento o contacto..."
               className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
             />
           </div>
@@ -442,17 +435,10 @@ export default function ClientesPage() {
             >
               <option value="recientes">Más recientes</option>
               <option value="alfabetico">Nombre A–Z</option>
-              <option value="antiguos">Más antiguos</option>
             </select>
           </div>
 
           <div className="flex gap-2">
-            <button className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
-              <Filter className="h-4 w-4" />
-
-              Filtros
-            </button>
-
             {/* FILTRO POR ESTADO */}
 
             <div className="relative">
@@ -519,15 +505,15 @@ export default function ClientesPage() {
 
         {!isLoading && !isError && (
           <div className="overflow-x-auto">
-            <div className="min-w-[850px]">
+            <div className="min-w-[900px]">
               {/* CABECERA */}
 
-              <div className="grid grid-cols-[2fr_1.5fr_1.2fr_1.2fr_40px] gap-4 border-b border-border bg-secondary/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <span>Cliente</span>
-                <span>Contacto principal</span>
-                <span>Estado</span>
-                <span>Teléfono</span>
-                <span />
+              <div className="grid grid-cols-[1.7fr_1.5fr_.65fr_.8fr_1fr] gap-4 border-b border-border bg-secondary/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <span>Empresa / persona</span>
+                <span>Interlocutor principal</span>
+                <span>Contactos</span>
+                <span>Documento</span>
+                <span>Etapa </span>
               </div>
 
               {/* FILAS */}
@@ -589,7 +575,7 @@ export default function ClientesPage() {
           ======================================================== */}
 
       {showNewClient && (
-        <NuevoClienteModal
+        <NuevaCuentaComercialWizard
           /**
            * Indica que el modal está abierto.
            */
@@ -604,7 +590,10 @@ export default function ClientesPage() {
            * También cerramos el modal después
            * de crear correctamente el cliente.
            */
-          onSuccess={() => setShowNewClient(false)}
+          onSuccess={(accountId) => {
+            setShowNewClient(false);
+            navigate(`/comercial/clientes/${accountId}`);
+          }}
         /**
          * IMPORTANTE:
          *
@@ -709,9 +698,6 @@ export default function ClientesPage() {
 function ClientRow({
   client,
   ejecutivos,
-  onEdit,
-  onDeactivate,
-  onActivate,
 }: {
   client: CuentaComercial;
   ejecutivos: EjecutivoComercial[];
@@ -761,171 +747,66 @@ function ClientRow({
     : "Sin asignar";
 
   return (
-    <div className="grid w-full grid-cols-[2fr_1.5fr_1.2fr_1.2fr_40px] items-center gap-4 border-b border-border px-5 py-4 hover:bg-secondary/90">
-      {/* ========================================================
-          CLIENTE
-          ======================================================== */}
-
+    <div className="grid w-full grid-cols-[1.7fr_1.5fr_.65fr_.8fr_1fr] items-center gap-4 border-b border-border px-5 py-4 transition-colors last:border-b-0 hover:bg-secondary/40">
       <button
         type="button"
-        /**
-         * IMPORTANTE:
-         *
-         * Al hacer clic sobre el nombre del cliente
-         * NO editamos.
-         *
-         * Navegamos a:
-         *
-         * /comercial/clientes/{id}
-         *
-         * Ejemplo:
-         *
-         * /comercial/clientes/15
-         *
-         * Esta sería la página de detalle.
-         */
         onClick={() =>
           navigate(`/comercial/clientes/${client.id}`)
         }
-        className="flex min-w-0 items-center gap-3 text-left"
+        className="group flex min-w-0 items-center gap-3 text-left"
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">
           {initials}
         </div>
 
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground">
+          <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary">
             {displayName}
           </p>
 
           <p className="truncate text-xs text-muted-foreground">
-            Ejecutivo: {nombreEjecutivo}
+            {client.tipo_persona === "juridica" ? "Organización" : "Persona natural"} · Ejecutivo: {nombreEjecutivo}
           </p>
         </div>
       </button>
 
-      {/* ========================================================
-          CONTACTO
-          ======================================================== */}
-
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-foreground">
-          {client.correo || "Sin correo"}
+          {client.contacto_principal
+            ? [client.contacto_principal.nombres, client.contacto_principal.apellido_paterno, client.contacto_principal.apellido_materno]
+                .filter(Boolean)
+                .join(" ")
+            : "Sin interlocutor principal"}
         </p>
 
         <p className="mt-1 truncate text-xs text-muted-foreground">
-          {client.documento_identidad?.toUpperCase() ?? "ID"}{" "}
-          {client.numero_documento || "Sin documento"}
+          {client.contacto_principal?.cargo || client.contacto_principal?.correo || client.contacto_principal?.telefono || "Agrega personas desde la ficha"}
         </p>
       </div>
 
-      {/* ========================================================
-          ESTADO
-          ======================================================== */}
+      <div className="flex items-center gap-2 text-sm text-foreground">
+        <UserX className="h-4 w-4 text-muted-foreground" />
+        {client.contactos_count}
+      </div>
 
-      <span
-        className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${client.estado === "prospecto"
-          ? "bg-primary/10 text-primary"
-          : client.estado === "cliente"
-            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-            : "bg-secondary text-muted-foreground"
-          }`}
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-
-        {getEstadoLabel(client.estado)}
-      </span>
-
-      {/* ========================================================
-          TELÉFONO
-          ======================================================== */}
-
-      <div>
-        <p className="text-sm font-semibold text-foreground">
-          {client.telefono || "-"}
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-foreground">
+          {client.documento_identidad?.toUpperCase() || "—"} {client.numero_documento || "Sin documento"}
         </p>
       </div>
 
-      {/* ========================================================
-          ACCIONES
-          ======================================================== */}
-
-      <div className="flex items-center justify-end gap-3">
-        {/* ======================================================
-            BOTÓN EDITAR
-            ====================================================== */}
-
-        <button
-          type="button"
-          onClick={(event) => {
-            /**
-             * Evita que el clic continúe hacia otros elementos
-             * que puedan tener eventos asociados.
-             */
-            event.stopPropagation();
-
-            /**
-             * AQUÍ NO LLAMAMOS DIRECTAMENTE AL HOOK.
-             *
-             * Aquí solamente ejecutamos:
-             *
-             * onEdit()
-             *
-             * Esta función fue enviada desde ClientesPage:
-             *
-             * onEdit={() => setSelectedClient(client)}
-             *
-             * Por lo tanto el flujo completo es:
-             *
-             * Usuario pulsa Editar
-             *        ↓
-             * ClientRow ejecuta onEdit()
-             *        ↓
-             * ClientesPage ejecuta
-             * setSelectedClient(client)
-             *        ↓
-             * selectedCliente contiene el cliente
-             *        ↓
-             * Se renderiza NuevoClienteModal
-             *        ↓
-             * client={selectedCliente}
-             *        ↓
-             * El formulario se llena con los datos
-             * del cliente.
-             */
-            onEdit();
-          }}
-          title="Editar cliente"
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${client.estado === "prospecto"
+            ? "bg-primary/10 text-primary"
+            : client.estado === "cliente"
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : "bg-secondary text-muted-foreground"
+            }`}
         >
-          <Pencil
-            width={24}
-            height={24}
-          />
-        </button>
-
-        {/* ======================================================
-            BOTÓN DESACTIVAR
-            ====================================================== */}
-
-        {client.estado === "inactivo" ? (
-          <button
-            type="button"
-            onClick={onActivate}
-            title="Activar cliente"
-            className="..."
-          >
-            <UserCheck className="h-4 w-4" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onDeactivate}
-            title="Desactivar cliente"
-            className="..."
-          >
-            <UserX className="h-4 w-4" />
-          </button>
-        )}
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+          {client.etapa_crm ? getEtapaLabel(client.etapa_crm) : getEstadoLabel(client.estado)}
+        </span>
       </div>
     </div>
   );
@@ -951,7 +832,7 @@ function getClientName(
 ): string {
   if (client.tipo_persona === "juridica") {
     return (
-      client.razon_social ||
+      client.nombre_comercial || client.razon_social ||
       "Sin razón social"
     );
   }
@@ -1021,38 +902,45 @@ function getEstadoLabel(
   }
 }
 
-/* ================================================================
-   COMPONENTE SUMMARY
-   ================================================================ */
+function getEtapaLabel(etapa: CuentaComercial["etapa_crm"]): string {
+  switch (etapa) {
+    case "contacto": return "Contacto";
+    case "lead": return "Lead";
+    case "oportunidad": return "Oportunidad";
+    case "cliente": return "Cliente";
+    default: return "";
+  }
+}
 
-/**
- * Componente reutilizable para mostrar
- * cada tarjeta del resumen.
- */
-function SummaryItem({
+function CrmStatCard({
+  icon,
   label,
   value,
   detail,
+  tone,
 }: {
+  icon: React.ReactNode;
   label: string;
-  value: string;
+  value: number;
   detail: string;
+  tone: "blue" | "green" | "slate";
 }) {
+  const color = {
+    blue: "bg-primary/10 text-primary",
+    green: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    slate: "bg-secondary text-muted-foreground",
+  }[tone];
+
   return (
-    <div className="border-b border-border p-5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
-      <span className="block text-xs text-muted-foreground">
-        {label}
-      </span>
-
-      <div className="mt-1 flex items-baseline gap-2">
-        <strong className="text-2xl font-semibold text-foreground">
-          {value}
-        </strong>
-
-        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-          {detail}
-        </span>
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className="text-sm font-medium text-muted-foreground">{label}</span>
+          <strong className="mt-2 block text-3xl font-semibold tracking-tight text-foreground">{value}</strong>
+        </div>
+        <span className={`flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>{icon}</span>
       </div>
+      <p className="mt-3 text-xs text-muted-foreground">{detail}</p>
     </div>
   );
 }

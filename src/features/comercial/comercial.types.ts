@@ -37,7 +37,11 @@ export type TipoRelacion =
 
 export type DocumentoIdentidad =
     | "ci"
-    | "nit";
+    | "nit"
+    | "ruce"
+    | "otro";
+
+export type EtapaCRM = "contacto" | "lead" | "oportunidad" | "cliente" | "";
 
 export interface CuentaComercial {
     id: number;
@@ -51,6 +55,9 @@ export interface CuentaComercial {
 
     tipo_persona: TipoPersona;
     razon_social: string
+    nombre_comercial: string;
+    alias: string;
+    etapa_crm: EtapaCRM;
 
     codigo_cliente: number;
     documento_identidad: DocumentoIdentidad | null;
@@ -67,6 +74,8 @@ export interface CuentaComercial {
     
     created_at: string;
     updated_at: string;
+    contacto_principal: ContactoComercial | null;
+    contactos_count: number;
 }
 
 export interface CuentaComercialCreate {
@@ -79,6 +88,9 @@ export interface CuentaComercialCreate {
 
     tipo_persona: TipoPersona;
     razon_social?: string;
+    nombre_comercial?: string;
+    alias?: string;
+    etapa_crm?: EtapaCRM;
 
     documento_identidad?: DocumentoIdentidad | null;
     numero_documento?: string | null;
@@ -124,6 +136,75 @@ export type ContactoComercialUpdate = Partial<
     "id" | "cuenta_comercial" | "created_at" | "updated_at"
   >
 >;
+
+export type DepartamentoBolivia = "LP" | "CB" | "SC" | "OR" | "PT" | "CH" | "TJ" | "BN" | "PD";
+
+export interface UbicacionCuentaComercial {
+  id: number;
+  cuenta_comercial: number;
+  alias: string;
+  departamento: DepartamentoBolivia;
+  ciudad: string;
+  direccion: string;
+  latitud: string | null;
+  longitud: string | null;
+  principal: boolean;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type UbicacionCuentaComercialCreate = Omit<UbicacionCuentaComercial, "id" | "created_at" | "updated_at">;
+export type UbicacionCuentaComercialUpdate = Partial<Omit<UbicacionCuentaComercial, "id" | "cuenta_comercial" | "created_at" | "updated_at">>;
+
+export type TipoDocumentoCuentaComercial = "contrato" | "orden_compra" | "licitacion" | "otro";
+
+export interface DocumentoCuentaComercial {
+  id: number;
+  cuenta_comercial: number;
+  tipo: TipoDocumentoCuentaComercial;
+  referencia: string;
+  vigencia_hasta: string | null;
+  activo: boolean;
+  nombre_archivo: string;
+  tiene_archivo: boolean;
+  creado_por_nombre: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentoCuentaComercialCreate {
+  cuenta_comercial: number;
+  tipo: TipoDocumentoCuentaComercial;
+  referencia?: string;
+  vigencia_hasta?: string | null;
+  activo: boolean;
+  archivo: File;
+}
+
+export interface HistorialCuentaComercial {
+  id: number;
+  cuenta_comercial: number;
+  usuario_nombre: string;
+  accion: string;
+  detalle: string;
+  fecha: string;
+}
+
+export type ContactoCRMInicial = Omit<ContactoComercialCreate, "cuenta_comercial" | "activo">;
+export type UbicacionCRMInicial = Omit<UbicacionCuentaComercialCreate, "cuenta_comercial" | "activo">;
+
+export interface CrearCuentaCRMRequest {
+  cuenta: CuentaComercialCreate;
+  contactos: ContactoCRMInicial[];
+  ubicaciones: UbicacionCRMInicial[];
+}
+
+export interface CrearCuentaCRMResponse {
+  cuenta: CuentaComercial;
+  contactos: ContactoComercial[];
+  ubicaciones: UbicacionCuentaComercial[];
+}
 // ============================================================
 // ACTIVIDADES COMERCIALES
 // ============================================================
@@ -317,18 +398,6 @@ export type TipoLugarEntrega =
   | "cliente"
   | "envio_interior"
   | "sucursal";
-
-
-export type DepartamentoBolivia =
-  | "LP"
-  | "CB"
-  | "SC"
-  | "OR"
-  | "PT"
-  | "CH"
-  | "TJ"
-  | "BN"
-  | "PD";
 
 
 export type SucursalEntrega =

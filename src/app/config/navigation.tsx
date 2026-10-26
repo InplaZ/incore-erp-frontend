@@ -1,4 +1,4 @@
-import { Home, LayoutDashboard, PanelsTopLeft, BriefcaseBusiness, Package, Workflow } from "lucide-react";
+import { Home, LayoutDashboard, PanelsTopLeft, BriefcaseBusiness, Package, Workflow, UserPlus2, } from "lucide-react";
 
 import type { SidebarItem } from "../../components/navigation";
 
@@ -51,6 +51,12 @@ export const navigationItems: NavigationItem[] = [
     label: "Comercial",
     href: "/comercial",
     icon: <BriefcaseBusiness className="size-5" />,
+  },
+  {
+    id: "clientes",
+    label: "Contactos/CRM",
+    href: "/clientes",
+    icon: <UserPlus2 className="size-5" />,
   },
   {
     id: "productos",

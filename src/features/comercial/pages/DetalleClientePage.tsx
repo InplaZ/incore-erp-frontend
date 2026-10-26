@@ -16,6 +16,8 @@ import {
   User,
   MessageCircle,
   UserPlus,
+  ContactRound,
+  RotateCcw,
   Star,
   Trash2,
   Save,
@@ -44,7 +46,9 @@ import type {
   ContactoComercialUpdate,
 } from "../comercial.types";
 
-import NuevoClienteModal from "@/features/comercial/components/NuevoClienteModal";
+import FichaGeneralEditable from "@/features/comercial/components/FichaGeneralEditable";
+import UbicacionesComercialesSection from "@/features/comercial/components/UbicacionesComercialesSection";
+import DocumentacionCuentaSection from "@/features/comercial/components/DocumentacionCuentaSection";
 import ComunicacionesModal from "@/features/comercial/components/ComunicacionModal";
 type DetailTab =
   | "resumen"
@@ -132,8 +136,6 @@ function DetallesCliente() {
   /*
    * Estado del modal de edición.
    */
-  const [showEdit, setShowEdit] = useState(false);
-
   /*
    * Pestaña activa dentro del detalle del cliente.
    */
@@ -172,7 +174,7 @@ function DetallesCliente() {
       <div className="space-y-4">
         <button
           type="button"
-          onClick={() => navigate("/comercial/clientes")}
+          onClick={() => navigate("/clientes")}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -199,7 +201,7 @@ function DetallesCliente() {
       <div className="space-y-6">
         <button
           type="button"
-          onClick={() => navigate("/comercial/clientes")}
+          onClick={() => navigate("/clientes")}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -226,7 +228,7 @@ function DetallesCliente() {
       <div className="space-y-6">
         <button
           type="button"
-          onClick={() => navigate("/comercial/clientes")}
+          onClick={() => navigate("/clientes")}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -261,8 +263,6 @@ function DetallesCliente() {
 
   const nombreCliente = getClientName(cliente);
   const iniciales = getInitials(nombreCliente);
-
-  const estadoLabel = getEstadoLabel(cliente.estado);
 
   const tipoPersonaLabel =
     cliente.tipo_persona === "natural"
@@ -339,168 +339,28 @@ function DetallesCliente() {
 
       <button
         type="button"
-        onClick={() => navigate("/comercial/clientes")}
+        onClick={() => navigate("/clientes")}
         className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
         Volver a clientes
       </button>
-
-      {/* ======================================================
-    ENCABEZADO DEL CLIENTE
-======================================================= */}
-
-      <section className="rounded-xl border border-border bg-card">
-        <div className="flex flex-col justify-between gap-5 p-6 md:flex-row md:items-center">
-          <div className="flex items-center gap-4">
-            {/* Avatar */}
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-              {iniciales}
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground">
-                  {nombreCliente}
-                </h1>
-
-                <EstadoBadge estado={cliente.estado} />
-              </div>
-
-              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                {/* Teléfono */}
-                <span>
-                  📱 {cliente.telefono || "Sin teléfono"}
-                </span>
-
-                {/* Correo */}
-                {cliente.correo && (
-                  <span>
-                    ✉ {cliente.correo}
-                  </span>
-                )}
-
-                {/* Tipo de relación */}
-                <span>{tipoRelacionLabel}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-
-            <button
-              type="button"
-              onClick={() => setShowEdit(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-            >
-              <Pencil className="h-4 w-4" />
-              Editar cliente
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                navigate("/comercial/requerimientos/nuevo")
-              }
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              <ClipboardList className="h-4 w-4" />
-              Nuevo requerimiento
-            </button>
-          </div>
-        </div>
-      </section>
       {/* ======================================================
     INFORMACIÓN DEL CLIENTE
 ======================================================= */}
 
-      <section className="rounded-xl border border-border bg-card">
-        <SectionHeader
-          title="Información del cliente"
-          description="Datos generales y medios de contacto del cliente."
-        />
-
-        <div className="grid gap-6 p-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Tipo de persona */}
-          <InfoItem
-            label="Tipo de persona"
-            value={tipoPersonaLabel}
-          />
-
-          {/* Documento */}
-          <InfoItem
-            label="Documento"
-            value={`${tipoDocumentoLabel} ${cliente.numero_documento || "Sin número"
-              }`}
-          />
-
-          {/* Teléfono */}
-          <InfoItem
-            label="Teléfono"
-            value={cliente.telefono || "Sin teléfono"}
-            icon={<Phone className="h-4 w-4" />}
-          />
-
-          {/* Correo */}
-          <InfoItem
-            label="Correo electrónico"
-            value={cliente.correo || "Sin correo electrónico"}
-            icon={<Mail className="h-4 w-4" />}
-          />
-
-          {/* Dirección */}
-          <div className="md:col-span-2">
-            <InfoItem
-              label="Dirección"
-              value={cliente.direccion || "Sin dirección"}
-              icon={<MapPin className="h-4 w-4" />}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ======================================================
-    INFORMACIÓN COMERCIAL
-======================================================= */}
-
-      <section className="rounded-xl border border-border bg-card">
-        <SectionHeader
-          title="Información comercial"
-          description="Datos relacionados con la gestión de la cuenta."
-        />
-
-        <div className="grid gap-6 p-6 md:grid-cols-3">
-          {/* Estado */}
-          <InfoItem
-            label="Estado"
-            value={estadoLabel}
-          />
-
-          {/* Ejecutivo asignado */}
-          <InfoItem
-            label="Ejecutivo asignado"
-            value={
-              cliente.ejecutivo_asignado
-                ? cliente.ejecutivo_nombre || "Sin nombre"
-                : "Sin ejecutivo asignado"
-            }
-            icon={<User className="h-4 w-4" />}
-          />
-
-          {/* Fecha de alta */}
-          <InfoItem
-            label="Fecha de alta"
-            value={formatDate(cliente.fecha_alta)}
-            icon={<CalendarDays className="h-4 w-4" />}
-          />
-        </div>
-      </section>
+      <FichaGeneralEditable cuenta={cliente} />
 
       {/* ======================================================
           CONTACTOS COMERCIALES
       ======================================================= */}
 
       <ContactosComercialesSection cuentaComercialId={clienteId} />
+      <UbicacionesComercialesSection cuentaComercialId={clienteId} />
+      <DocumentacionCuentaSection
+        cuentaComercialId={clienteId}
+        nombreComercial={cliente.nombre_comercial || cliente.razon_social || getClientName(cliente)}
+      />
 
       {/* ======================================================
           NAVEGACIÓN COMERCIAL
@@ -858,6 +718,7 @@ type ContactoFormState = {
   correo: string;
   direccion: string;
   es_principal: boolean;
+  activo: boolean;
 };
 
 const contactoFormInicial: ContactoFormState = {
@@ -870,6 +731,7 @@ const contactoFormInicial: ContactoFormState = {
   correo: "",
   direccion: "",
   es_principal: false,
+  activo: true,
 };
 
 function nombreContacto(contacto: ContactoComercial): string {
@@ -887,12 +749,13 @@ function ContactosComercialesSection({
 }: {
   cuentaComercialId: number;
 }) {
+  const [mostrarInactivos, setMostrarInactivos] = useState(false);
   const {
     data: contactos = [],
     isLoading,
     isError,
     error,
-  } = useContactosComerciales(cuentaComercialId);
+  } = useContactosComerciales(cuentaComercialId, mostrarInactivos);
 
   const crearContacto = useCreateContactoComercial();
   const actualizarContacto = useUpdateContactoComercial();
@@ -912,7 +775,10 @@ function ContactosComercialesSection({
 
   const abrirNuevo = () => {
     setContactoEditar(null);
-    setFormulario(contactoFormInicial);
+    setFormulario({
+      ...contactoFormInicial,
+      es_principal: contactos.filter((contacto) => contacto.activo).length === 0,
+    });
     setErrorFormulario("");
     setMostrarFormulario(true);
   };
@@ -929,6 +795,7 @@ function ContactosComercialesSection({
       correo: contacto.correo ?? "",
       direccion: contacto.direccion ?? "",
       es_principal: contacto.es_principal,
+      activo: contacto.activo,
     });
     setErrorFormulario("");
     setMostrarFormulario(true);
@@ -967,6 +834,7 @@ function ContactosComercialesSection({
       correo: formulario.correo.trim(),
       direccion: formulario.direccion.trim(),
       es_principal: formulario.es_principal,
+      activo: formulario.activo,
     };
 
     try {
@@ -1010,24 +878,26 @@ function ContactosComercialesSection({
 
   return (
     <section className="rounded-xl border border-border bg-card">
-      <div className="flex flex-col justify-between gap-3 border-b border-border px-6 py-5 sm:flex-row sm:items-center">
-        <div>
-          <h2 className="font-semibold text-foreground">
-            Contactos comerciales
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Personas de contacto asociadas a esta empresa.
-          </p>
+      <div className="flex flex-col justify-between gap-4 border-b border-border bg-secondary/20 px-6 py-5 sm:flex-row sm:items-center">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><ContactRound className="h-5 w-5" /></span>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-semibold text-foreground">Personas e interlocutores</h2>
+              <span className="rounded-full bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">{contactos.filter((contacto) => contacto.activo).length} activas</span>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">Contactos asociados a esta cuenta comercial.</p>
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={abrirNuevo}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          <UserPlus className="h-4 w-4" />
-          Agregar contacto
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setMostrarInactivos((value) => !value)} className="rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground hover:bg-secondary">
+            {mostrarInactivos ? "Ocultar inactivos" : "Ver inactivos"}
+          </button>
+          <button type="button" onClick={abrirNuevo} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+            <UserPlus className="h-4 w-4" /> Agregar persona
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -1053,10 +923,10 @@ function ContactosComercialesSection({
           {contactos.map((contacto) => (
             <div
               key={contacto.id}
-              className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-start sm:justify-between"
+              className={`flex flex-col gap-4 px-6 py-5 transition-colors sm:flex-row sm:items-start sm:justify-between ${contacto.activo ? "" : "bg-secondary/20 opacity-75"}`}
             >
               <div className="flex min-w-0 gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <User className="h-5 w-5" />
                 </div>
 
@@ -1065,12 +935,13 @@ function ContactosComercialesSection({
                     <p className="font-medium text-foreground">
                       {nombreContacto(contacto) || "Contacto sin nombre"}
                     </p>
-                    {contacto.es_principal && (
+                    {contacto.es_principal && contacto.activo && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
                         <Star className="h-3 w-3 fill-current" />
                         Principal
                       </span>
                     )}
+                    {!contacto.activo && <span className="rounded-full bg-secondary px-2 py-1 text-xs font-medium text-muted-foreground">Inactiva</span>}
                   </div>
 
                   {(contacto.cargo || contacto.area) && (
@@ -1108,20 +979,20 @@ function ContactosComercialesSection({
                 <button
                   type="button"
                   onClick={() => abrirEdicion(contacto)}
-                  className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+                  className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
                 >
                   <Pencil className="h-4 w-4" />
                   Editar
                 </button>
-                <button
+                {contacto.activo ? <button
                   type="button"
                   onClick={() => setContactoDesactivar(contacto)}
                   disabled={desactivarContacto.isPending}
-                  className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
                 >
                   <Trash2 className="h-4 w-4" />
                   Desactivar
-                </button>
+                </button> : <button type="button" onClick={() => actualizarContacto.mutate({ id: contacto.id, data: { activo: true } })} disabled={actualizarContacto.isPending} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-500/10 disabled:opacity-50"><RotateCcw className="h-4 w-4" />Reactivar</button>}
               </div>
             </div>
           ))}
@@ -1130,15 +1001,17 @@ function ContactosComercialesSection({
 
       {mostrarFormulario && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
-          <div className="my-auto max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <div>
-                <h3 className="font-semibold text-foreground">
-                  {contactoEditar ? "Editar contacto" : "Nuevo contacto"}
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Completa los datos de la persona de contacto.
-                </p>
+          <div className="my-auto max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="flex items-start justify-between border-b border-border px-6 py-5">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><UserPlus className="h-5 w-5" /></span>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">Personas vinculadas</p>
+                  <h3 className="mt-1 font-semibold text-foreground">
+                    {contactoEditar ? "Editar interlocutor" : "Nuevo interlocutor"}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Datos de contacto y responsabilidad en la cuenta.</p>
+                </div>
               </div>
               <button
                 type="button"
@@ -1151,6 +1024,8 @@ function ContactosComercialesSection({
             </div>
 
             <form onSubmit={guardarContacto} className="space-y-5 p-6">
+              <div className="rounded-xl border border-border bg-secondary/20 p-4">
+              <p className="mb-4 text-sm font-semibold text-foreground">Información de la persona</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <CampoContacto
                   label="Nombres *"
@@ -1196,8 +1071,10 @@ function ContactosComercialesSection({
                   onChange={(value) => cambiarCampo("direccion", value)}
                 />
               </div>
+              </div>
 
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+              <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 text-sm text-foreground">
                 <input
                   type="checkbox"
                   checked={formulario.es_principal}
@@ -1206,11 +1083,16 @@ function ContactosComercialesSection({
                   }
                   className="h-4 w-4 rounded border-border accent-primary"
                 />
-                Establecer como contacto principal
+                Interlocutor principal
               </label>
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 text-sm text-foreground">
+                <input type="checkbox" checked={formulario.activo} onChange={(event) => cambiarCampo("activo", event.target.checked)} className="h-4 w-4 rounded border-border accent-primary" />
+                Persona activa
+              </label>
+              </div>
 
               {errorFormulario && (
-                <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                   {errorFormulario}
                 </p>
               )}
@@ -1220,14 +1102,14 @@ function ContactosComercialesSection({
                   type="button"
                   onClick={cerrarFormulario}
                   disabled={guardando}
-                  className="rounded-md border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-50"
+                  className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={guardando}
-                  className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   <Save className="h-4 w-4" />
                   {guardando
@@ -1329,29 +1211,6 @@ function SectionHeader({
           {description}
         </p>
       )}
-    </div>
-  );
-}
-
-function InfoItem({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon?: ReactNode;
-}) {
-  return (
-    <div className="min-w-0">
-      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        {icon}
-        <span>{label}</span>
-      </div>
-
-      <p className="mt-1 truncate text-sm font-medium text-foreground">
-        {value}
-      </p>
     </div>
   );
 }
@@ -1793,7 +1652,7 @@ function LoadingMessage() {
 
 function getClientName(client: CuentaComercial): string {
   if (client.tipo_persona === "juridica") {
-    return client.razon_social || "Sin razón social";
+    return client.nombre_comercial || client.razon_social || "Sin razón social";
   }
 
   return (

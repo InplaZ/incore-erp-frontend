@@ -22,7 +22,9 @@ import {
   pedidosDetallesApi,
   solicitudesComercialesApi,
   ejecutivosComercialesApi,
-  contactosComercialesApi
+  contactosComercialesApi,
+  ubicacionesCuentaComercialApi,
+  documentosCuentaComercialApi,
 } from "./comercial.api";
 
 import type {
@@ -57,6 +59,10 @@ import type {
   ContactoComercial,
   ContactoComercialCreate,
   ContactoComercialUpdate, 
+  UbicacionCuentaComercialCreate,
+  UbicacionCuentaComercialUpdate,
+  CrearCuentaCRMRequest,
+  DocumentoCuentaComercialCreate,
 } from "./comercial.types";
 
 import type { ApiQueryParams } from "@/api/api.types";
@@ -146,6 +152,12 @@ export const comercialQueryKeys = {
 
 contacto: (id: number) =>
     [...comercialQueryKeys.all, "contacto", id] as const,
+  ubicaciones: (cuentaComercialId: number) =>
+    [...comercialQueryKeys.all, "ubicaciones", cuentaComercialId] as const,
+  documentos: (cuentaComercialId: number) =>
+    [...comercialQueryKeys.all, "documentos-cuenta", cuentaComercialId] as const,
+  historial: (cuentaComercialId: number) =>
+    [...comercialQueryKeys.all, "historial-cuenta", cuentaComercialId] as const,
   
 };
 
@@ -186,6 +198,17 @@ export function useCreateCuentaComercial() {
       queryClient.invalidateQueries({
         queryKey: comercialQueryKeys.cuentas(),
       });
+    },
+  });
+}
+
+export function useCreateCuentaCRM() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CrearCuentaCRMRequest) => cuentasComercialesApi.createCRM(data),
+    onSuccess: ({ cuenta }) => {
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cuentas() });
+      queryClient.setQueryData(comercialQueryKeys.cuenta(cuenta.id), cuenta);
     },
   });
 }
@@ -353,6 +376,84 @@ export function useDesactivarContactoComercial() {
         queryKey: [...comercialQueryKeys.all, "contactos"],
       });
     },
+  });
+}
+
+export function useUbicacionesCuentaComercial(cuentaComercialId: number, incluirInactivos = false) {
+  return useQuery({
+    queryKey: [...comercialQueryKeys.ubicaciones(cuentaComercialId), incluirInactivos],
+    queryFn: () => ubicacionesCuentaComercialApi.list(cuentaComercialId, incluirInactivos),
+    enabled: !!cuentaComercialId,
+  });
+}
+
+export function useCreateUbicacionCuentaComercial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UbicacionCuentaComercialCreate) => ubicacionesCuentaComercialApi.create(data),
+    onSuccess: (ubicacion) => queryClient.invalidateQueries({ queryKey: comercialQueryKeys.ubicaciones(ubicacion.cuenta_comercial) }),
+  });
+}
+
+export function useUpdateUbicacionCuentaComercial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UbicacionCuentaComercialUpdate }) => ubicacionesCuentaComercialApi.update(id, data),
+    onSuccess: (ubicacion) => queryClient.invalidateQueries({ queryKey: comercialQueryKeys.ubicaciones(ubicacion.cuenta_comercial) }),
+  });
+}
+
+export function useDesactivarUbicacionCuentaComercial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => ubicacionesCuentaComercialApi.deactivate(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [...comercialQueryKeys.all, "ubicaciones"] }),
+  });
+}
+
+export function useDocumentosCuentaComercial(cuentaComercialId: number, incluirInactivos = true) {
+  return useQuery({
+    queryKey: [...comercialQueryKeys.documentos(cuentaComercialId), incluirInactivos],
+    queryFn: () => documentosCuentaComercialApi.list(cuentaComercialId, incluirInactivos),
+    enabled: !!cuentaComercialId,
+  });
+}
+
+export function useHistorialCuentaComercial(cuentaComercialId: number) {
+  return useQuery({
+    queryKey: comercialQueryKeys.historial(cuentaComercialId),
+    queryFn: () => cuentasComercialesApi.historial(cuentaComercialId),
+    enabled: !!cuentaComercialId,
+  });
+}
+
+export function useCreateDocumentoCuentaComercial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: DocumentoCuentaComercialCreate) => documentosCuentaComercialApi.create(data),
+    onSuccess: (documento) => {
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.documentos(documento.cuenta_comercial) });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.historial(documento.cuenta_comercial) });
+    },
+  });
+}
+
+export function useCambiarEstadoDocumentoCuentaComercial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, activo }: { id: number; activo: boolean }) => documentosCuentaComercialApi.setActive(id, activo),
+    onSuccess: async (documento) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: comercialQueryKeys.documentos(documento.cuenta_comercial) }),
+        queryClient.invalidateQueries({ queryKey: comercialQueryKeys.historial(documento.cuenta_comercial) }),
+      ]);
+    },
+  });
+}
+
+export function useDescargarDocumentoCuentaComercial() {
+  return useMutation({
+    mutationFn: (id: number) => documentosCuentaComercialApi.download(id),
   });
 }
 

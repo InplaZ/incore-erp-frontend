@@ -58,6 +58,14 @@ import type {
   ContactoComercial,
   ContactoComercialCreate,
   ContactoComercialUpdate,
+  UbicacionCuentaComercial,
+  UbicacionCuentaComercialCreate,
+  UbicacionCuentaComercialUpdate,
+  CrearCuentaCRMRequest,
+  CrearCuentaCRMResponse,
+  DocumentoCuentaComercial,
+  DocumentoCuentaComercialCreate,
+  HistorialCuentaComercial,
 } from "./comercial.types";
 
 // ============================================================
@@ -86,6 +94,12 @@ export const cuentasComercialesApi = {
       data,
     );
   },
+
+  createCRM: async (data: CrearCuentaCRMRequest): Promise<CrearCuentaCRMResponse> =>
+    api.post<CrearCuentaCRMResponse>("/comercial/cuentas-comerciales/crear-crm/", data),
+
+  historial: async (id: number): Promise<HistorialCuentaComercial[]> =>
+    api.get<HistorialCuentaComercial[]>(`/comercial/cuentas-comerciales/${id}/historial/`),
 
   update: async (
     id: number,
@@ -158,6 +172,49 @@ export const contactosComercialesApi = {
   desactivar: async (id: number): Promise<void> => {
     await api.delete(`/comercial/contacto-comercial/${id}/`);
   },
+};
+
+export const ubicacionesCuentaComercialApi = {
+  list: async (cuentaComercialId: number, incluirInactivos = false): Promise<UbicacionCuentaComercial[]> =>
+    api.get<UbicacionCuentaComercial[]>("/comercial/ubicaciones-cuenta/", {
+      params: {
+        cuenta_comercial: cuentaComercialId,
+        ...(incluirInactivos && { incluir_inactivos: "true" }),
+      },
+    }),
+  create: async (data: UbicacionCuentaComercialCreate): Promise<UbicacionCuentaComercial> =>
+    api.post<UbicacionCuentaComercial>("/comercial/ubicaciones-cuenta/", data),
+  update: async (id: number, data: UbicacionCuentaComercialUpdate): Promise<UbicacionCuentaComercial> =>
+    api.patch<UbicacionCuentaComercial>(`/comercial/ubicaciones-cuenta/${id}/`, data),
+  deactivate: async (id: number): Promise<void> => {
+    await api.delete(`/comercial/ubicaciones-cuenta/${id}/`);
+  },
+};
+
+export const documentosCuentaComercialApi = {
+  list: async (cuentaComercialId: number, incluirInactivos = true): Promise<DocumentoCuentaComercial[]> =>
+    api.get<DocumentoCuentaComercial[]>("/comercial/documentos-cuenta/", {
+      params: {
+        cuenta_comercial: cuentaComercialId,
+        ...(incluirInactivos && { incluir_inactivos: "true" }),
+      },
+    }),
+  create: async (data: DocumentoCuentaComercialCreate): Promise<DocumentoCuentaComercial> => {
+    const form = new FormData();
+    form.append("cuenta_comercial", String(data.cuenta_comercial));
+    form.append("tipo", data.tipo);
+    form.append("referencia", data.referencia ?? "");
+    if (data.vigencia_hasta) form.append("vigencia_hasta", data.vigencia_hasta);
+    form.append("activo", String(data.activo));
+    form.append("archivo", data.archivo);
+    return api.post<DocumentoCuentaComercial>("/comercial/documentos-cuenta/", form);
+  },
+  setActive: async (id: number, activo: boolean): Promise<DocumentoCuentaComercial> =>
+    api.patch<DocumentoCuentaComercial>(`/comercial/documentos-cuenta/${id}/`, { activo }),
+  download: async (id: number): Promise<Blob> =>
+    api.get<Blob>(`/comercial/documentos-cuenta/${id}/descargar/`, {
+      config: { responseType: "blob" },
+    }),
 };
 
 // ============================================================

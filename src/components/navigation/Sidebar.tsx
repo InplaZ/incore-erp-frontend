@@ -379,7 +379,7 @@ export function Sidebar<TItem extends SidebarItem = SidebarItem>({
     "border-r border-sidebar bg-sidebar text-sidebar-foreground", //COLOR DEL SIDEBAR AZUL
     "transition-all duration-200",
 
-    "md:sticky md:top-0 md:z-0",
+    "md:sticky md:top-0 md:z-0 md:h-screen md:self-start",
 
     collapsed ? "w-16" : "w-64",
 
