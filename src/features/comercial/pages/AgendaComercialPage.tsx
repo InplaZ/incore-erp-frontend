@@ -7,7 +7,6 @@ import {
   Phone,
   Sparkles,
   Truck,
-  UserRound,
   UsersRound,
 } from "lucide-react";
 
@@ -29,7 +28,6 @@ import type {
 } from "@/features/comercial/comercial.types";
 
 import ActividadMenu from "@/features/comercial/components/actividades/ActividadMenu";
-import NuevoClienteModal from "@/features/comercial/components/NuevoClienteModal";
 import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
 
 import { useNavigate } from "react-router-dom";
@@ -109,9 +107,6 @@ export default function AgendaComercialPage() {
   const navigate = useNavigate();
   //Contenido
   const [showNuevaActividad, setShowNuevaActividad] = useState(false);
-  //Nuevo Cliente modal
-  const [showNuevoClienteOpen, setShowNuevoClienteOpen] = useState(false);
-
   //EDITAR
   const [actividadEditar, setActividadEditar] = useState<ActividadComercial | null>(null);
 
@@ -495,12 +490,6 @@ export default function AgendaComercialPage() {
               onClick={() => navigate("/comercial/requerimientos")}
             />
             <QuickAction
-              icon={UserRound}
-              label="Registrar nuevo cliente"
-              onClick={() => setShowNuevoClienteOpen(true)}
-            />
-
-            <QuickAction
               icon={Phone}
               label="Programar actividad"
               onClick={() => setShowNuevaActividad(true)}
@@ -648,10 +637,6 @@ export default function AgendaComercialPage() {
           setShowRegistrarComunicacion(false);
           setActividadComunicacion(null);
         }}
-      />
-      <NuevoClienteModal
-        open={showNuevoClienteOpen}
-        onClose={() => setShowNuevoClienteOpen(false)}
       />
     </div>
   );

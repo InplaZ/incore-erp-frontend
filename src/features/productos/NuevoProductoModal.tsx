@@ -1,11 +1,9 @@
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   X,
   Package,
   FileText,
-  Ruler,
-  Boxes,
   ImagePlus,
   Upload,
   LoaderCircle,
@@ -15,6 +13,8 @@ import {
 import type { Producto } from "@/features/productos/productos.types";
 import {
   useCreateProducto,
+  useProductosCategorias,
+  useProductosSubcategorias,
   useUpdateProducto,
 } from "@/features/productos/productos.hooks";
 
@@ -37,7 +37,14 @@ const sectionClass =
 const sectionHeaderClass =
   "flex items-center gap-2 border-b border-slate-100 px-5 py-4";
 
-const numberClass = `${inputClass} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`;
+const createInitialForm = (producto?: Producto | null) => ({
+  categoria: producto ? String(producto.categoria) : "",
+  subcategoria: producto?.subcategoria ? String(producto.subcategoria) : "",
+  unidad_medida: producto?.unidad_medida ?? "unidad" as Producto["unidad_medida"],
+  nombre: producto?.nombre ?? "",
+  descripcion: producto?.descripcion ?? "",
+  pais_origen: producto?.pais_origen ?? "",
+});
 
 export default function NuevoProductoModal({
   open,
@@ -47,28 +54,7 @@ export default function NuevoProductoModal({
 }: NuevoProductoModalProps) {
   const isEditing = Boolean(producto);
 
-  const [form, setForm] = useState({
-    categoria: "",
-    subcategoria: "",
-    nombre: "",
-    descripcion: "",
-    pais_origen: "",
-    material: "",
-    color: "",
-    color_impresion: "",
-    tipo_impresion: "",
-    ancho_doblado: "",
-    ancho_desdoblado: "",
-    largo_doblado: "",
-    largo_desdoblado: "",
-    troquel: "",
-    sello: "",
-    impresion_anverso: "",
-    impresion_reverso: "",
-    cantidad_unidad: "1",
-    cantidad_fajo: "0",
-    cantidad_bulto: "0",
-  });
+  const [form, setForm] = useState(() => createInitialForm(producto));
 
   const [fotoPrincipal, setFotoPrincipal] = useState<File | null>(null);
   const [fotoAnverso, setFotoAnverso] = useState<File | null>(null);
@@ -77,40 +63,9 @@ export default function NuevoProductoModal({
 
   const createMutation = useCreateProducto();
   const updateMutation = useUpdateProducto();
-
-  useEffect(() => {
-    if (!open) return;
-
-    setForm({
-      categoria: producto ? String(producto.categoria) : "",
-      subcategoria: producto?.subcategoria
-        ? String(producto.subcategoria)
-        : "",
-      nombre: producto?.nombre ?? "",
-      descripcion: producto?.descripcion ?? "",
-      pais_origen: producto?.pais_origen ?? "",
-      material: "",
-      color: "",
-      color_impresion: "",
-      tipo_impresion: "",
-      ancho_doblado: "",
-      ancho_desdoblado: "",
-      largo_doblado: "",
-      largo_desdoblado: "",
-      troquel: "",
-      sello: "",
-      impresion_anverso: "",
-      impresion_reverso: "",
-      cantidad_unidad: "1",
-      cantidad_fajo: "0",
-      cantidad_bulto: "0",
-    });
-
-    setFotoPrincipal(null);
-    setFotoAnverso(null);
-    setFotoReverso(null);
-    setError("");
-  }, [open, producto]);
+  const { data: categorias = [], isLoading: cargandoCategorias } = useProductosCategorias();
+  const categoriaId = form.categoria ? Number(form.categoria) : undefined;
+  const { data: subcategorias = [], isLoading: cargandoSubcategorias } = useProductosSubcategorias(categoriaId);
 
   if (!open) return null;
 
@@ -162,15 +117,16 @@ export default function NuevoProductoModal({
       return;
     }
 
-    const data = {
-      categoria: Number(form.categoria),
-      subcategoria: form.subcategoria
-        ? Number(form.subcategoria)
-        : null,
-      nombre: form.nombre.trim(),
-      descripcion: form.descripcion.trim(),
-      pais_origen: form.pais_origen.trim(),
-    };
+    const data = new FormData();
+    data.append("categoria", form.categoria);
+    if (form.subcategoria) data.append("subcategoria", form.subcategoria);
+    data.append("unidad_medida", form.unidad_medida);
+    data.append("nombre", form.nombre.trim());
+    data.append("descripcion", form.descripcion.trim());
+    data.append("pais_origen", form.pais_origen.trim());
+    if (fotoPrincipal) data.append("imagen", fotoPrincipal);
+    if (fotoAnverso) data.append("imagen_anverso", fotoAnverso);
+    if (fotoReverso) data.append("imagen_reverso", fotoReverso);
 
     try {
       // Solo se envían los campos generales que existen
@@ -269,7 +225,7 @@ export default function NuevoProductoModal({
                 {isEditing ? "Editar producto" : "Nuevo producto"}
               </h2>
               <p className="text-sm text-slate-500">
-                Información general y especificaciones del producto
+                Información general del catálogo
               </p>
             </div>
           </div>
@@ -323,11 +279,12 @@ export default function NuevoProductoModal({
                     name="categoria"
                     value={form.categoria}
                     onChange={handleChange}
+                    disabled={cargandoCategorias}
                     required
                     className={inputClass}
                   >
-                    <option value="">Seleccionar categoría</option>
-                    {/* Conectar con el endpoint de categorías */}
+                    <option value="">{cargandoCategorias ? "Cargando categorías…" : "Seleccionar categoría"}</option>
+                    {categorias.filter(item => item.activo).map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}
                   </select>
                 </div>
 
@@ -337,11 +294,20 @@ export default function NuevoProductoModal({
                     name="subcategoria"
                     value={form.subcategoria}
                     onChange={handleChange}
-                    disabled={!form.categoria}
+                    disabled={!form.categoria || cargandoSubcategorias}
                     className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100`}
                   >
-                    <option value="">Sin subcategoría</option>
-                    {/* Conectar con el endpoint de subcategorías */}
+                    <option value="">{cargandoSubcategorias ? "Cargando subcategorías…" : "Sin subcategoría"}</option>
+                    {subcategorias.filter(item => item.activo).map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Unidad de medida <span className="text-red-500">*</span></label>
+                  <select name="unidad_medida" value={form.unidad_medida} onChange={handleChange} required className={inputClass}>
+                    <option value="unidad">Unidad</option>
+                    <option value="fajo">Fajo</option>
+                    <option value="metro">Metro</option>
                   </select>
                 </div>
 
@@ -370,139 +336,7 @@ export default function NuevoProductoModal({
               </div>
             </section>
 
-            {/* 2. Características técnicas */}
-            <section className={sectionClass}>
-              <div className={sectionHeaderClass}>
-                <Ruler className="h-4 w-4 text-inplaz-700" />
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-800">
-                    Características técnicas
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Material, dimensiones, acabado e impresión
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3">
-                <div>
-                  <label className={labelClass}>Material</label>
-                  <select name="material" value={form.material} onChange={handleChange} className={inputClass}>
-                    <option value="">Seleccionar material</option>
-                    <option value="PEBD">PEBD</option>
-                    <option value="PEAD">PEAD</option>
-                    <option value="PP">PP</option>
-                    <option value="BOPP">BOPP</option>
-                    <option value="OTRO">Otro</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className={labelClass}>Color del producto</label>
-                  <input name="color" value={form.color} onChange={handleChange} placeholder="Ej. Blanco" className={inputClass} />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Color de impresión</label>
-                  <input name="color_impresion" value={form.color_impresion} onChange={handleChange} placeholder="Ej. Azul y negro" className={inputClass} />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Ancho doblado (cm)</label>
-                  <input type="number" min="0" step="any" name="ancho_doblado" value={form.ancho_doblado} onChange={handleChange} className={inputClass} />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Ancho desdoblado (cm)</label>
-                  <input type="number" min="0" step="any" name="ancho_desdoblado" value={form.ancho_desdoblado} onChange={handleChange} className={inputClass} />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Largo doblado (cm)</label>
-                  <input type="number" min="0" step="any" name="largo_doblado" value={form.largo_doblado} onChange={handleChange} className={inputClass} />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Largo desdoblado (cm)</label>
-                  <input type="number" min="0" step="any" name="largo_desdoblado" value={form.largo_desdoblado} onChange={handleChange} className={inputClass} />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Tipo de troquel</label>
-                  <input name="troquel" value={form.troquel} onChange={handleChange} placeholder="Tipo de troquel" className={inputClass} />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Tipo de sello</label>
-                  <input name="sello" value={form.sello} onChange={handleChange} placeholder="Tipo de sello" className={inputClass} />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Tipo de impresión</label>
-                  <select name="tipo_impresion" value={form.tipo_impresion} onChange={handleChange} className={inputClass}>
-                    <option value="">Seleccionar tipo</option>
-                    <option value="corrida">Corrida</option>
-                    <option value="registro">Registro</option>
-                    <option value="sin_impresion">Sin impresión</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className={labelClass}>Impresión anverso</label>
-                  <select name="impresion_anverso" value={form.impresion_anverso} onChange={handleChange} className={inputClass}>
-                    <option value="">Seleccionar opción</option>
-                    <option value="si">Sí</option>
-                    <option value="no">No</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className={labelClass}>Impresión reverso</label>
-                  <select name="impresion_reverso" value={form.impresion_reverso} onChange={handleChange} className={inputClass}>
-                    <option value="">Seleccionar opción</option>
-                    <option value="si">Sí</option>
-                    <option value="no">No</option>
-                  </select>
-                </div>
-              </div>
-            </section>
-
-            {/* 3. Cantidades y presentaciones */}
-            <section className={sectionClass}>
-              <div className={sectionHeaderClass}>
-                <Boxes className="h-4 w-4 text-inplaz-700" />
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-800">
-                    Cantidades y presentaciones
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Define las equivalencias comerciales
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-5 p-5 sm:grid-cols-3">
-                <div>
-                  <label className={labelClass}>Cantidad por unidad</label>
-                  <input type="number" min="1" step="1" name="cantidad_unidad" value={form.cantidad_unidad} onChange={handleChange} className={numberClass} required />
-                  <p className="mt-1 text-xs text-slate-500">Unidades mínimas.</p>
-                </div>
-
-                <div>
-                  <label className={labelClass}>Unidades por fajo</label>
-                  <input type="number" min="0" step="1" name="cantidad_fajo" value={form.cantidad_fajo} onChange={handleChange} className={numberClass} />
-                  <p className="mt-1 text-xs text-slate-500">Piezas por fajo.</p>
-                </div>
-
-                <div>
-                  <label className={labelClass}>Fajos por bulto</label>
-                  <input type="number" min="0" step="1" name="cantidad_bulto" value={form.cantidad_bulto} onChange={handleChange} className={numberClass} />
-                  <p className="mt-1 text-xs text-slate-500">Fajos por bulto.</p>
-                </div>
-              </div>
-            </section>
-
-            {/* 4. Fotografías */}
+            {/* 2. Fotografías */}
             <section className={sectionClass}>
               <div className={sectionHeaderClass}>
                 <ImagePlus className="h-4 w-4 text-inplaz-700" />

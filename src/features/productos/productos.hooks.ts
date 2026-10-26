@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productosCategoriasApi, productosApi, productosSubcategoriasApi } from "./productos.api";
-import type { Producto } from "./productos.types";
+import type { Producto, ProductoComercialCreate } from "./productos.types";
 import type {
   BuscarSimilaresResponse,
   ProductoVersion,
@@ -158,9 +158,22 @@ export function useCreateProducto() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Partial<Producto>) =>
+    mutationFn: (data: Partial<Producto> | FormData) =>
       productosApi.create(data),
 
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: productosQueryKeys.all,
+      });
+    },
+  });
+}
+
+export function useCreateProductoComercial() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: ProductoComercialCreate) => productosApi.createComercial(data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: productosQueryKeys.all,
@@ -178,7 +191,7 @@ export function useUpdateProducto() {
       data,
     }: {
       id: number;
-      data: Partial<Producto>;
+      data: Partial<Producto> | FormData;
     }) => productosApi.update(id, data),
 
     onSuccess: (_producto, variables) => {

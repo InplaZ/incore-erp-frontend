@@ -15,7 +15,6 @@ import { useNavigate } from "react-router-dom";
 
 import {
   ChevronDown,
-  Building2,
   BriefcaseBusiness,
   ContactRound,
   Plus,
@@ -64,7 +63,6 @@ import type {
  *
  * La diferencia está en si recibe o no la propiedad "client".
  */
-import NuevoClienteModal from "../components/NuevoClienteModal";
 import NuevaCuentaComercialWizard from "../components/NuevaCuentaComercialWizard";
 
 import ConfirmDialog from "@/components/feedback/ConfirmDialog";

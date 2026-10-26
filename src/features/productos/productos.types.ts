@@ -19,6 +19,63 @@ export interface ProductoSubcategoria {
   activo: boolean;
 }
 
+export interface ProductoComercialCreate {
+  producto: {
+    categoria: number;
+    subcategoria?: number | null;
+    nombre: string;
+    descripcion?: string;
+    unidad_medida: Producto["unidad_medida"];
+    pais_origen?: string;
+  };
+  version: {
+    material: string;
+    capas: string;
+    cara_impresion?: string | null;
+    tratamiento_impresion?: string;
+    diseno?: number | null;
+    apto_alimento: boolean;
+    micraje?: string | number | null;
+    color_bolsa?: string;
+    impresion: boolean;
+    color_impresion?: string[];
+    tipo_impresion?: string;
+    metros?: string | number | null;
+    observaciones?: string;
+  };
+  especificacion_bolsa?: {
+    ancho_doblado: string | number;
+    ancho_desdoblado?: string | number | null;
+    largo_doblado: string | number;
+    largo_desdoblado?: string | number | null;
+    fuelle: boolean;
+    fuelle_izquierdo?: string | number | null;
+    fuelle_derecho?: string | number | null;
+    fuelle_inferior?: string | number | null;
+    fuelle_superior?: string | number | null;
+    tipo_troquel: string;
+    tipo_sello: string;
+    pestana?: string;
+    acabado_especial?: string;
+    otras_caracteristicas?: string;
+  };
+  especificacion_bobina?: {
+    ancho: string | number;
+    diametro?: string | number | null;
+    diametro_nucleo?: string | number | null;
+    tipo_nucleo?: string;
+    peso?: string | number | null;
+    longitud?: string | number | null;
+    otras_caracteristicas?: string;
+  };
+  presentacion?: {
+    unidades_por_fajo: number;
+    fajos_por_bulto?: number;
+    paquetes_por_jaba: number;
+    jabas_por_bulto: number;
+  };
+}
+
 export interface Producto {
   id: number;
   categoria: number;
@@ -29,7 +86,12 @@ export interface Producto {
   imagen: string | null;
   unidad_medida: "unidad" | "fajo" | "metro";
   pais_origen: string;
-  estado: string;
+  estado: boolean;
+  estado_homologacion: "pendiente" | "homologado" | "rechazado";
+  numero_homologacion: string | null;
+  observaciones_homologacion?: string;
+  imagen_anverso?: string | null;
+  imagen_reverso?: string | null;
   created_at: string;
   updated_at: string;
 }

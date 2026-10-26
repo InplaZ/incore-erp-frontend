@@ -1,12 +1,16 @@
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
+  CheckCircle2,
+  Eye,
   Search,
+  Pencil,
   Package,
   LayoutGrid,
   List,
   ImageOff,
   Plus,
+  X,
 } from "lucide-react";
 
 import {
@@ -21,17 +25,23 @@ import Badge from "@/components/ui/Badge";
 import { LoadingState, EmptyState } from "@/components/ui/States";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { cn } from "@/utils";
+import type { ProductoBusquedaResultado } from "@/features/comercial/comercial.types";
 import NuevoProductoModal from "./NuevoProductoModal";
+import ProductoComercialWizardModal from "./ProductoComercialWizardModal";
+import type { Producto } from "./productos.types";
 
 export default function ProductosPage() {
+  const [catalogo, setCatalogo] = useState<"todos" | "comerciales" | "homologados">("todos");
   const [search, setSearch] = useState("");
   const [categoria, setCategoria] = useState("");
   const [material, setMaterial] = useState("");
-  const [view, setView] = useState<"cards" | "tabla">("cards");
+  const [view, setView] = useState<"cards" | "tabla">("tabla");
   const [pagina, setPagina] = useState(1);
   const porPagina = 12;
 
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [productoEditando, setProductoEditando] = useState<Producto | null>(null);
+  const [productoConsultado, setProductoConsultado] = useState<Producto | null>(null);
 
   // Listado general: base de todos los productos registrados.
   const {
@@ -45,7 +55,6 @@ export default function ProductosPage() {
   // Catálogo: aporta las características de las versiones disponibles.
   const {
     data: dataCatalogo,
-    isLoading: cargandoCatalogo,
     isError: errorCatalogo,
     isFetching: actualizandoCatalogo,
   } = useBuscarProductosCatalogo({
@@ -59,8 +68,8 @@ export default function ProductosPage() {
   // Categorías: permite mostrar el nombre y no solamente su ID.
   const { data: categorias } = useProductosCategorias();
 
-  const productosRegistrados = dataProductos ?? [];
-  const productosCatalogo = dataCatalogo?.productos ?? [];
+  const productosRegistrados = useMemo(() => dataProductos ?? [], [dataProductos]);
+  const productosCatalogo = useMemo(() => dataCatalogo?.productos ?? [], [dataCatalogo?.productos]);
 
   // Índice de las características del catálogo por ID de producto.
   const catalogoPorProducto = useMemo(() => {
@@ -72,7 +81,7 @@ export default function ProductosPage() {
     );
   }, [productosCatalogo]);
 
-  const nombreCategoria = (categoriaId: number | null | undefined) => {
+  const nombreCategoria = useCallback((categoriaId: number | null | undefined) => {
     if (categoriaId == null) return "Sin categoría";
 
     const encontrada = categorias?.find(
@@ -80,7 +89,7 @@ export default function ProductosPage() {
     );
 
     return encontrada?.nombre ?? "Sin categoría";
-  };
+  }, [categorias]);
 
   // Combina los productos registrados con las características del catálogo.
   // La lista general es la base, por lo que un producto sin versión
@@ -94,6 +103,9 @@ export default function ProductosPage() {
         version: catalogoPorProducto.get(producto.id),
       }))
       .filter(({ producto, version }) => {
+        const coincideCatalogo = catalogo === "todos"
+          || (catalogo === "homologados" && producto.estado_homologacion === "homologado")
+          || (catalogo === "comerciales" && producto.estado_homologacion !== "homologado");
         const coincideBusqueda =
           !termino ||
           producto.codigo.toLocaleLowerCase().includes(termino) ||
@@ -112,6 +124,7 @@ export default function ProductosPage() {
             material.toLocaleUpperCase();
 
         return (
+          coincideCatalogo &&
           coincideBusqueda &&
           coincideCategoria &&
           coincideMaterial
@@ -119,11 +132,12 @@ export default function ProductosPage() {
       });
   }, [
     productosRegistrados,
+    catalogo,
     catalogoPorProducto,
+    nombreCategoria,
     search,
     categoria,
     material,
-    categorias,
   ]);
 
   // Paginación local sobre los productos registrados recibidos.
@@ -135,15 +149,36 @@ export default function ProductosPage() {
     pagina * porPagina
   );
 
+  const productosHomologados = productosRegistrados.filter(p => p.estado_homologacion === "homologado");
+  const productosComerciales = productosRegistrados.filter(p => p.estado_homologacion !== "homologado");
+  const totalActivosHomologados = productosHomologados.filter(p => p.estado).length;
+  const totalActivosComerciales = productosComerciales.filter(p => p.estado).length;
+
   const isLoading = cargandoProductos || !categorias;
   const isError = errorProductos;
   const isFetching = actualizandoProductos || actualizandoCatalogo;
 
   const limpiarFiltros = () => {
+    setCatalogo("todos");
     setSearch("");
     setCategoria("");
     setMaterial("");
     setPagina(1);
+  };
+
+  const abrirEdicion = (producto: Producto) => {
+    setProductoEditando(producto);
+    setModalAbierto(true);
+  };
+
+  const abrirNuevo = () => {
+    setProductoEditando(null);
+    setModalAbierto(true);
+  };
+
+  const cerrarModalProducto = () => {
+    setModalAbierto(false);
+    setProductoEditando(null);
   };
 
   return (
@@ -153,6 +188,23 @@ export default function ProductosPage() {
         subtitle={`${cantidad} productos encontrados`}
         breadcrumb={[{ label: "Productos" }]}
       />
+
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <SummaryCard label="Productos comerciales" value={productosComerciales.length} detail="Pendientes o rechazados" tone="warning" />
+        <SummaryCard label="Productos homologados" value={productosHomologados.length} detail="Catálogo oficial" tone="success" />
+        <SummaryCard label="Comerciales activos" value={totalActivosComerciales} detail="Disponibles en catálogo" tone="primary" />
+        <SummaryCard label="Homologados activos" value={totalActivosHomologados} detail="Disponibles en catálogo" tone="primary" />
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto border-b border-border pb-2" role="tablist" aria-label="Tipo de producto">
+        {([ ["todos", "Todos"], ["comerciales", "Productos comerciales"], ["homologados", "Homologados"] ] as const).map(([value, label]) => (
+          <button key={value} type="button" role="tab" aria-selected={catalogo === value}
+            onClick={() => { setCatalogo(value); setPagina(1); }}
+            className={cn("shrink-0 rounded-lg px-3.5 py-2 text-sm font-semibold transition", catalogo === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}>
+            {label}{value === "comerciales" ? ` · ${productosComerciales.length}` : value === "homologados" ? ` · ${productosHomologados.length}` : ` · ${productosRegistrados.length}`}
+          </button>
+        ))}
+      </div>
 
       {/* Búsqueda y acciones */}
       <div className="space-y-3">
@@ -173,8 +225,8 @@ export default function ProductosPage() {
 
           <button
             type="button"
-            onClick={() => setModalAbierto(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            onClick={abrirNuevo}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
           >
             <Plus className="h-4 w-4" />
             Nuevo producto
@@ -193,8 +245,7 @@ export default function ProductosPage() {
               className="input w-full sm:max-w-[220px]"
             >
               <option value="">Todas las categorías</option>
-              <option value="Bolsas">Bolsas</option>
-              <option value="Bobinas">Bobinas</option>
+              {categorias?.filter(item => item.activo).map(item => <option key={item.id} value={item.nombre}>{item.nombre}</option>)}
             </select>
 
             <select
@@ -214,7 +265,7 @@ export default function ProductosPage() {
             </select>
           </div>
 
-          {(search || categoria || material) && (
+          {(search || categoria || material || catalogo !== "todos") && (
             <button
               type="button"
               onClick={limpiarFiltros}
@@ -290,7 +341,7 @@ export default function ProductosPage() {
       ) : view === "cards" ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {productosPagina.map(({ producto: p, version }) => (
-            <Card key={p.id} hover>
+            <Card key={p.id} className="transition-shadow hover:shadow-md">
               <CardBody>
                 <div className="mb-3 flex h-44 items-center justify-center overflow-hidden rounded-lg bg-slate-50">
                   {p.imagen ? (
@@ -318,13 +369,14 @@ export default function ProductosPage() {
                     </h3>
                   </div>
 
-                  {version && <Badge>v{version.version_numero}</Badge>}
+                  <Badge variant={homologacionVariant(p.estado_homologacion)}>{homologacionLabel(p.estado_homologacion)}</Badge>
                 </div>
 
                 <div className="mb-3 flex flex-wrap gap-2">
-                  <Badge>{nombreCategoria(p.categoria)}</Badge>
-                  <Badge>{p.unidad_medida}</Badge>
-                  <Badge>{p.estado}</Badge>
+                  <Badge variant="outline">{nombreCategoria(p.categoria)}</Badge>
+                  <Badge variant="secondary">{p.unidad_medida}</Badge>
+                  <Badge variant={p.estado ? "success" : "destructive"}>{p.estado ? "Activo" : "Inactivo"}</Badge>
+                  {version && <Badge variant="info">v{version.version_numero}</Badge>}
                 </div>
 
                 <div className="space-y-1 border-t border-slate-100 pt-3 text-sm">
@@ -378,6 +430,11 @@ export default function ProductosPage() {
                     </p>
                   )}
                 </div>
+
+                <div className="mt-4 flex justify-end gap-2 border-t border-border pt-3">
+                  <button type="button" onClick={() => setProductoConsultado(p)} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-secondary"><Eye className="h-3.5 w-3.5" />Consultar</button>
+                  {p.estado_homologacion !== "homologado" && <button type="button" onClick={() => abrirEdicion(p)} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"><Pencil className="h-3.5 w-3.5" />Editar</button>}
+                </div>
               </CardBody>
             </Card>
           ))}
@@ -388,16 +445,14 @@ export default function ProductosPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase text-slate-500">
-                  <th className="px-4 py-3">Producto</th>
-                  <th className="px-4 py-3">Categoría</th>
-                  <th className="px-4 py-3">Subcategoría</th>
+                  <th className="px-4 py-3">Código</th>
+                  <th className="px-4 py-3">Descripción</th>
+                  <th className="px-4 py-3">Tipo / categoría</th>
+                  <th className="px-4 py-3">Especificación</th>
                   <th className="px-4 py-3">Unidad</th>
-                  <th className="px-4 py-3">Material</th>
-                  <th className="px-4 py-3">Micraje</th>
-                  <th className="px-4 py-3">Capas</th>
-                  <th className="px-4 py-3">Impresión</th>
-                  <th className="px-4 py-3">Versión</th>
+                  <th className="px-4 py-3">Homologación</th>
                   <th className="px-4 py-3">Estado</th>
+                  <th className="px-4 py-3 text-right">Acción</th>
                 </tr>
               </thead>
 
@@ -407,48 +462,14 @@ export default function ProductosPage() {
                     key={p.id}
                     className="transition hover:bg-slate-50"
                   >
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-slate-800">
-                        {p.codigo}
-                      </p>
-                      <p className="text-slate-500">{p.nombre}</p>
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {nombreCategoria(p.categoria)}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {version?.subcategoria ??
-                        (p.subcategoria != null
-                          ? `ID ${p.subcategoria}`
-                          : "—")}
-                    </td>
-
+                    <td className="px-4 py-3 font-mono text-xs font-semibold text-primary">{p.codigo}</td>
+                    <td className="px-4 py-3"><p className="font-semibold text-foreground">{p.nombre}</p><p className="mt-0.5 text-xs text-muted-foreground">{p.descripcion || "Sin descripción"}</p></td>
+                    <td className="px-4 py-3"><p className="font-medium text-foreground">{nombreCategoria(p.categoria)}</p><p className="text-xs text-muted-foreground">{version?.subcategoria ?? (p.subcategoria != null ? `ID ${p.subcategoria}` : "Sin subcategoría")}</p></td>
+                    <td className="px-4 py-3"><p>{version?.material || "Sin versión técnica"}</p><p className="text-xs text-muted-foreground">{version ? `${version.micraje ?? "—"} µm · ${version.capas ?? "capas s/d"} · ${version.impresion ? "Impreso" : "Sin impresión"}` : "Especificación no registrada"}</p></td>
                     <td className="px-4 py-3">{p.unidad_medida}</td>
-                    <td className="px-4 py-3">{version?.material || "—"}</td>
-
-                    <td className="px-4 py-3">
-                      {version?.micraje != null
-                        ? `${version.micraje} µm`
-                        : "—"}
-                    </td>
-
-                    <td className="px-4 py-3">{version?.capas || "—"}</td>
-
-                    <td className="px-4 py-3">
-                      {version
-                        ? version.impresion
-                          ? "Sí"
-                          : "No"
-                        : "—"}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {version ? `v${version.version_numero}` : "—"}
-                    </td>
-
-                    <td className="px-4 py-3">{p.estado}</td>
+                    <td className="px-4 py-3"><Badge variant={homologacionVariant(p.estado_homologacion)}>{homologacionLabel(p.estado_homologacion)}</Badge>{p.numero_homologacion && <p className="mt-1 text-xs text-muted-foreground">N.º {p.numero_homologacion}</p>}</td>
+                    <td className="px-4 py-3"><Badge variant={p.estado ? "success" : "destructive"}>{p.estado ? "Activo" : "Inactivo"}</Badge></td>
+                    <td className="px-4 py-3"><div className="flex justify-end gap-1.5"><button type="button" aria-label={`Consultar ${p.nombre}`} onClick={() => setProductoConsultado(p)} className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"><Eye className="h-4 w-4" /></button>{p.estado_homologacion !== "homologado" && <button type="button" aria-label={`Editar ${p.nombre}`} onClick={() => abrirEdicion(p)} className="rounded-lg border border-border p-2 text-primary hover:bg-primary/5"><Pencil className="h-4 w-4" /></button>}</div></td>
                   </tr>
                 ))}
               </tbody>
@@ -456,6 +477,8 @@ export default function ProductosPage() {
           </div>
         </Card>
       )}
+
+      {errorCatalogo && !isLoading && <p role="status" className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground">No se pudieron cargar las especificaciones de versión. Los datos generales de productos siguen disponibles.</p>}
 
       {/* Paginación local de los productos recibidos */}
       {cantidad > 0 && (
@@ -496,14 +519,65 @@ export default function ProductosPage() {
         </div>
       )}
 
-      <NuevoProductoModal
+      {modalAbierto && (productoEditando ? <NuevoProductoModal
         open={modalAbierto}
-        onClose={() => setModalAbierto(false)}
+        onClose={cerrarModalProducto}
+        producto={productoEditando}
         onSuccess={() => {
-          setModalAbierto(false);
+          cerrarModalProducto();
           void recargarProductos();
         }}
-      />
+      /> : <ProductoComercialWizardModal
+        open={modalAbierto}
+        onClose={cerrarModalProducto}
+        onSuccess={() => {
+          cerrarModalProducto();
+          void recargarProductos();
+        }}
+      />)}
+
+      {productoConsultado && <ProductoDetalleDialog producto={productoConsultado} categoria={nombreCategoria(productoConsultado.categoria)} version={catalogoPorProducto.get(productoConsultado.id)} onClose={() => setProductoConsultado(null)} />}
     </div>
   );
+}
+
+function homologacionLabel(estado: Producto["estado_homologacion"]): string {
+  if (estado === "homologado") return "Homologado";
+  if (estado === "rechazado") return "Rechazado";
+  return "No homologado";
+}
+
+function homologacionVariant(estado: Producto["estado_homologacion"]): "success" | "warning" | "destructive" {
+  if (estado === "homologado") return "success";
+  if (estado === "rechazado") return "destructive";
+  return "warning";
+}
+
+function SummaryCard({ label, value, detail, tone }: { label: string; value: number; detail: string; tone: "warning" | "success" | "primary" }) {
+  const iconClass = tone === "success" ? "bg-success/10 text-success" : tone === "warning" ? "bg-warning/10 text-warning" : "bg-primary/10 text-primary";
+  return <Card><CardBody className="flex items-center gap-3 p-4 sm:p-5"><span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", iconClass)}>{tone === "success" ? <CheckCircle2 className="h-5 w-5" /> : <Package className="h-5 w-5" />}</span><div className="min-w-0"><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="mt-0.5 text-2xl font-bold leading-none text-foreground">{value}</p><p className="mt-1 truncate text-[11px] text-muted-foreground">{detail}</p></div></CardBody></Card>;
+}
+
+function ProductoDetalleDialog({ producto, categoria, version, onClose }: { producto: Producto; categoria: string; version?: ProductoBusquedaResultado; onClose: () => void }) {
+  const bag = version?.especificacion_bolsa;
+  const roll = version?.especificacion_bobina;
+  const itemClass = "rounded-lg border border-border bg-background px-3 py-3";
+  return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <section role="dialog" aria-modal="true" aria-labelledby="producto-detalle-title" className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+      <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 sm:px-6"><div><p className="font-mono text-xs font-semibold text-primary">{producto.codigo}</p><h2 id="producto-detalle-title" className="mt-1 text-lg font-bold text-foreground">{producto.nombre}</h2><div className="mt-2 flex flex-wrap gap-2"><Badge variant={homologacionVariant(producto.estado_homologacion)}>{homologacionLabel(producto.estado_homologacion)}</Badge><Badge variant={producto.estado ? "success" : "destructive"}>{producto.estado ? "Activo" : "Inactivo"}</Badge></div></div><button type="button" aria-label="Cerrar ficha" onClick={onClose} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary"><X className="h-5 w-5" /></button></header>
+      <div className="overflow-y-auto p-5 sm:p-6"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <DetailItem label="Categoría" value={categoria} className={itemClass} /><DetailItem label="Subcategoría" value={version?.subcategoria ?? "Sin subcategoría"} className={itemClass} /><DetailItem label="Unidad de medida" value={producto.unidad_medida} className={itemClass} />
+        <DetailItem label="Material" value={version?.material ?? "No especificado"} className={itemClass} /><DetailItem label="Micraje" value={version?.micraje != null ? `${version.micraje} µm` : "No especificado"} className={itemClass} /><DetailItem label="Capas" value={version?.capas ?? "No especificadas"} className={itemClass} />
+        <DetailItem label="Impresión" value={version ? version.impresion ? "Sí" : "No" : "No especificado"} className={itemClass} /><DetailItem label="Versión" value={version ? `v${version.version_numero}` : "Sin versión técnica"} className={itemClass} /><DetailItem label="N.º homologación" value={producto.numero_homologacion || "Sin asignar"} className={itemClass} />
+      </div>
+      {producto.descripcion && <p className="mt-4 rounded-lg bg-secondary/50 p-3 text-sm text-foreground">{producto.descripcion}</p>}
+      {bag && <section className="mt-5"><h3 className="mb-2 text-sm font-semibold text-foreground">Especificación de bolsa</h3><div className="grid gap-3 sm:grid-cols-2"><DetailItem label="Ancho doblado" value={`${bag.ancho_doblado} cm`} className={itemClass} /><DetailItem label="Ancho desdoblado" value={bag.ancho_desdoblado ? `${bag.ancho_desdoblado} cm` : "—"} className={itemClass} /><DetailItem label="Largo doblado" value={`${bag.largo_doblado} cm`} className={itemClass} /><DetailItem label="Sello / troquel" value={[bag.tipo_sello, bag.tipo_troquel].filter(Boolean).join(" · ") || "—"} className={itemClass} /></div></section>}
+      {roll && <section className="mt-5"><h3 className="mb-2 text-sm font-semibold text-foreground">Especificación de bobina</h3><div className="grid gap-3 sm:grid-cols-2"><DetailItem label="Ancho" value={`${roll.ancho} cm`} className={itemClass} /><DetailItem label="Longitud" value={roll.longitud ? `${roll.longitud} m` : "—"} className={itemClass} /><DetailItem label="Diámetro" value={roll.diametro ? `${roll.diametro} cm` : "—"} className={itemClass} /><DetailItem label="Núcleo" value={roll.tipo_nucleo || "—"} className={itemClass} /></div></section>}
+      </div><footer className="flex justify-end border-t border-border px-5 py-4 sm:px-6"><button type="button" onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary">Cerrar</button></footer>
+    </section>
+  </div>;
+}
+
+function DetailItem({ label, value, className }: { label: string; value: string; className: string }) {
+  return <div className={className}><p className="text-[11px] font-medium text-muted-foreground">{label}</p><p className="mt-1 text-sm font-semibold text-foreground">{value}</p></div>;
 }
