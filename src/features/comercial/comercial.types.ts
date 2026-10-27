@@ -543,11 +543,23 @@ export type TratamientoAcabadoEspecial =
   | "perforada"
   | "precorte";
 
-export interface EspecificacionProductoSolicitado {
+  export interface CamposImpresionPorCara {
+  tipo_impresion_cara_a: TipoImpresion | null;
+  tipo_impresion_cara_b: TipoImpresion | null;
+  numero_rodillo_cara_a: number | null;
+  numero_rodillo_cara_b: number | null;
+  denominacion_arte_cara_a: string;
+  denominacion_arte_cara_b: string;
+  referencia_diseno: string;
+}
+export interface EspecificacionProductoSolicitado
+  extends CamposImpresionPorCara {
   id: number;
   solicitud_comercial: number;
   categoria_producto: number;
   cara_impresion: CaraImpresion | "";
+  colores_cara_a: number | null;
+  colores_cara_b: number | null;
   material: MaterialProducto;
   apto_alimento: boolean;
   micraje: string | null;
@@ -555,7 +567,6 @@ export interface EspecificacionProductoSolicitado {
   impresion: boolean;
   color_impresion: string[];
   archivo_color_impresion: string | null;
-  tipo_impresion: TipoImpresion;
   tratamiento_impresion: TratamientoImpresion;
   posicion_impresion: PosicionImpresion;
   distancia_impresion_superior: string | null;
@@ -571,7 +582,8 @@ export interface EspecificacionProductoSolicitado {
   updated_at: string;
 }
 
-export interface EspecificacionProductoSolicitadoCreate {
+export interface EspecificacionProductoSolicitadoCreate
+  extends Partial<CamposImpresionPorCara> {
   solicitud_comercial: number;
   categoria_producto: number;
   material: MaterialProducto;
@@ -582,7 +594,6 @@ export interface EspecificacionProductoSolicitadoCreate {
   impresion: boolean;
   color_impresion: string[];
   archivo_color_impresion?: string | null;
-  tipo_impresion: TipoImpresion;
   tratamiento_impresion: TratamientoImpresion;
   posicion_impresion?: PosicionImpresion;
   distancia_impresion_superior?: string | null;
@@ -591,6 +602,8 @@ export interface EspecificacionProductoSolicitadoCreate {
   distancia_impresion_derecha?: string | null;
   otras_caracteristicas?: string;
   cara_impresion?: CaraImpresion | "";
+  colores_cara_a?: number | null;
+  colores_cara_b?: number | null;
   opacidad?: Opacidad;
   tratamientos_acabados_especiales?: TratamientoAcabadoEspecial[];
   variantes_color?: VarianteColorSolicitadaCreate[];
@@ -603,12 +616,15 @@ export type EspecificacionProductoSolicitadoUpdate =
 // VERSIONES DE ESPECIFICACIÓN DE PRODUCTO SOLICITADO
 // ============================================================
 
-export interface EspecificacionProductoSolicitadoVersion {
+export interface EspecificacionProductoSolicitadoVersion
+  extends CamposImpresionPorCara {
   id: number;
   especificacion_producto_solicitado: number;
   version: number;
   categoria_producto: number;
   cara_impresion: CaraImpresion | "";
+  colores_cara_a: number | null;
+  colores_cara_b: number | null;
   material: MaterialProducto;
   apto_alimento: boolean;
   micraje: string | null;
@@ -625,8 +641,7 @@ export interface EspecificacionProductoSolicitadoVersion {
   distancia_impresion_derecha: string | null;
   otras_caracteristicas: string;
   opacidad: Opacidad;
-  tratamientos_acabados_especiales:
-    TratamientoAcabadoEspecial[];
+  tratamientos_acabados_especiales: TratamientoAcabadoEspecial[];
   capas: TipoCapa;
   motivo_cambio: string | null;
   fecha_version: string;
@@ -635,7 +650,8 @@ export interface EspecificacionProductoSolicitadoVersion {
   updated_at: string;
 }
 
-export interface EspecificacionProductoSolicitadoVersionCreate {
+export interface EspecificacionProductoSolicitadoVersionCreate
+  extends Partial<CamposImpresionPorCara> {
   especificacion_producto_solicitado: number;
   version: number;
   categoria_producto: number;
@@ -655,15 +671,15 @@ export interface EspecificacionProductoSolicitadoVersionCreate {
   distancia_impresion_derecha?: string | null;
   otras_caracteristicas?: string;
   cara_impresion?: CaraImpresion | "";
+  colores_cara_a?: number | null;
+  colores_cara_b?: number | null;
   opacidad?: Opacidad;
-  tratamientos_acabados_especiales?:
-    TratamientoAcabadoEspecial[];
+  tratamientos_acabados_especiales?: TratamientoAcabadoEspecial[];
   motivo_cambio?: string | null;
 }
 
 export type EspecificacionProductoSolicitadoVersionUpdate =
   Partial<EspecificacionProductoSolicitadoVersionCreate>;
-
 // ============================================================
 // ESPECIFICACIÓN DE BOLSA SOLICITADA
 // ============================================================

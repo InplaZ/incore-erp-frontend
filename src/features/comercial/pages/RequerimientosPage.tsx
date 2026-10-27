@@ -49,7 +49,6 @@ import RequerimientoStepEntrega from "../components/requerimientos/Requerimiento
 import RequerimientoStepConfirmacion from "../components/requerimientos/RequerimientoStepConfirmacion";
 import RequerimientoNavigation from "../components/requerimientos/RequerimientoNavigation";
 import ProductoConfirmacionModal from "../components/requerimientos/ProductoConfirmacionModal";
-import NuevoClienteModal from "../components/NuevoClienteModal";
 
 import type {
   ProductoBusquedaResultado,
@@ -1492,12 +1491,6 @@ export default function RequerimientosPage() {
           onClose={handleBuscarOtroProducto}
         />
       )}
-
-      <NuevoClienteModal
-        open={mostrarNuevoCliente}
-        onClose={() => setMostrarNuevoCliente(false)}
-        onSuccess={() => setBuscarCliente("")}
-      />
 
       {mostrarCotizacion && <CotizacionModal
         open
