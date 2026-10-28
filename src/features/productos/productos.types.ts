@@ -84,7 +84,7 @@ export interface Producto {
   nombre: string;
   descripcion: string;
   imagen: string | null;
-  unidad_medida: "unidad" | "fajo" | "metro";
+  unidad_medida: "unidad" | "kg" | "rollos";
   pais_origen: string;
   estado: boolean;
   estado_homologacion: "pendiente" | "homologado" | "rechazado";

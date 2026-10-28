@@ -48,7 +48,7 @@ type Wizard = {
   printColors: string;
   colorsFaceA: string;
   colorsFaceB: string;
-  designId: string; unit: "unidad" | "fajo" | "metro"; unitsPerPack: string;
+  designId: string; unit: "unidad" | "kg" | "rollos"; unitsPerPack: string;
   packagesPerJaba: string; jabasPerBundle: string; finishes: string[]; otherFinish: string; notes: string;
   quantity: string;
 };
@@ -58,7 +58,8 @@ const initialForm: Wizard = {
   name: "", productType: "bolsa", categoria: "", subcategoria: "", application: "Comercio y supermercados",
   use: "", content: "", food: false, material: "PEBD", layers: "monocapa", micraje: "", color: "",
   width: "", widthFlat: "", length: "", foldLength: "", fuelle: false, sides: [],
-  sideMeasures: { Arriba: "", Abajo: "", Izquierda: "", Derecha: "" }, troquel: "normal", sello: "fondo",
+  sideMeasures: { Arriba: "", Abajo: "", Izquierda: "", Derecha: "" },
+  troquel: "plana", sello: "fondo",
   pestana: "sin_pestana", meters: "", diameter: "", coreDiameter: "", coreType: "", weight: "",
   impression: false,
   printType: "corrida",
@@ -87,15 +88,15 @@ const layers = [["monocapa", "Monocapa"], ["bicapa", "Bicapa"], ["tricapa", "Tri
 const applications = ["Empaque primario alimenticio", "Empaque secundario alimenticio", "Empaque industrial", "Agricultura y horticultura", "Comercio y supermercados", "Textil y confecciones", "Presentación de marca", "Agrupación y transporte", "Higiene y limpieza", "Otros usos"];
 const sides = ["Arriba", "Abajo", "Izquierda", "Derecha"];
 const troqueles = [
-  { value: "normal", label: "Plana" },
+  { value: "plana", label: "Plana" },
   { value: "camiseta", label: "Camiseta" },
   { value: "boutique", label: "Boutique" },
-  { value: "con_asa", label: "Con asa" },
-  { value: "refuerzo", label: "Boutique reforzada" },
+  { value: "asa", label: "Con asa" },
+  { value: "boutique_reforzada", label: "Boutique reforzada" },
   { value: "solapa", label: "Solapa" },
   { value: "adhesiva", label: "Cinta adhesiva" },
   { value: "cierre_facil", label: "Cinta cierre fácil" },
-  { value: "doble_fondo", label: "Sello doble fondo" },
+  { value: "sello_doble_fondo", label: "Sello doble fondo" },
 ];
 
 type TroquelSVGProps = {
@@ -148,7 +149,7 @@ function TroquelSVG({ type }: TroquelSVGProps) {
       );
       break;
 
-    case "con_asa":
+    case "asa":
       dibujo = (
         <>
           <path
@@ -167,7 +168,7 @@ function TroquelSVG({ type }: TroquelSVGProps) {
       );
       break;
 
-    case "refuerzo":
+    case "boutique_reforzada":
       dibujo = (
         <>
           {bolsa}
@@ -251,7 +252,7 @@ function TroquelSVG({ type }: TroquelSVGProps) {
       );
       break;
 
-    case "doble_fondo":
+    case "doble_sello_fondo":
       dibujo = (
         <>
           {bolsa}
@@ -386,6 +387,9 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
   // Estado de navegación y datos temporales de esta creación.
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<Wizard>(initialForm);
+  const [quantityUnit, setQuantityUnit] = useState<
+    "unidad" | "kg" | "rollos"
+  >("unidad");
   const [referenceId, setReferenceId] = useState("");
   const [error, setError] = useState("");
   const [feasibility, setFeasibility] = useState<EvaluarViabilidadResponse | null>(null);
@@ -415,7 +419,23 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
           categoria_producto: categoryId, material: s.material, capas: s.layers,
           apto_alimento: s.food, micraje: s.micraje || null, color_bolsa: s.color,
           impresion: s.impression, tipo_impresion: s.printType,
-          tratamiento_impresion: s.printTreatment, cara_impresion: s.impression ? s.printFace : "",
+          tratamiento_impresion: s.printTreatment,
+          cara_impresion: s.impression ? s.printFace : "",
+
+          // Colores requeridos por cada cara
+          colores_cara_a: s.impression && s.colorsFaceA !== ""
+            ? Number(s.colorsFaceA)
+            : null,
+          colores_cara_b: s.impression && s.printFace === "dos_caras" && s.colorsFaceB !== ""
+            ? Number(s.colorsFaceB)
+            : null,
+
+          // Rodillos requeridos por cada cara
+          rodillo_cara_a: s.impression ? s.printRollerFaceA.trim() || null : null,
+          rodillo_cara_b: s.impression && s.printFace === "dos_caras"
+            ? s.printRollerFaceB.trim() || null
+            : null,
+
           opacidad: "", tratamientos_acabados_especiales: s.finishes, otras_caracteristicas: s.notes,
         },
         ...(s.productType === "bolsa" ? {
@@ -427,7 +447,9 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
             fuelle_superior: s.sideMeasures.Arriba || null, tipo_troquel: s.troquel,
             tipo_sello: s.sello, pestana: s.pestana,
             acabado_especial: [...s.finishes.filter(v => v !== "otro"), ...(s.finishes.includes("otro") && s.otherFinish ? [s.otherFinish.trim().toLowerCase()] : [])].join(","),
-            otras_caracteristicas: s.troquel === "doble_fondo" ? `Sello doble fondo. ${s.notes}`.trim() : s.notes,
+            otras_caracteristicas: s.troquel === "sello_doble_fondo"
+              ? `Sello doble fondo. ${s.notes}`.trim()
+              : s.notes,
           }
         } : {
           especificacion_bobina: {
@@ -449,6 +471,9 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
     let vigente = true;
 
     const cantidad = Number(form.quantity);
+
+    // Para convertir desde kg, consultamos primero el peso de una unidad.
+    const cantidadParaCalculo = quantityUnit === "kg" ? 1 : cantidad;
 
     if (
       !open ||
@@ -487,7 +512,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
         const resultado = await api.post<PesosProductoResponse>(
           "/comercial/cotizaciones/calcular-peso/",
           {
-            cantidad,
+            cantidad: cantidadParaCalculo,
             datos_especificacion: weightPayload,
           },
         );
@@ -537,6 +562,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
     form.length,
     form.meters,
     form.productType,
+    quantityUnit,
     weightPayload,
   ]);
   useEffect(() => {
@@ -650,27 +676,75 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
   };
 
   // Validaciones de navegación entre pasos, antes de permitir avanzar.
+
+  const validateStep = (stepToValidate: number): string | null => {
+    if (stepToValidate === 0) {
+      if (!form.name.trim()) {
+        return "Ingresa el nombre o denominación del producto.";
+      }
+      if (!form.categoria) {
+        return "Selecciona una categoría para continuar.";
+      }
+    }
+
+    if (stepToValidate === 1) {
+      if (!form.material || !form.layers) {
+        return "Selecciona el material y el número de capas.";
+      }
+      if (!form.micraje.trim() || Number(form.micraje) <= 0) {
+        return "Ingresa un espesor mayor que cero.";
+      }
+      if (!form.width.trim() || Number(form.width) <= 0) {
+        return "Ingresa un ancho mayor que cero.";
+      }
+      if (
+        form.productType === "bobina" &&
+        (!form.meters.trim() || Number(form.meters) <= 0)
+      ) {
+        return "Ingresa una longitud de bobina mayor que cero.";
+      }
+      if (form.productType === "bolsa" && form.finishes.length > 1) {
+        return "Solo puedes seleccionar un acabado especial.";
+      }
+      if (
+        form.productType === "bolsa" &&
+        form.finishes.includes("otro") &&
+        !form.otherFinish.trim()
+      ) {
+        return "Especifica el acabado especial seleccionado.";
+      }
+    }
+
+    if (stepToValidate === 2 && form.impression) {
+      if (!form.printFace) {
+        return "Selecciona una o dos caras de impresión.";
+      }
+      if (!form.colorsFaceA.trim() || Number(form.colorsFaceA) <= 0) {
+        return "Indica una cantidad válida de colores para la cara A.";
+      }
+      if (form.printFace === "dos_caras") {
+        if (!form.colorsFaceB.trim() || Number(form.colorsFaceB) <= 0) {
+          return "Indica una cantidad válida de colores para la cara B.";
+        }
+      }
+    }
+
+    return null;
+  };
+
   const advance = () => {
     setError("");
-    console.log("Validación de características:", {
-      material: form.material,
-      layers: form.layers,
-      micraje: form.micraje,
-      width: form.width,
-      length: form.length,
-      meters: form.meters,
-      productType: form.productType,
-    });
-    if (step === 1 && (!form.material || !form.layers || !form.micraje || !form.width || (form.productType === "bolsa" ? !form.length : !form.meters))) {
-      setError("Completa material, capas, espesor y dimensiones obligatorias antes de continuar.");
+
+    const validationError = validateStep(step);
+
+    if (validationError) {
+      setError(validationError);
       return;
     }
-    if (step === 2 && form.impression && !form.printFace) {
-      setError("Selecciona las caras de impresión de la versión.");
-      return;
-    }
-    setStep(v => Math.min(v + 1, steps.length - 1));
+
+    setStep(current => Math.min(current + 1, steps.length - 1));
   };
+
 
   // Contenido de cada paso del wizard:
   // 0 Aplicación · 1 Características físicas · 2 Impresión · 3 Diseño
@@ -820,8 +894,8 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
                   onClick={() => set("troquel", t.value)}
                   aria-pressed={form.troquel === t.value}
                   className={`flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold transition-colors ${form.troquel === t.value
-                      ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-slate-200 bg-white text-slate-800 hover:border-blue-300"
+                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    : "border-slate-200 bg-white text-slate-800 hover:border-blue-300"
                     }`}
                 >
                   <TroquelSVG type={t.value} />
@@ -1085,14 +1159,23 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
               onChange={e => set("quantity", e.target.value)}
               placeholder={form.productType === "bolsa" ? "Cantidad de bolsas" : "Cantidad de rollos"}
             />
-          </label>
-          <label className="block">
-            <span className={labelClass}>Unidad de venta</span>
-            <select className={inputClass} value={form.unit} onChange={e => set("unit", e.target.value as Wizard["unit"])}>
-              <option value="unidad">Unidades</option>
-              <option value="fajo">Fajos</option>
-              <option value="metro">Metros</option>
-            </select>
+            <label className="block">
+              <span className={labelClass}>Unidad para calcular</span>
+
+              <select
+                className={inputClass}
+                value={quantityUnit}
+                onChange={(e) =>
+                  setQuantityUnit(e.target.value as typeof quantityUnit)
+                }
+              >
+                <option value="unidad">Unidades</option>
+                <option value="kg">Kg</option>
+                {form.productType === "bobina" && (
+                  <option value="rollos">Rollos</option>
+                )}
+              </select>
+            </label>
           </label>
         </div>
 
@@ -1144,8 +1227,40 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
   return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/55 p-2 sm:p-4">
     <div className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
       <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4"><h2 className="text-base font-bold text-slate-800 sm:text-lg">Producto comercial nuevo · {steps[step]}</h2><button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button></header>
-      <div className="flex-1 overflow-y-auto p-4 sm:p-5"><nav className="mb-5 flex gap-2 overflow-x-auto pb-1">{steps.map((name, i) => <button type="button" key={name} onClick={() => setStep(i)} className={`shrink-0 rounded-full border px-3 py-2 text-[11px] font-bold ${i === step ? "border-blue-600 bg-blue-50 text-blue-700" : i < step ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-100 text-slate-500"}`}>{i < step && <Check className="mr-1 inline h-3 w-3" />}{i + 1}. {name}</button>)}</nav>
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_285px]"><div className="min-h-[330px] rounded-xl border border-slate-200 bg-white p-4 sm:p-5">{stepBody()}{error && <div role="alert" className="mt-4 flex gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}</div><aside className="rounded-xl border border-slate-200 bg-slate-50 p-3"><ViabilidadPreviaPanel resultado={evaluatedKey === payloadKey ? feasibility : null} cargando={checking || (isReadyForFeasibility && evaluatedKey !== payloadKey)} error={evaluatedKey === payloadKey ? feasibilityError : null} /></aside></div>
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+        {error && (
+          <div
+            role="alert"
+            className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700"
+          >
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+        <nav className="mb-5 flex gap-2 overflow-x-auto pb-1">{steps.map((name, i) => <button type="button" key={name}
+          onClick={() => {
+            setError("");
+
+            // Permitir regresar sin validar.
+            if (i <= step) {
+              setStep(i);
+              return;
+            }
+
+            // Validar los pasos que se quieren dejar atrás.
+            for (let currentStep = step; currentStep < i; currentStep++) {
+              const validationError = validateStep(currentStep);
+
+              if (validationError) {
+                setError(validationError);
+                return;
+              }
+            }
+
+            setStep(i);
+          }}
+          className={`shrink-0 rounded-full border px-3 py-2 text-[11px] font-bold ${i === step ? "border-blue-600 bg-blue-50 text-blue-700" : i < step ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-100 text-slate-500"}`}>{i < step && <Check className="mr-1 inline h-3 w-3" />}{i + 1}. {name}</button>)}</nav>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_285px]"><div className="min-h-[330px] rounded-xl border border-slate-200 bg-white p-4 sm:p-5">{stepBody()}</div><aside className="rounded-xl border border-slate-200 bg-slate-50 p-3"><ViabilidadPreviaPanel resultado={evaluatedKey === payloadKey ? feasibility : null} cargando={checking || (isReadyForFeasibility && evaluatedKey !== payloadKey)} error={evaluatedKey === payloadKey ? feasibilityError : null} /></aside></div>
       </div>
       <footer className="flex flex-col-reverse gap-2 border-t border-slate-200 px-4 py-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} disabled={create.isPending} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Cancelar</button>{step > 0 && <button type="button" onClick={() => { setStep(v => v - 1); setError(""); }} className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold"><ChevronLeft className="h-4 w-4" />Atrás</button>}{step < steps.length - 1 ? <button type="button" onClick={advance} className="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">Siguiente<ChevronRight className="h-4 w-4" /></button> : <button type="button" disabled={create.isPending} onClick={save} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">{create.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}{create.isPending ? "Guardando…" : "Guardar producto y añadir"}</button>}</footer>
     </div>

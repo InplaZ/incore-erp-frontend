@@ -7,7 +7,6 @@ import type {
 } from "../../comercial.types";
 
 import { useCuentasComerciales } from "@/features/comercial/comercial.hooks";
-import NuevoClienteModal from "@/features/comercial/components/NuevoClienteModal";
 import { useState, useEffect } from "react";
 
 interface RequerimientoStepEntregaProps {
@@ -385,10 +384,6 @@ export default function RequerimientoStepEntrega({
           rows={5}
           placeholder="Observaciones adicionales de la cotización..."
           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
-        />
-        <NuevoClienteModal
-          open={showNuevoClienteModal}
-          onClose={() => setShowNuevoClienteModal(false)}
         />
 
       </div>

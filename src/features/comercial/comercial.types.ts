@@ -685,14 +685,16 @@ export type EspecificacionProductoSolicitadoVersionUpdate =
 // ============================================================
 
 export type TipoTroquel =
+  | "plana"
   | "camiseta"
-  | "normal"
+  | "boutique"
+  | "boutique_reforzada"
   | "rinonera"
-  | "con_asa"
-  | "refuerzo"
+  | "asa"
   | "solapa"
   | "adhesiva"
-  | "cierre_facil";
+  | "cierre_facil"
+  | "sello_doble_fondo"
 
 export type TipoSello =
   | "fondo"

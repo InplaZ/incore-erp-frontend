@@ -30,15 +30,21 @@ export interface CriterioViabilidad {
   valor_capacidad?: unknown;
 }
 
+
 export interface ResultadoMaquinaViabilidad {
+  capacidad_id?: number;
+  maquinaria_id?: number;
+  equipo_id?: number;
   equipo?: string;
   resultado?: string;
   estado?: "viable" | "no_viable" | "pendiente";
   viable?: boolean;
+  cumple?: boolean | null;
   disponibilidad?: string;
   criterios?: CriterioViabilidad[];
   criterios_evaluados?: CriterioViabilidad[];
 }
+
 
 export interface EvaluarViabilidadResponse {
   exito: boolean;
