@@ -48,7 +48,7 @@ export const navigationItems: NavigationItem[] = [
   },
   {
     id: "comercial",
-    label: "Comercial",
+    label: "Ofertas comerciales",
     href: "/comercial",
     icon: <BriefcaseBusiness className="size-5" />,
   },

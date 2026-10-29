@@ -12,6 +12,7 @@ import {
   Plus,
   X,
 } from "lucide-react";
+import FichaTecnicaPDF from "./FichaTecnicaPDF";
 
 import {
   useBuscarProductosCatalogo,
@@ -42,6 +43,9 @@ export default function ProductosPage() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [productoEditando, setProductoEditando] = useState<Producto | null>(null);
   const [productoConsultado, setProductoConsultado] = useState<Producto | null>(null);
+
+  //Estado del pdf
+  const [productoPDF, setProductoPDF] = useState<Producto | null>(null);
 
   // Listado general: base de todos los productos registrados.
   const {
@@ -114,14 +118,14 @@ export default function ProductosPage() {
         const coincideCategoria =
           !categoria ||
           nombreCategoria(producto.categoria).toLocaleLowerCase() ===
-            categoria.toLocaleLowerCase();
+          categoria.toLocaleLowerCase();
 
         // Si se selecciona un material, el producto debe tener
         // una versión del catálogo que coincida con ese material.
         const coincideMaterial =
           !material ||
           version?.material?.toLocaleUpperCase() ===
-            material.toLocaleUpperCase();
+          material.toLocaleUpperCase();
 
         return (
           coincideCatalogo &&
@@ -197,7 +201,7 @@ export default function ProductosPage() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto border-b border-border pb-2" role="tablist" aria-label="Tipo de producto">
-        {([ ["todos", "Todos"], ["comerciales", "Productos comerciales"], ["homologados", "Homologados"] ] as const).map(([value, label]) => (
+        {([["todos", "Todos"], ["comerciales", "Productos comerciales"], ["homologados", "Homologados"]] as const).map(([value, label]) => (
           <button key={value} type="button" role="tab" aria-selected={catalogo === value}
             onClick={() => { setCatalogo(value); setPagina(1); }}
             className={cn("shrink-0 rounded-lg px-3.5 py-2 text-sm font-semibold transition", catalogo === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}>
@@ -440,42 +444,94 @@ export default function ProductosPage() {
           ))}
         </div>
       ) : (
+
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase text-slate-500">
-                  <th className="px-4 py-3">Código</th>
-                  <th className="px-4 py-3">Descripción</th>
-                  <th className="px-4 py-3">Tipo / categoría</th>
-                  <th className="px-4 py-3">Especificación</th>
-                  <th className="px-4 py-3">Unidad</th>
-                  <th className="px-4 py-3">Homologación</th>
-                  <th className="px-4 py-3">Estado</th>
-                  <th className="px-4 py-3 text-right">Acción</th>
+                <tr className="border-b border-slate-200 bg-slate-50 text-left text-[10px] uppercase tracking-wide text-slate-500">
+                  <th className="px-3 py-3">Código</th>
+                  <th className="px-3 py-3">Descripción</th>
+                  <th className="px-3 py-3">Tipo / medidas</th>
+                  <th className="px-3 py-3">Unidad única</th>
+                  <th className="px-3 py-3">Estado</th>
+                  <th className="px-3 py-3">Mercado</th>
+                  <th className="px-3 py-3 text-right">Acción</th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-100">
-                {productosPagina.map(({ producto: p, version }) => (
-                  <tr
-                    key={p.id}
-                    className="transition hover:bg-slate-50"
-                  >
-                    <td className="px-4 py-3 font-mono text-xs font-semibold text-primary">{p.codigo}</td>
-                    <td className="px-4 py-3"><p className="font-semibold text-foreground">{p.nombre}</p><p className="mt-0.5 text-xs text-muted-foreground">{p.descripcion || "Sin descripción"}</p></td>
-                    <td className="px-4 py-3"><p className="font-medium text-foreground">{nombreCategoria(p.categoria)}</p><p className="text-xs text-muted-foreground">{version?.subcategoria ?? (p.subcategoria != null ? `ID ${p.subcategoria}` : "Sin subcategoría")}</p></td>
-                    <td className="px-4 py-3"><p>{version?.material || "Sin versión técnica"}</p><p className="text-xs text-muted-foreground">{version ? `${version.micraje ?? "—"} µm · ${version.capas ?? "capas s/d"} · ${version.impresion ? "Impreso" : "Sin impresión"}` : "Especificación no registrada"}</p></td>
-                    <td className="px-4 py-3">{p.unidad_medida}</td>
-                    <td className="px-4 py-3"><Badge variant={homologacionVariant(p.estado_homologacion)}>{homologacionLabel(p.estado_homologacion)}</Badge>{p.numero_homologacion && <p className="mt-1 text-xs text-muted-foreground">N.º {p.numero_homologacion}</p>}</td>
-                    <td className="px-4 py-3"><Badge variant={p.estado ? "success" : "destructive"}>{p.estado ? "Activo" : "Inactivo"}</Badge></td>
-                    <td className="px-4 py-3"><div className="flex justify-end gap-1.5"><button type="button" aria-label={`Consultar ${p.nombre}`} onClick={() => setProductoConsultado(p)} className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"><Eye className="h-4 w-4" /></button>{p.estado_homologacion !== "homologado" && <button type="button" aria-label={`Editar ${p.nombre}`} onClick={() => abrirEdicion(p)} className="rounded-lg border border-border p-2 text-primary hover:bg-primary/5"><Pencil className="h-4 w-4" /></button>}</div></td>
-                  </tr>
-                ))}
+                {productosPagina.map(({ producto: p, version }) => {
+                  const bolsa = version?.especificacion_bolsa;
+                  const bobina = version?.especificacion_bobina;
+
+                  const medidas = bolsa
+                    ? `Bolsa · ${bolsa.ancho_doblado} cm × ${bolsa.largo_doblado} cm × ${version?.micraje ?? "—"} µm`
+                    : bobina
+                      ? `Rollo · ${bobina.ancho} cm${bobina.longitud ? ` × ${bobina.longitud} metros` : ""} × ${version?.micraje ?? "—"} µm`
+                      : `${nombreCategoria(p.categoria)} · ${version?.micraje != null ? `${version.micraje} µm` : "Medidas no registradas"}`;
+
+                  return (
+                    <tr
+                      key={p.id}
+                      className="transition hover:bg-slate-50"
+                    >
+                      <td className="whitespace-nowrap px-3 py-4 font-mono text-xs text-slate-700">
+                        {p.codigo}
+                      </td>
+
+                      <td className="min-w-[190px] px-3 py-4">
+                        <p className="font-semibold text-slate-800">
+                          {p.nombre}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {version?.material || p.descripcion || "Sin material especificado"}
+                        </p>
+                      </td>
+
+                      <td className="min-w-[210px] px-3 py-4 text-xs text-slate-600">
+                        {medidas}
+                      </td>
+
+                      <td className="px-3 py-4">
+                        <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-700">
+                          {p.unidad_medida}
+                        </span>
+                      </td>
+
+                      <td className="px-3 py-4">
+                        <Badge variant={p.estado ? "success" : "destructive"}>
+                          {p.estado ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </td>
+
+                      <td className="px-3 py-4 text-xs text-slate-600">
+                        <span className="text-slate-400">No definido</span>
+                      </td>
+
+                      <td className="px-3 py-4">
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProductoPDF(p);
+                              // Aquí se conectará la acción que abre la ficha PDF.
+                            }}
+                            className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            Ficha PDF
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </Card>
+
       )}
 
       {errorCatalogo && !isLoading && <p role="status" className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground">No se pudieron cargar las especificaciones de versión. Los datos generales de productos siguen disponibles.</p>}
@@ -535,6 +591,14 @@ export default function ProductosPage() {
           void recargarProductos();
         }}
       />)}
+      {productoPDF && (
+        <FichaTecnicaPDF
+          producto={productoPDF}
+          categoria={nombreCategoria(productoPDF.categoria)}
+          version={catalogoPorProducto.get(productoPDF.id)}
+          onClose={() => setProductoPDF(null)}
+        />
+      )}
 
       {productoConsultado && <ProductoDetalleDialog producto={productoConsultado} categoria={nombreCategoria(productoConsultado.categoria)} version={catalogoPorProducto.get(productoConsultado.id)} onClose={() => setProductoConsultado(null)} />}
     </div>
@@ -570,9 +634,9 @@ function ProductoDetalleDialog({ producto, categoria, version, onClose }: { prod
         <DetailItem label="Material" value={version?.material ?? "No especificado"} className={itemClass} /><DetailItem label="Micraje" value={version?.micraje != null ? `${version.micraje} µm` : "No especificado"} className={itemClass} /><DetailItem label="Capas" value={version?.capas ?? "No especificadas"} className={itemClass} />
         <DetailItem label="Impresión" value={version ? version.impresion ? "Sí" : "No" : "No especificado"} className={itemClass} /><DetailItem label="Versión" value={version ? `v${version.version_numero}` : "Sin versión técnica"} className={itemClass} /><DetailItem label="N.º homologación" value={producto.numero_homologacion || "Sin asignar"} className={itemClass} />
       </div>
-      {producto.descripcion && <p className="mt-4 rounded-lg bg-secondary/50 p-3 text-sm text-foreground">{producto.descripcion}</p>}
-      {bag && <section className="mt-5"><h3 className="mb-2 text-sm font-semibold text-foreground">Especificación de bolsa</h3><div className="grid gap-3 sm:grid-cols-2"><DetailItem label="Ancho doblado" value={`${bag.ancho_doblado} cm`} className={itemClass} /><DetailItem label="Ancho desdoblado" value={bag.ancho_desdoblado ? `${bag.ancho_desdoblado} cm` : "—"} className={itemClass} /><DetailItem label="Largo doblado" value={`${bag.largo_doblado} cm`} className={itemClass} /><DetailItem label="Sello / troquel" value={[bag.tipo_sello, bag.tipo_troquel].filter(Boolean).join(" · ") || "—"} className={itemClass} /></div></section>}
-      {roll && <section className="mt-5"><h3 className="mb-2 text-sm font-semibold text-foreground">Especificación de bobina</h3><div className="grid gap-3 sm:grid-cols-2"><DetailItem label="Ancho" value={`${roll.ancho} cm`} className={itemClass} /><DetailItem label="Longitud" value={roll.longitud ? `${roll.longitud} m` : "—"} className={itemClass} /><DetailItem label="Diámetro" value={roll.diametro ? `${roll.diametro} cm` : "—"} className={itemClass} /><DetailItem label="Núcleo" value={roll.tipo_nucleo || "—"} className={itemClass} /></div></section>}
+        {producto.descripcion && <p className="mt-4 rounded-lg bg-secondary/50 p-3 text-sm text-foreground">{producto.descripcion}</p>}
+        {bag && <section className="mt-5"><h3 className="mb-2 text-sm font-semibold text-foreground">Especificación de bolsa</h3><div className="grid gap-3 sm:grid-cols-2"><DetailItem label="Ancho doblado" value={`${bag.ancho_doblado} cm`} className={itemClass} /><DetailItem label="Ancho desdoblado" value={bag.ancho_desdoblado ? `${bag.ancho_desdoblado} cm` : "—"} className={itemClass} /><DetailItem label="Largo doblado" value={`${bag.largo_doblado} cm`} className={itemClass} /><DetailItem label="Sello / troquel" value={[bag.tipo_sello, bag.tipo_troquel].filter(Boolean).join(" · ") || "—"} className={itemClass} /></div></section>}
+        {roll && <section className="mt-5"><h3 className="mb-2 text-sm font-semibold text-foreground">Especificación de bobina</h3><div className="grid gap-3 sm:grid-cols-2"><DetailItem label="Ancho" value={`${roll.ancho} cm`} className={itemClass} /><DetailItem label="Longitud" value={roll.longitud ? `${roll.longitud} m` : "—"} className={itemClass} /><DetailItem label="Diámetro" value={roll.diametro ? `${roll.diametro} cm` : "—"} className={itemClass} /><DetailItem label="Núcleo" value={roll.tipo_nucleo || "—"} className={itemClass} /></div></section>}
       </div><footer className="flex justify-end border-t border-border px-5 py-4 sm:px-6"><button type="button" onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary">Cerrar</button></footer>
     </section>
   </div>;
