@@ -30,7 +30,12 @@ type Wizard = {
   application: string; use: string; content: string; food: boolean;
   material: string; layers: string; micraje: string; color: string;
   width: string; widthFlat: string; length: string; foldLength: string;
-  fuelle: boolean; sides: string[]; sideMeasures: Record<string, string>;
+  fuelle: boolean;
+  sides: string[];
+  sideMeasures: Record<string, string>;
+  sideSymmetry: "simetrico" | "asimetrico";
+  commonSideMeasure: string;
+  filmCutSides: string[];
   troquel: string; sello: string; pestana: string; meters: string; diameter: string;
   coreDiameter: string; coreType: string; weight: string;
   impression: boolean;
@@ -48,17 +53,32 @@ type Wizard = {
   printColors: string;
   colorsFaceA: string;
   colorsFaceB: string;
-  designId: string; unit: "unidad" | "kg" | "rollos"; unitsPerPack: string;
+  designId: string;
+  unit: "unidad" | "kg" | "rollos"; unitsPerPack: string;
   packagesPerJaba: string; jabasPerBundle: string; finishes: string[]; otherFinish: string; notes: string;
   quantity: string;
+  filmConfig: string;
+  bobinaFinishes: string[];
+  widthType: "doblado" | "desdoblado";
+  // Fuelle exclusivo de bobina
+  bobinaSides: string[];
+  bobinaSideMeasures: Record<string, string>;
+  bobinaSideSymmetry: "simetrico" | "asimetrico";
+  bobinaCommonSideMeasure: string;
+
 };
 
 
 const initialForm: Wizard = {
   name: "", productType: "bolsa", categoria: "", subcategoria: "", application: "Comercio y supermercados",
   use: "", content: "", food: false, material: "PEBD", layers: "monocapa", micraje: "", color: "",
-  width: "", widthFlat: "", length: "", foldLength: "", fuelle: false, sides: [],
+  width: "", widthFlat: "", length: "", foldLength: "",
+  fuelle: false,
+  sides: [],
   sideMeasures: { Arriba: "", Abajo: "", Izquierda: "", Derecha: "" },
+  sideSymmetry: "simetrico",
+  commonSideMeasure: "",
+  filmCutSides: [],
   troquel: "plana", sello: "fondo",
   pestana: "sin_pestana", meters: "", diameter: "", coreDiameter: "", coreType: "", weight: "",
   impression: false,
@@ -79,6 +99,16 @@ const initialForm: Wizard = {
   designId: "", unit: "unidad", unitsPerPack: "0", packagesPerJaba: "0", jabasPerBundle: "0",
   finishes: [], otherFinish: "", notes: "",
   quantity: "",
+  filmConfig: "tubular",
+  bobinaFinishes: [],
+  widthType: "desdoblado",
+  bobinaSides: [],
+  bobinaSideMeasures: {
+    Izquierda: "",
+    Derecha: "",
+  },
+  bobinaSideSymmetry: "simetrico",
+  bobinaCommonSideMeasure: "",
 };
 
 // Opciones de presentación del formulario. Los valores enviados al backend
@@ -379,7 +409,55 @@ function FuelleSVG({ sides }: FuelleSVGProps) {
     </svg>
   );
 }
+type FilmConfigSVGProps = {
+  type: "tubular" | "corte_lateral" | "corte_separacion";
+};
 
+function FilmConfigSVG({ type }: FilmConfigSVGProps) {
+  return (
+    <svg
+      viewBox="0 0 110 64"
+      className="h-16 w-28"
+      role="img"
+      aria-label={`Configuración ${type}`}
+    >
+      <ellipse
+        cx="26" cy="31" rx="17" ry="23"
+        fill="#d9e8f8" stroke="#567083" strokeWidth="2"
+      />
+      <path
+        d="M26 8 H75 M26 54 H75"
+        stroke="#567083"
+        strokeWidth="2"
+      />
+      <ellipse
+        cx="75" cy="31" rx="17" ry="23"
+        fill="#d9e8f8" stroke="#567083" strokeWidth="2"
+      />
+      <ellipse
+        cx="75" cy="31" rx="5" ry="8"
+        fill="white" stroke="#567083"
+      />
+
+      {type === "corte_lateral" && (
+        <path
+          d="M93 10 V52"
+          stroke="#e49c31"
+          strokeWidth="3"
+          strokeDasharray="4 3"
+        />
+      )}
+
+      {type === "corte_separacion" && (
+        <path
+          d="M80 31 L104 12 M80 31 L104 52"
+          stroke="#e49c31"
+          strokeWidth="2"
+        />
+      )}
+    </svg>
+  );
+}
 const finishOptions = ["aromatizada", "perforada", "antideslizante", "oxobiodegradable", "otro"];
 const finishLabels: Record<string, string> = { aromatizada: "Aromatizada", perforada: "Perforada", antideslizante: "Antideslizante", oxobiodegradable: "Oxobiodegradable", otro: "Otro" };
 
@@ -440,8 +518,10 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
         },
         ...(s.productType === "bolsa" ? {
           especificacion_bolsa: {
-            ancho_doblado: s.width, ancho_desdoblado: s.widthFlat || null,
-            largo_doblado: s.length, largo_desdoblado: s.foldLength || null,
+            ancho_doblado: s.width,
+            ancho_desdoblado: s.widthFlat || null,
+            largo_doblado: s.length,
+            largo_desdoblado: s.foldLength || null,
             fuelle: s.fuelle, fuelle_izquierdo: s.sideMeasures.Izquierda || null,
             fuelle_derecho: s.sideMeasures.Derecha || null, fuelle_inferior: s.sideMeasures.Abajo || null,
             fuelle_superior: s.sideMeasures.Arriba || null, tipo_troquel: s.troquel,
@@ -453,8 +533,14 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
           }
         } : {
           especificacion_bobina: {
-            ancho: s.width, diametro: s.diameter || null, diametro_nucleo: s.coreDiameter || null,
-            longitud: s.meters || null, tipo_nucleo: s.coreType, peso: s.weight || null,
+            ancho: s.width,
+            tipo_ancho: s.widthType,
+            diametro: s.diameter || null,
+            diametro_nucleo: s.coreDiameter || null,
+            longitud: s.meters || null,
+            tipo_nucleo: s.coreType,
+            peso: s.weight || null,
+            configuracion_pelicula: s.filmConfig,
             otras_caracteristicas: s.notes,
           }
         }),
@@ -590,7 +676,6 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
   if (!open) return null;
   const set = <K extends keyof Wizard>(key: K, value: Wizard[K]) => setForm(current => ({ ...current, [key]: value }));
   const activeCategories = categories.filter(c => c.activo);
-  const categoryName = activeCategories.find(c => c.id === categoryId)?.nombre ?? "";
   const field = (label: string, key: keyof Wizard, props: { type?: string; required?: boolean; placeholder?: string; options?: string[] } = {}) => (
     <label className="block"><span className={labelClass}>{label}{props.required && <b className="text-red-500"> *</b>}</span>
       {props.options ? <select className={inputClass} value={String(form[key])} required={props.required} onChange={e => set(key, e.target.value as never)}><option value="">Seleccionar</option>{props.options.map(v => <option key={v} value={v}>{v}</option>)}</select> :
@@ -802,8 +887,76 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
     </div>;
 
     if (step === 1) return <div className="space-y-5">{sectionTitle("Material y dimensiones", "Especificación asociada a la primera versión del producto")}
-      <div className="grid gap-4 sm:grid-cols-3">{field("Material", "material", { options: materials, required: true })}{field("Capas", "layers", { options: layers.map(([v]) => v), required: true })}{field("Espesor (micras)", "micraje", { type: "number", required: true })}{field("Color", "color")}{field(form.productType === "bolsa" ? "Ancho doblado (cm)" : "Ancho de bobina (cm)", "width", { type: "number", required: true })}
-        {form.productType === "bolsa" ? <>{field("Ancho desdoblado (cm)", "widthFlat", { type: "number" })}{field("Largo doblado (cm)", "length", { type: "number", required: true })}{field("Largo desdoblado (cm)", "foldLength", { type: "number" })}</> : <>{field("Metros por rollo", "meters", { type: "number", required: true })}{field("Diámetro del rollo", "diameter", { type: "number" })}{field("Diámetro del núcleo", "coreDiameter", { type: "number" })}{field("Tipo de núcleo", "coreType")}{field("Peso (kg)", "weight", { type: "number" })}</>}</div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {field("Material", "material", {
+          options: materials,
+          required: true,
+        })}
+
+        {field("Capas", "layers", {
+          options: layers.map(([v]) => v),
+          required: true,
+        })}
+
+        {field("Espesor (micras)", "micraje", {
+          type: "number",
+          required: true,
+        })}
+
+        {field("Color", "color")}
+
+        {form.productType === "bolsa" ? (
+          <>
+            {field("Ancho doblado (cm)", "width", {
+              type: "number",
+              required: true,
+            })}
+
+            {field("Ancho desdoblado (cm)", "widthFlat", {
+              type: "number",
+            })}
+
+            {field("Largo doblado (cm)", "length", {
+              type: "number",
+              required: true,
+            })}
+
+            {field("Largo desdoblado (cm)", "foldLength", {
+              type: "number",
+            })}
+          </>
+        ) : (
+          <>
+            {field("Ancho de bobina (cm)", "width", {
+              type: "number",
+              required: true,
+            })}
+
+            <label className="block">
+              <span className={labelClass}>Tipo de ancho</span>
+              <select
+                className={inputClass}
+                value={form.widthType}
+                onChange={e => {
+                  const value = e.target.value;
+
+                  if (value === "doblado" || value === "desdoblado") {
+                    set("widthType", value);
+                  }
+                }}
+              >
+                <option value="desdoblado">Ancho desdoblado</option>
+                <option value="doblado">Ancho doblado</option>
+              </select>
+            </label>
+
+            {field("Metros por rollo", "meters", {
+              type: "number",
+              required: true,
+            })}
+          </>
+        )}
+      </div>
 
       {form.productType === "bolsa" && (
         <div className="border-t border-slate-200 pt-4">
@@ -915,9 +1068,202 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
             })}
           </div>
         </div>
+
       )}
 
       {form.productType === "bolsa" && <div className="space-y-4 border-t border-slate-200 pt-4"><h4 className="text-sm font-semibold text-slate-800">Presentación y empaquetado</h4><div className="grid gap-3 sm:grid-cols-4"><label className="block"><span className={labelClass}>Unidad base</span><input className={`${inputClass} bg-slate-50`} value="Bolsa" readOnly /></label>{field("Bolsas por paquete/fajo", "unitsPerPack", { type: "number" })}{field("Paquetes por jaba", "packagesPerJaba", { type: "number" })}{field("Jabas por bulto", "jabasPerBundle", { type: "number" })}</div><div><h4 className="mb-2 text-sm font-semibold text-slate-800">Acabados opcionales</h4><div className="flex flex-wrap gap-x-5 gap-y-2">{finishOptions.map(option => <label key={option} className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" className="h-4 w-4 accent-blue-600" checked={form.finishes.includes(option)} onChange={e => set("finishes", e.target.checked ? [...form.finishes, option] : form.finishes.filter(v => v !== option))} />{finishLabels[option]}</label>)}</div>{form.finishes.includes("otro") && <input className={`${inputClass} mt-3 max-w-md`} value={form.otherFinish} onChange={e => set("otherFinish", e.target.value)} placeholder="Especifica otro acabado" />}</div></div>}
+      {/* Configuración exclusiva para bobinas */}
+      {form.productType === "bobina" && (
+        <div className="space-y-5 border-t border-slate-200 pt-5">
+          {/* Fuelles para bobinas */}
+
+          {/* Fuelles exclusivos de bobina */}
+          <section className="border-b border-slate-200 pb-5">
+            <h4 className="mb-3 text-sm font-semibold text-slate-800">
+              Fuelle de bobina · Izquierdo y derecho
+            </h4>
+
+            <div className="flex flex-wrap gap-x-5 gap-y-3">
+              {(["Izquierda", "Derecha"] as const).map((side) => (
+                <label
+                  key={side}
+                  className="flex items-center gap-2 text-sm text-slate-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.bobinaSides.includes(side)}
+                    onChange={(e) =>
+                      setForm((current) => {
+                        const nextSides = e.target.checked
+                          ? [...current.bobinaSides, side]
+                          : current.bobinaSides.filter((item) => item !== side);
+
+                        return {
+                          ...current,
+                          bobinaSides: nextSides,
+                          bobinaCommonSideMeasure:
+                            nextSides.length === 0 ? "" : current.bobinaCommonSideMeasure,
+                          bobinaSideMeasures:
+                            nextSides.length === 0
+                              ? { Izquierda: "", Derecha: "" }
+                              : current.bobinaSideMeasures,
+                        };
+                      })
+                    }
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                  Fuelle {side.toLowerCase()}
+                </label>
+              ))}
+            </div>
+
+            {form.bobinaSides.length > 0 && (
+              <div className="mt-4 space-y-3">
+                <div className="flex flex-wrap gap-5">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="bobinaSideSymmetry"
+                      checked={form.bobinaSideSymmetry === "simetrico"}
+                      onChange={() => set("bobinaSideSymmetry", "simetrico")}
+                    />
+                    Simétrico
+                  </label>
+
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="bobinaSideSymmetry"
+                      checked={form.bobinaSideSymmetry === "asimetrico"}
+                      onChange={() => set("bobinaSideSymmetry", "asimetrico")}
+                    />
+                    Asimétrico
+                  </label>
+                </div>
+
+                {form.bobinaSideSymmetry === "simetrico" ? (
+                  <label className="block">
+                    <span className={labelClass}>Medida común del fuelle (cm)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      className={inputClass}
+                      value={form.bobinaCommonSideMeasure}
+                      onChange={(e) => set("bobinaCommonSideMeasure", e.target.value)}
+                    />
+                  </label>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {form.bobinaSides.map((side) => (
+                      <label key={side} className="block">
+                        <span className={labelClass}>
+                          Fuelle {side.toLowerCase()} (cm)
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          className={inputClass}
+                          value={form.bobinaSideMeasures[side]}
+                          onChange={(e) =>
+                            setForm((current) => ({
+                              ...current,
+                              bobinaSideMeasures: {
+                                ...current.bobinaSideMeasures,
+                                [side]: e.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {form.bobinaSides.length === 0 && (
+              <p className="mt-2 text-xs text-slate-500">
+                Sin fuelles seleccionados.
+              </p>
+            )}
+          </section>
+
+          {/* Configuración de película */}
+          <section>
+            <h4 className="mb-3 text-sm font-semibold text-slate-800">
+              Configuración de película / acabado
+            </h4>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { value: "tubular", label: "Tubular" },
+                { value: "corte_lateral", label: "Corte lateral" },
+                { value: "corte_separacion", label: "Corte y separación" },
+              ].map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => set("filmConfig", option.value)}
+                  aria-pressed={form.filmConfig === option.value}
+                  className={`rounded-xl border p-5 text-sm font-semibold transition ${form.filmConfig === option.value
+                    ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-200"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"
+                    }`}
+                >
+                  <span className="mb-3 block text-2xl">
+                    <FilmConfigSVG
+                      type={option.value as FilmConfigSVGProps["type"]}
+                    />
+
+                    <span>{option.label}</span>
+                  </span>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Aditivos y acabados adicionales */}
+          <section className="border-t border-slate-200 pt-4">
+            <h4 className="mb-3 text-sm font-semibold text-slate-800">
+              Aditivos y acabados adicionales
+            </h4>
+
+            <div className="flex flex-wrap gap-x-5 gap-y-3">
+              {[
+                { value: "film_aromatizado", label: "Aromatizante" },
+                { value: "antideslizante", label: "Antideslizante" },
+                { value: "proteccion_uv", label: "Protección UV" },
+                { value: "otro", label: "Otro" },
+              ].map(option => (
+                <label
+                  key={option.value}
+                  className="flex items-center gap-2 text-sm text-slate-700"
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-blue-600"
+                    checked={form.bobinaFinishes.includes(option.value)}
+                    onChange={e =>
+                      set(
+                        "bobinaFinishes",
+                        e.target.checked
+                          ? [...form.bobinaFinishes, option.value]
+                          : form.bobinaFinishes.filter(
+                            value => value !== option.value
+                          )
+                      )
+                    }
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">La factibilidad se calcula con el servicio de viabilidad de INCORE. Los criterios y rutas corresponden a la configuración productiva vigente.</div>
     </div >;
 
@@ -1150,16 +1496,22 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className={labelClass}>Cantidad a calcular *</span>
+
             <input
               className={inputClass}
               type="number"
-              min="1"
-              step="1"
+              min="0.01"
+              step="any"
               value={form.quantity}
               onChange={e => set("quantity", e.target.value)}
-              placeholder={form.productType === "bolsa" ? "Cantidad de bolsas" : "Cantidad de rollos"}
-            />
-            <label className="block">
+              placeholder={
+                quantityUnit === "kg"
+                  ? "Peso solicitado en kg"
+                  : quantityUnit === "rollos"
+                    ? "Cantidad de rollos"
+                    : "Cantidad de bolsas"
+              }
+            />            <label className="block">
               <span className={labelClass}>Unidad para calcular</span>
 
               <select
@@ -1200,15 +1552,36 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
         {weights?.exito && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-              <p className="text-xs font-semibold text-emerald-800">Peso unitario</p>
+              <p className="text-xs font-semibold text-emerald-800">
+                {quantityUnit === "kg" ? "Peso solicitado" : "Peso unitario"}
+              </p>
+
               <p className="mt-1 text-xl font-bold text-emerald-950">
-                {weights.peso_unitario_kg == null ? "No disponible" : `${Number(weights.peso_unitario_kg).toLocaleString("es-BO", { maximumFractionDigits: 6 })} kg`}
+                {quantityUnit === "kg"
+                  ? `${Number(form.quantity).toLocaleString("es-BO", {
+                    maximumFractionDigits: 3,
+                  })} kg`
+                  : `${Number(weights.peso_unitario_kg).toLocaleString("es-BO", {
+                    maximumFractionDigits: 6,
+                  })} kg`}
               </p>
             </div>
+
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-              <p className="text-xs font-semibold text-emerald-800">Peso total</p>
+              <p className="text-xs font-semibold text-emerald-800">
+                {quantityUnit === "kg" ? "Cantidad estimada" : "Peso total"}
+              </p>
+
               <p className="mt-1 text-xl font-bold text-emerald-950">
-                {weights.peso_total_kg == null ? "No disponible" : `${Number(weights.peso_total_kg).toLocaleString("es-BO", { maximumFractionDigits: 3 })} kg`}
+                {quantityUnit === "kg"
+                  ? `${Math.round(
+                    Number(form.quantity) /
+                    Number(weights.peso_unitario_kg)
+                  ).toLocaleString("es-BO")} ${form.productType === "bobina" ? "rollos" : "unidades"
+                  }`
+                  : `${Number(weights.peso_total_kg).toLocaleString("es-BO", {
+                    maximumFractionDigits: 3,
+                  })} kg`}
               </p>
             </div>
           </div>
@@ -1219,8 +1592,155 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
         )}
       </div>
     );
-    return <div className="space-y-4">{sectionTitle("Observaciones", "Notas de la ficha técnica inicial")}{<textarea className={`${inputClass} min-h-40 resize-y`} value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Observaciones técnicas o comerciales" />}
-      <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2"><div><p className={labelClass}>Producto</p><p className="text-sm font-medium">{form.name || "Sin nombre"}</p></div><div><p className={labelClass}>Categoría</p><p className="text-sm font-medium">{categoryName || "Sin categoría"}</p></div><div><p className={labelClass}>Material y capas</p><p className="text-sm font-medium">{form.material} · {form.layers}</p></div><div><p className={labelClass}>Estado inicial</p><p className="text-sm font-semibold text-amber-700">No homologado</p></div></div></div>;
+    return <div className="space-y-5">
+      {sectionTitle(
+        "Observaciones",
+        "Añade información adicional sobre las características del producto."
+      )}
+
+      {/* Observaciones en la parte superior */}
+      <div>
+        <label className={labelClass}>
+          Observaciones adicionales del requerimiento
+        </label>
+
+        <textarea
+          className={`${inputClass} min-h-24 resize-y`}
+          rows={4}
+          value={form.notes}
+          onChange={e => set("notes", e.target.value)}
+          placeholder="Describe detalles técnicos, acabados u otras indicaciones..."
+        />
+      </div>
+
+      {/* Resumen sin contenedor exterior */}
+      <div>
+        <h3 className="mb-3 text-sm font-bold text-slate-800">
+          Resumen de especificaciones
+        </h3>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {[
+            {
+              label: "Nombre",
+              value: form.name || "Sin nombre",
+            },
+            {
+              label: "Material",
+              value: form.material || "No definido",
+            },
+            ...(form.productType === "bolsa"
+              ? [
+                {
+                  label: "Ancho doblado (bolsa)",
+                  value: form.width
+                    ? `${form.width} cm`
+                    : "No definido",
+                },
+                {
+                  label: "Ancho desdoblado (bolsa)",
+                  value: form.widthFlat
+                    ? `${form.widthFlat} cm`
+                    : "No definido",
+                },
+              ]
+              : [
+                {
+                  label:
+                    form.widthType === "desdoblado"
+                      ? "Ancho desdoblado (bobina)"
+                      : "Ancho doblado (bobina)",
+                  value: form.width
+                    ? `${form.width} cm`
+                    : "No definido",
+                },
+              ]),
+            ...(form.productType === "bolsa"
+              ? [
+                {
+                  label: "Largo desdoblado",
+                  value: form.foldLength
+                    ? `${form.foldLength} cm`
+                    : "No definido",
+                },
+              ]
+              : []),
+            {
+              label: "Espesor",
+              value: form.micraje ? `${form.micraje} µm` : "No definido",
+            },
+            ...(form.productType === "bolsa"
+              ? [
+                {
+                  label: "Fuelle de bolsa",
+                  value: form.fuelle
+                    ? "Con fuelle"
+                    : "Sin fuelle",
+                },
+              ]
+              : [
+                {
+                  label: "Fuelle izquierdo (bobina)",
+                  value: form.bobinaSides.includes("Izquierda")
+                    ? form.bobinaSideSymmetry === "simetrico"
+                      ? form.bobinaCommonSideMeasure
+                        ? `${form.bobinaCommonSideMeasure} cm`
+                        : "Medida pendiente"
+                      : form.bobinaSideMeasures.Izquierda
+                        ? `${form.bobinaSideMeasures.Izquierda} cm`
+                        : "Medida pendiente"
+                    : "Sin fuelle",
+                },
+                {
+                  label: "Fuelle derecho (bobina)",
+                  value: form.bobinaSides.includes("Derecha")
+                    ? form.bobinaSideSymmetry === "simetrico"
+                      ? form.bobinaCommonSideMeasure
+                        ? `${form.bobinaCommonSideMeasure} cm`
+                        : "Medida pendiente"
+                      : form.bobinaSideMeasures.Derecha
+                        ? `${form.bobinaSideMeasures.Derecha} cm`
+                        : "Medida pendiente"
+                    : "Sin fuelle",
+                },
+              ]),
+            ...(form.productType === "bolsa"
+              ? [{
+                label: "Troquel",
+                value:
+                  troqueles.find(t => t.value === form.troquel)?.label ??
+                  form.troquel,
+              }]
+              : []),
+            {
+              label: "Capas",
+              value: form.layers || "No definido",
+            },
+            {
+              label: "Impresión",
+              value: form.impression ? "Con impresión" : "Sin impresión",
+            },
+            {
+              label: "Estado",
+              value: "No homologado",
+            },
+          ].map(item => (
+            <div
+              key={item.label}
+              className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-blue-200"
+            >
+              <p className="mb-2 text-xs font-semibold text-slate-500">
+                {item.label}
+              </p>
+
+              <p className="break-words text-lg font-bold text-slate-800">
+                {item.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   };
 
   // Estructura compartida del modal: encabezado, navegación, panel de viabilidad y acciones.

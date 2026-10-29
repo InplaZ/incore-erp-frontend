@@ -541,7 +541,9 @@ export type TratamientoAcabadoEspecial =
   | "film_aromatizado"
   | "oxobiodegradable"
   | "perforada"
-  | "precorte";
+  | "precorte"
+  | "antideslizante"
+  | "proteccion_uv";
 
   export interface CamposImpresionPorCara {
   tipo_impresion_cara_a: TipoImpresion | null;
@@ -841,14 +843,22 @@ export type EspecificacionBobinaSolicitadaVersionUpdate =
 // ============================================================
 // ESPECIFICACIÓN DE BOBINA SOLICITADA
 // ============================================================
+export type ConfiguracionPelicula =
+  | "tubular"
+  | "corte_lateral"
+  | "corte_separacion"
 
 export interface EspecificacionBobinaSolicitada {
   id: number;
   especificacion_producto_solicitado: number;
-  ancho: string;
+  ancho_doblado: string;
+  ancho_desdoblado: string;
+  fuelle_izquierdo: string;
+  fuelle_derecho: string;
   diametro: string | null;
   diametro_nucleo: string | null;
   longitud: string | null;
+  configuracion_pelicula: ConfiguracionPelicula;
 
   tipo_nucleo: string;
 
@@ -863,7 +873,10 @@ export interface EspecificacionBobinaSolicitada {
 export interface EspecificacionBobinaSolicitadaCreate {
   especificacion_producto_solicitado: number;
 
-  ancho: string;
+  ancho_doblado: string;
+  ancho_desdoblado: string;
+  fuelle_izquierdo: string;
+  fuelle_derecho: string;
 
   diametro?: string | null;
   diametro_nucleo?: string | null;
