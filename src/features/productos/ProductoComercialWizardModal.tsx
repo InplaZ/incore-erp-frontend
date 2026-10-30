@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, X } from "lucide-react";
 import { useProductos, useProductosCategorias, useCreateProductoComercial } from "@/features/productos/productos.hooks";
+import type { ProductoComercialCreado } from "@/features/productos/productos.types";
 import { viabilidadApi } from "@/features/viabilidad/viabilidad.api";
 import type { EvaluarViabilidadPayload, EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
 import ViabilidadPreviaPanel from "@/features/viabilidad/requerimientos/ViabilidadPreviaPanel";
@@ -57,7 +58,7 @@ type Wizard = {
   unit: "unidad" | "kg" | "rollos"; unitsPerPack: string;
   packagesPerJaba: string; jabasPerBundle: string; finishes: string[]; otherFinish: string; notes: string;
   quantity: string;
-  filmConfig: string;
+  filmConfig: "tubular" | "corte_lateral" | "corte_separacion";
   bobinaFinishes: string[];
   widthType: "doblado" | "desdoblado";
   // Fuelle exclusivo de bobina
@@ -461,7 +462,7 @@ function FilmConfigSVG({ type }: FilmConfigSVGProps) {
 const finishOptions = ["aromatizada", "perforada", "antideslizante", "oxobiodegradable", "otro"];
 const finishLabels: Record<string, string> = { aromatizada: "Aromatizada", perforada: "Perforada", antideslizante: "Antideslizante", oxobiodegradable: "Oxobiodegradable", otro: "Otro" };
 
-export default function ProductoComercialWizardModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess?: () => void }) {
+export default function ProductoComercialWizardModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess?: (producto: ProductoComercialCreado) => void }) {
   // Estado de navegación y datos temporales de esta creación.
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<Wizard>(initialForm);
@@ -746,13 +747,14 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
       } : {
         especificacion_bobina: {
           ancho: form.width,
+          configuracion_pelicula: form.filmConfig,
           diametro: form.diameter || null, diametro_nucleo: form.coreDiameter || null, tipo_nucleo: form.coreType,
           peso: form.weight || null, longitud: form.meters || null, otras_caracteristicas: form.notes
         }
       }),
       ...(form.productType === "bolsa" ? { presentacion: { unidades_por_fajo: Number(form.unitsPerPack) || 0, paquetes_por_jaba: Number(form.packagesPerJaba) || 0, jabas_por_bulto: Number(form.jabasPerBundle) || 0 } } : {}),
     };
-    try { await create.mutateAsync(request); onSuccess?.(); onClose(); }
+    try { const producto = await create.mutateAsync(request); onSuccess?.(producto); onClose(); }
     catch (e) {
       const response = (e as { response?: { data?: Record<string, unknown> } }).response?.data;
       const detail = response ? Object.values(response).flat().map(String).join(" ") : "";
@@ -1205,7 +1207,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => set("filmConfig", option.value)}
+                  onClick={() => set("filmConfig", option.value as Wizard["filmConfig"])}
                   aria-pressed={form.filmConfig === option.value}
                   className={`rounded-xl border p-5 text-sm font-semibold transition ${form.filmConfig === option.value
                     ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-200"

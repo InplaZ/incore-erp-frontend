@@ -622,11 +622,17 @@ export const cotizacionesApi = {
 
   formalizarDesdeWizard: async (
     data: FormalizarCotizacionWizardPayload,
+    evidencia?: File | null,
   ): Promise<FormalizarCotizacionWizardResponse> =>
-    api.post<FormalizarCotizacionWizardResponse>(
-      "/comercial/cotizaciones/formalizar-desde-wizard/",
-      data,
-    ),
+    {
+      if (data.envio) {
+        const form = new FormData();
+        form.append("payload", JSON.stringify(data));
+        if (evidencia) form.append("evidencia", evidencia);
+        return api.post<FormalizarCotizacionWizardResponse>("/comercial/cotizaciones/formalizar-desde-wizard/", form);
+      }
+      return api.post<FormalizarCotizacionWizardResponse>("/comercial/cotizaciones/formalizar-desde-wizard/", data);
+    },
 };
 
 

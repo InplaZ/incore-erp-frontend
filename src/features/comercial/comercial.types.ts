@@ -362,7 +362,11 @@ export interface ProductoCotizadoEnSolicitud {
       otras_caracteristicas: string;
     } | null;
     especificacionBobina: {
-      ancho: string | number;
+      ancho_doblado: string | number | null;
+      ancho_desdoblado: string | number | null;
+      configuracion_pelicula: ConfiguracionPelicula;
+      fuelle_izquierdo: string | number | null;
+      fuelle_derecho: string | number | null;
       diametro: string | number | null;
       diametro_nucleo: string | number | null;
       tipo_nucleo: string;
@@ -816,7 +820,11 @@ export type EspecificacionBolsaSolicitadaVersionUpdate =
 export interface EspecificacionBobinaSolicitadaVersion {
   id: number;
   especificacion_producto_solicitado_version: number;
-  ancho: string;
+  ancho_doblado: string | null;
+  ancho_desdoblado: string | null;
+  configuracion_pelicula: ConfiguracionPelicula;
+  fuelle_izquierdo: string | null;
+  fuelle_derecho: string | null;
   diametro: string | null;
   diametro_nucleo: string | null;
   longitud: string | null;
@@ -829,7 +837,9 @@ export interface EspecificacionBobinaSolicitadaVersion {
 
 export interface EspecificacionBobinaSolicitadaVersionCreate {
   especificacion_producto_solicitado_version: number;
-  ancho: string;
+  ancho_doblado?: string | null;
+  ancho_desdoblado?: string | null;
+  configuracion_pelicula?: ConfiguracionPelicula;
   diametro?: string | null;
   diametro_nucleo?: string | null;
   longitud?: string | null;
@@ -1231,6 +1241,7 @@ export interface ProductoBusquedaResultado {
 export interface EspecificacionBobinaCatalogo {
   id: number;
   ancho: string | number;
+  configuracion_pelicula?: "tubular" | "corte_lateral" | "corte_separacion";
   diametro: string | number | null;
   diametro_nucleo: string | number | null;
   tipo_nucleo: string;
@@ -1344,6 +1355,7 @@ export interface AgregarDetalleCotizacionResponse {
 }
 
 export interface FormalizarCotizacionWizardPayload {
+  envio?: { medio: "telefono" | "email" | "whatsapp" | "presencial" | "videollamada" | "otro"; detalle: string; recordatorio: boolean };
   cotizacion_version_id?: number;
   solicitud: Omit<SolicitudComercialCreate, "estado">;
   tipo_producto?: "bolsa" | "bobina";
@@ -1384,8 +1396,11 @@ export interface FormalizarCotizacionWizardResponse {
   cotizacion: number;
   numero: string;
   cotizacion_version: number;
+  version: number;
+  estado: EstadoCotizacionVersion;
   detalles: AgregarDetalleCotizacionResponse[];
   precio_total: string;
+  envio?: { comunicacion: number; evidencia: number; medio: string; detalle: string; archivo_nombre: string | null; estado?: EstadoCotizacionVersion } | null;
 }
 
 export interface EspecificacionProductoSolicitadoVersionCreateRequest {

@@ -57,7 +57,9 @@ export default function RequerimientoDetallePage() {
     const anchoBolsaPeso = formLinea?.tecnica["especificacion_bolsa.ancho_doblado"];
     const anchoDesdobladoBolsaPeso = formLinea?.tecnica["especificacion_bolsa.ancho_desdoblado"];
     const largoBolsaPeso = formLinea?.tecnica["especificacion_bolsa.largo_doblado"];
-    const anchoBobinaPeso = formLinea?.tecnica["especificacion_bobina.ancho"];
+    const anchoBobinaDobladoPeso = formLinea?.tecnica["especificacion_bobina.ancho_doblado"];
+    const anchoBobinaDesdobladoPeso = formLinea?.tecnica["especificacion_bobina.ancho_desdoblado"];
+    const configuracionBobinaPeso = formLinea?.tecnica["especificacion_bobina.configuracion_pelicula"];
     const metrosBobinaPeso = formLinea?.tecnica["especificacion_bobina.longitud"];
 
     useEffect(() => {
@@ -74,7 +76,9 @@ export default function RequerimientoDetallePage() {
                     largo_doblado: largoBolsaPeso || undefined,
                 },
                 especificacion_bobina: {
-                    ancho: anchoBobinaPeso || undefined,
+                    ancho_doblado: anchoBobinaDobladoPeso || undefined,
+                    ancho_desdoblado: anchoBobinaDesdobladoPeso || undefined,
+                    configuracion_pelicula: configuracionBobinaPeso || undefined,
                     longitud: metrosBobinaPeso || undefined,
                 },
             };
@@ -102,7 +106,9 @@ export default function RequerimientoDetallePage() {
         anchoBolsaPeso,
         anchoDesdobladoBolsaPeso,
         largoBolsaPeso,
-        anchoBobinaPeso,
+        anchoBobinaDobladoPeso,
+        anchoBobinaDesdobladoPeso,
+        configuracionBobinaPeso,
         metrosBobinaPeso,
     ]);
 
@@ -201,6 +207,9 @@ export default function RequerimientoDetallePage() {
         especificacionVersionada?.especificacionBolsa ?? especificacionBolsa ?? productoCotizado?.especificacionBolsa ?? null;
     const bobinaMostrar =
         especificacionVersionada?.especificacionBobina ?? especificacionBobina ?? productoCotizado?.especificacionBobina ?? null;
+    const anchoBobinaMostrar = bobinaMostrar
+        ? ("ancho" in bobinaMostrar ? bobinaMostrar.ancho : bobinaMostrar.ancho_desdoblado || bobinaMostrar.ancho_doblado)
+        : null;
     const datosTecnicos = especificacionVersionada ?? (productoVersion
             ? {
                 material: productoVersion.material,
@@ -259,7 +268,7 @@ export default function RequerimientoDetallePage() {
             ancho_desdoblado: String(versionTecnica?.especificacionBolsa?.ancho_desdoblado ?? ""),
             largo_doblado: String(versionTecnica?.especificacionBolsa?.largo_doblado ?? ""),
             largo_desdoblado: String(versionTecnica?.especificacionBolsa?.largo_desdoblado ?? ""),
-            ancho_bobina: String(versionTecnica?.especificacionBobina?.ancho ?? ""),
+            ancho_bobina: String(versionTecnica?.especificacionBobina?.ancho_desdoblado || versionTecnica?.especificacionBobina?.ancho_doblado || ""),
             tecnica,
         });
     };
@@ -437,7 +446,7 @@ export default function RequerimientoDetallePage() {
                                                     <p className="font-medium">Detalle de línea · cotización {linea.cotizacion.numero}, versión {version.version}</p>
                                                     <p className="mt-1 text-muted-foreground">
                                                         {versionTecnica
-                                                            ? `Especificación técnica V${versionTecnica.version} · ${versionTecnica.especificacionBolsa ? `ancho ${versionTecnica.especificacionBolsa.ancho_doblado} cm` : versionTecnica.especificacionBobina ? `ancho ${versionTecnica.especificacionBobina.ancho} cm` : "medidas no disponibles"}`
+                                                            ? `Especificación técnica V${versionTecnica.version} · ${versionTecnica.especificacionBolsa ? `ancho ${versionTecnica.especificacionBolsa.ancho_doblado} cm` : versionTecnica.especificacionBobina ? `ancho ${versionTecnica.especificacionBobina.ancho_desdoblado || versionTecnica.especificacionBobina.ancho_doblado || "—"} cm` : "medidas no disponibles"}`
                                                             : `Versión de catálogo ${linea.productoVersion?.numero_version ?? "—"} · ${linea.producto?.codigo ?? ""}`}
                                                     </p>
                                                     {version.estado !== "borrador" && <p className="mt-2 text-xs text-muted-foreground">Esta versión es histórica y no se modifica. Prepara una nueva versión para registrar cambios.</p>}
@@ -463,7 +472,7 @@ export default function RequerimientoDetallePage() {
                                                             {campoTecnico("material", "Material", ["PEAD", "PEBD", "PP", "BOPP", "OTRO"])}{campoTecnico("capas", "Capas", ["monocapa", "bicapa", "tricapa"])}{campoTecnico("apto_alimento", "Apto para alimentos")}{campoTecnico("micraje", "Micraje")}{campoTecnico("color_bolsa", "Color")}{campoTecnico("impresion", "Lleva impresión")}{campoTecnico("color_impresion", "Colores de impresión (separados por coma)")}{campoTecnico("tipo_impresion", "Tipo de impresión", ["corrida", "dimensionada"])}{campoTecnico("tratamiento_impresion", "Tratamiento de impresión", ["solido", "degradado", "trameado"])}{campoTecnico("cara_impresion", "Cara de impresión", ["anverso", "reverso", "ambas"])}{campoTecnico("posicion_impresion", "Posición", ["centrada", "personalizada"])}{campoTecnico("opacidad", "Opacidad", ["alta", "media", "baja"])}{campoTecnico("distancia_impresion_superior", "Distancia superior")}{campoTecnico("distancia_impresion_inferior", "Distancia inferior")}{campoTecnico("distancia_impresion_izquierda", "Distancia izquierda")}{campoTecnico("distancia_impresion_derecha", "Distancia derecha")}{campoTecnico("tratamientos_acabados_especiales", "Acabados especiales (separados por coma)")}{campoTecnico("otras_caracteristicas", "Otras características")}
                                                         </div></fieldset>
                                                         {versionTecnica.especificacionBolsa && <fieldset><legend className="mb-2 text-sm font-semibold">Bolsa · medidas y acabados</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{["ancho_doblado", "ancho_desdoblado", "largo_doblado", "largo_desdoblado", "fuelle_izquierdo", "fuelle_derecho", "fuelle_inferior", "fuelle_superior"].map((campo) => campoTecnico(`especificacion_bolsa.${campo}`, `${campo.replaceAll("_", " ")} (cm)`))}{campoTecnico("especificacion_bolsa.fuelle", "Tiene fuelle")}{campoTecnico("especificacion_bolsa.tipo_troquel", "Tipo de troquel", ["camiseta", "normal", "rinonera", "con_asa", "refuerzo", "solapa", "adhesiva", "cierre_facil"])}{campoTecnico("especificacion_bolsa.tipo_sello", "Tipo de sello", ["lateral", "fondo", "ninguno"])}{campoTecnico("especificacion_bolsa.pestana", "Pestaña", ["sin_pestana", "superior", "inferior", "ambas"])}{campoTecnico("especificacion_bolsa.acabado_especial", "Acabado especial")}{campoTecnico("especificacion_bolsa.otras_caracteristicas", "Otras características de bolsa")}</div></fieldset>}
-                                                        {versionTecnica.especificacionBobina && <fieldset><legend className="mb-2 text-sm font-semibold">Bobina · medidas</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{["ancho", "diametro", "diametro_nucleo", "peso", "longitud"].map((campo) => campoTecnico(`especificacion_bobina.${campo}`, `${campo.replaceAll("_", " ")} (cm / kg según corresponda)`))}{campoTecnico("especificacion_bobina.tipo_nucleo", "Tipo de núcleo")}{campoTecnico("especificacion_bobina.otras_caracteristicas", "Otras características de bobina")}</div></fieldset>}
+                                                        {versionTecnica.especificacionBobina && <fieldset><legend className="mb-2 text-sm font-semibold">Bobina · medidas</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{["ancho_doblado", "ancho_desdoblado", "diametro", "diametro_nucleo", "peso", "longitud"].map((campo) => campoTecnico(`especificacion_bobina.${campo}`, `${campo.replaceAll("_", " ")} (cm / kg según corresponda)`))}{campoTecnico("especificacion_bobina.configuracion_pelicula", "Configuración de película", ["tubular", "corte_lateral", "corte_separacion"])}{campoTecnico("especificacion_bobina.tipo_nucleo", "Tipo de núcleo")}{campoTecnico("especificacion_bobina.otras_caracteristicas", "Otras características de bobina")}</div></fieldset>}
                                                         <p className="text-xs text-muted-foreground">Al guardar, las características modificadas crean una nueva versión técnica y vuelven a pasar por la evaluación de viabilidad. Los datos de esta versión quedarán en el historial.</p>
                                                     </div>}
                                                     {!versionTecnica && <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Producto de catálogo: su versión técnica es de solo lectura. Para cambiar sus características debe generarse una solicitud de producto nuevo conforme al proceso comercial.</p>}
@@ -883,8 +892,8 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Ancho de bobina"
                                             value={
-                                                bobinaMostrar.ancho
-                                                    ? `${bobinaMostrar.ancho} cm`
+                                                anchoBobinaMostrar
+                                                    ? `${anchoBobinaMostrar} cm`
                                                     : "—"
                                             }
                                         />
@@ -971,7 +980,7 @@ export default function RequerimientoDetallePage() {
                                         <InfoItem
                                             label="Tipo"
                                             value={getTipoImpresionLabel(
-                                                datosTecnicos.tipo_impresion,
+                                                "tipo_impresion" in datosTecnicos ? datosTecnicos.tipo_impresion : "",
                                             )}
                                         />
 

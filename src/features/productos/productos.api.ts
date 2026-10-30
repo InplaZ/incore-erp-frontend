@@ -5,7 +5,7 @@ import type {
   BuscarCatalogoResponse,
   BuscarSimilaresResponse,
 } from "@/features/comercial/comercial.types";
-import type { Producto, ProductoCategoria, ProductoSubcategoria, ProductoComercialCreate } from "./productos.types";
+import type { Producto, ProductoCategoria, ProductoSubcategoria, ProductoComercialCreate, ProductoComercialCreado } from "./productos.types";
 
 // ============================================================
 // CATEGORÍAS DE PRODUCTOS
@@ -33,7 +33,7 @@ export const productosApi = {
   create: async (data: Partial<Producto> | FormData): Promise<Producto> =>
     api.post("/productos/productos/", data),
 
-  createComercial: async (data: ProductoComercialCreate): Promise<Producto> =>
+  createComercial: async (data: ProductoComercialCreate): Promise<ProductoComercialCreado> =>
     api.post("/productos/productos/crear-comercial/", data),
 
   update: async (id: number, data: Partial<Producto> | FormData): Promise<Producto> =>

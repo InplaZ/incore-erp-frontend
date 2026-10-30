@@ -61,6 +61,7 @@ export interface ProductoComercialCreate {
   };
   especificacion_bobina?: {
     ancho: string | number;
+    configuracion_pelicula?: "tubular" | "corte_lateral" | "corte_separacion";
     diametro?: string | number | null;
     diametro_nucleo?: string | number | null;
     tipo_nucleo?: string;
@@ -94,6 +95,11 @@ export interface Producto {
   imagen_reverso?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Respuesta real de crear-comercial: ficha de producto con sus versiones técnicas. */
+export interface ProductoComercialCreado extends Producto {
+  versiones: Array<{ id: number; numero_version: number }>;
 }
 
 export interface ProductoCatalogo {

@@ -8,7 +8,7 @@ import { Search, UserPlus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Toast from "@/components/ui/Toast";
 import { api } from "@/api/api.config";
-import { especificacionesProductoApi } from "@/features/comercial/comercial.api";
+import { especificacionesProductoApi, cotizacionesVersionesApi, cotizacionesDetallesApi } from "@/features/comercial/comercial.api";
 import {
   useCuentasComerciales,
   useFormalizarCotizacionDesdeWizard,
@@ -22,6 +22,7 @@ import CotizacionModal, {
 } from "@/features/comercial/cotizaciones/CotizacionModal";
 
 import type {
+  CuentaComercial,
   MaterialProducto,
   Opacidad,
   PrioridadSolicitud,
@@ -62,7 +63,13 @@ import { viabilidadApi } from "@/features/viabilidad/viabilidad.api";
 import ViabilidadAnalizando from "@/features/viabilidad/requerimientos/ViabilidadAnalizando";
 import ViabilidadResultado from "@/features/viabilidad/requerimientos/ViabilidadResultado";
 import RequerimientoStepProducto from "@/features/comercial/components/requerimientos/RequerimientoStepProducto";
-
+import ProductoComercialWizardModal from "@/features/productos/ProductoComercialWizardModal";
+import NuevaOfertaModal from "../components/ofertas/NuevaOfertaModal";
+import NuevaCuentaComercialWizard from "../components/NuevaCuentaComercialWizard";
+import OfertaComercialDetalle from "../components/ofertas/OfertaComercialDetalle";
+import CatalogoOfertaModal from "../components/ofertas/CatalogoOfertaModal";
+import RegistrarEnvioComercialModal, { type MedioEnvioComercial } from "../components/ofertas/RegistrarEnvioComercialModal";
+import type { ProductoComercialCreado } from "@/features/productos/productos.types";
 export type RequirementStep = 1 | 2 | 3 | 4 | 5;
 
 type CotizacionLineaBorrador = NonNullable<FormalizarCotizacionWizardPayload["detalles"]>[number] & {
@@ -70,6 +77,8 @@ type CotizacionLineaBorrador = NonNullable<FormalizarCotizacionWizardPayload["de
   nombre: string;
   codigo: string;
   archivo_color_impresion?: File | null;
+  persistida?: boolean;
+  backendDetailId?: number;
 };
 
 interface PesosProductoResponse {
@@ -87,10 +96,22 @@ interface CotizacionMetaBorrador extends CotizacionFormData {
   sucursalEntrega: SucursalEntrega | "";
 }
 
+function importeLineaCotizacion(linea: CotizacionLineaBorrador) {
+  return Number(linea.cantidad || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100);
+}
+
+function numeroOfertaDesdeSolicitud(solicitudId: number) {
+  return `REQ-${String(solicitudId).padStart(3, "0")}`;
+}
+
 export default function RequerimientosPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const cotizacionVersionId = Number(searchParams.get("cotizacion_version_id") || 0);
+  const [vistaOferta, setVistaOferta] = useState<"seleccion_cliente" | "detalle_oferta">(cotizacionVersionId ? "detalle_oferta" : "seleccion_cliente");
+  const [versionActivaId, setVersionActivaId] = useState<number | null>(cotizacionVersionId || null);
+  const [ofertaPersistida, setOfertaPersistida] = useState<{ numero: string; version: number; estado: string } | null>(null);
+  const [evidenciaRegistrada, setEvidenciaRegistrada] = useState<{ medio: string; detalle: string; archivo?: string | null } | null>(null);
   const { data: versionEnEdicion } = useCotizacionVersion(cotizacionVersionId);
   const { data: cotizacionEnEdicion } = useCotizacion(versionEnEdicion?.cotizacion || 0);
   const { data: solicitudEnEdicion } = useSolicitudComercial(cotizacionEnEdicion?.solicitud_comercial || 0);
@@ -103,6 +124,7 @@ export default function RequerimientosPage() {
   const [buscarCliente, setBuscarCliente] = useState("");
   const [mostrarSugerenciasCliente, setMostrarSugerenciasCliente] = useState(false);
   const [mostrarNuevoCliente, setMostrarNuevoCliente] = useState(false);
+  const [mostrarCatalogo, setMostrarCatalogo] = useState(false);
 
   /**
    * Viabilidad
@@ -135,6 +157,13 @@ export default function RequerimientosPage() {
    * Cotizacion
    */
   const [mostrarCotizacion, setMostrarCotizacion] = useState(false);
+  const [mostrarEnvioModal, setMostrarEnvioModal] = useState(false);
+  const [medioEnvio, setMedioEnvio] = useState<MedioEnvioComercial>("whatsapp");
+  const [detalleEnvio, setDetalleEnvio] = useState("");
+  const [archivoEnvio, setArchivoEnvio] = useState<File | null>(null);
+  const [recordatorioEnvio, setRecordatorioEnvio] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState("");
+  const [ultimaVersionCotizacion, setUltimaVersionCotizacion] = useState<number | null>(null);
   const [lineasCotizacion, setLineasCotizacion] = useState<CotizacionLineaBorrador[]>([]);
   const [datosCotizacion, setDatosCotizacion] = useState<CotizacionMetaBorrador | null>(null);
 
@@ -164,6 +193,9 @@ export default function RequerimientosPage() {
    */
   const formalizarCotizacion = useFormalizarCotizacionDesdeWizard();
 
+  /*CREAR PRODUCTO NUEVO
+  */
+  const [mostrarNuevoProducto, setMostrarNuevoProducto] = useState(false);
   /*
    * Características generales
    */
@@ -326,7 +358,8 @@ export default function RequerimientosPage() {
       navigate(`/comercial/requerimientos/${solicitudEnEdicion.solicitud.id}`);
       return;
     }
-    setCuentaComercialId(solicitudEnEdicion.solicitud.id);
+    setCuentaComercialId(solicitudEnEdicion.solicitud.cuenta_comercial);
+    setOfertaPersistida({ numero: numeroOfertaDesdeSolicitud(solicitudEnEdicion.solicitud.id), version: versionEnEdicion.version, estado: versionEnEdicion.estado });
     setDatosCotizacion((actual) => actual ?? {
       cantidad: "",
       moneda: versionEnEdicion.moneda,
@@ -376,20 +409,51 @@ export default function RequerimientosPage() {
   const clientesFiltrados = (cuentas ?? []).filter((cuenta) => {
     const consulta = buscarCliente.trim().toLocaleLowerCase();
     if (!consulta) return true;
-    const nombreCompleto = [cuenta.nombres, cuenta.apellido_paterno, cuenta.apellido_materno]
-      .filter(Boolean)
-      .join(" ");
-    return [nombreCompleto, cuenta.razon_social, String(cuenta.codigo_cliente)]
-      .some((valor) => valor?.toLocaleLowerCase().includes(consulta));
+    const nombreCompleto = [cuenta.nombres, cuenta.apellido_paterno, cuenta.apellido_materno].filter(Boolean).join(" ");
+    return [nombreCompleto, cuenta.razon_social, String(cuenta.codigo_cliente)].some((valor) => valor?.toLocaleLowerCase().includes(consulta));
   });
-
-  const nombreVisibleCliente = (cuenta: NonNullable<typeof cuentas>[number]) => {
+  const nombreVisibleCliente = (cuenta: CuentaComercial | null | undefined) => {
+    if (!cuenta) return "Cliente seleccionado";
     const nombreCompleto = [cuenta.nombres, cuenta.apellido_paterno, cuenta.apellido_materno]
       .filter(Boolean)
       .join(" ")
       .trim();
     return [...new Set([nombreCompleto, cuenta.razon_social.trim()].filter(Boolean))].join(" · ") || `Cliente #${cuenta.codigo_cliente}`;
   };
+
+  
+const iniciarPreparacionOferta = () => {
+  if (!cuentaComercialId) {
+    mostrarToast("Cliente requerido", "Selecciona un cliente para continuar.");
+    return;
+  }
+
+  const datosBase: CotizacionMetaBorrador = {
+    cantidad: "",
+    moneda: "BOB",
+    precioLista: "",
+    descuentoPorcentaje: "0",
+    precioUnitario: "0.00",
+    precioTotal: "0.00",
+    fechaVencimiento: "",
+    observaciones: "",
+    prioridad,
+    fechaEntrega,
+    lugarEntrega,
+    tipoLugarEntrega,
+    departamentoEntrega: departamentoEntrega || "CB",
+    empresaTransporte,
+    sucursalEntrega: sucursalEntrega || "montes",
+  };
+
+  setDatosCotizacion(datosBase);
+  setVistaOferta("detalle_oferta");
+};
+
+  const totalOferta = useMemo(
+    () => lineasCotizacion.reduce((total, linea) => total + importeLineaCotizacion(linea), 0),
+    [lineasCotizacion],
+  );
 
   const { data: categorias = [] } =
     useProductosCategorias();
@@ -568,14 +632,8 @@ export default function RequerimientosPage() {
   };
 
   const handleCrearProductoNuevo = () => {
-    if (modoCatalogoExistente && lineasCotizacion.length) {
-      mostrarToast("Finaliza la cotización actual", "Guarda o retira los productos del carrito antes de iniciar una solicitud de producto nuevo.");
-      return;
-    }
-    setModoCatalogoExistente(false);
-    setEsProductoNuevo(true);
-    setProductoSeleccionado(null);
-    nextStep();
+    setMostrarCatalogo(false);
+    setMostrarNuevoProducto(true);
   };
 
   const handleCrearCotizacion = async (
@@ -632,7 +690,7 @@ export default function RequerimientosPage() {
         otras_caracteristicas: otrasCaracteristicas,
       } : undefined;
       const especificacionBobina = esProductoNuevo && tipoProducto === "bobina" ? {
-        ancho: anchoBobina,
+        ancho_doblado: anchoBobina,
         diametro: diametro || null,
         diametro_nucleo: diametroNucleo || null,
         longitud: longitud || null,
@@ -698,21 +756,23 @@ export default function RequerimientosPage() {
     }
   };
 
-  const guardarCotizacion = async () => {
-    if (!cuentaComercialId || !lineasCotizacion.length || !datosCotizacion) return;
+  const guardarCotizacion = async (envio?: { medio: "telefono" | "email" | "whatsapp" | "presencial" | "videollamada" | "otro"; detalle: string; recordatorio: boolean }, evidencia?: File | null) => {
+    const lineasPendientes = lineasCotizacion.filter((linea) => !linea.persistida);
+    if (!cuentaComercialId || !datosCotizacion || (!lineasPendientes.length && !(envio && versionActivaId))) return;
     try {
-      const unidades = lineasCotizacion
+      const unidades = lineasPendientes
         .filter((linea) => linea.unidad_comercial === "unidad")
         .reduce((total, linea) => total + Number(linea.cantidad || 0), 0);
-      const kilos = lineasCotizacion
+      const kilos = lineasPendientes
         .filter((linea) => linea.unidad_comercial === "kg")
         .reduce((total, linea) => total + Number(linea.cantidad || 0), 0);
-      const resultado = await formalizarCotizacion.mutateAsync({
-        cotizacion_version_id: cotizacionVersionId || undefined,
+      const payload: FormalizarCotizacionWizardPayload = {
+        ...(envio ? { envio } : {}),
+        cotizacion_version_id: versionActivaId || cotizacionVersionId || undefined,
         solicitud: {
           cuenta_comercial: cuentaComercialId,
           fecha: new Date().toISOString(),
-          descripcion: `Cotización comercial (${lineasCotizacion.length} líneas)`,
+          descripcion: `Cotización comercial (${lineasPendientes.length} líneas)`,
 
           cantidad_unidades: unidades ? String(unidades) : "0",
           cantidad_kg: kilos ? String(kilos) : "0",
@@ -733,10 +793,11 @@ export default function RequerimientosPage() {
           observaciones: datosCotizacion.observaciones || "",
           moneda: datosCotizacion.moneda,
         },
-        detalles: lineasCotizacion.map(({ key: _key, nombre: _nombre, codigo: _codigo, archivo_color_impresion: _archivo, ...linea }) => linea),
-      });
+        detalles: lineasPendientes.map(({ key: _key, nombre: _nombre, codigo: _codigo, archivo_color_impresion: _archivo, persistida: _persistida, ...linea }) => linea),
+      };
+      const resultado = await formalizarCotizacion.mutateAsync(envio ? { data: payload, evidencia } : payload);
       let archivoPendiente = false;
-      for (const [index, linea] of lineasCotizacion.entries()) {
+      for (const [index, linea] of lineasPendientes.entries()) {
         const archivo = linea.archivo_color_impresion;
         const versionId = resultado.detalles[index]?.especificacion_version;
         if (archivo && versionId) {
@@ -747,16 +808,74 @@ export default function RequerimientosPage() {
           }
         }
       }
-      setLineasCotizacion([]);
-      setDatosCotizacion(null);
-      resetWizard();
-      mostrarToast(archivoPendiente ? "Cotización creada; PDF pendiente" : "Cotización creada", archivoPendiente ? `Cotización ${resultado.numero} creada, pero no se pudo adjuntar uno o más PDF. Edítala para cargarlos.` : `Cotización ${resultado.numero} creada con ${resultado.detalles.length} líneas.`);
+      setVersionActivaId(resultado.cotizacion_version);
+      setOfertaPersistida({ numero: numeroOfertaDesdeSolicitud(resultado.solicitud_comercial), version: resultado.version, estado: resultado.estado });
+      setLineasCotizacion((actuales) => actuales.map((linea) => {
+        if (linea.persistida) return linea;
+        const pendingIndex = lineasPendientes.findIndex((pending) => pending.key === linea.key);
+        return { ...linea, persistida: true, backendDetailId: resultado.detalles[pendingIndex]?.cotizacion_detalle };
+      }));
+      setUltimaVersionCotizacion(resultado.cotizacion_version);
+      if (envio) {
+        setEvidenciaRegistrada(resultado.envio ? { medio: resultado.envio.medio, detalle: resultado.envio.detalle, archivo: resultado.envio.archivo_nombre } : null);
+        setMostrarEnvioModal(false);
+        setArchivoEnvio(null);
+        setDetalleEnvio("");
+        setRecordatorioEnvio(false);
+      }
+      mostrarToast(archivoPendiente ? "Cotización creada; PDF pendiente" : envio ? "Envío comercial registrado" : "Borrador guardado", archivoPendiente ? `Cotización ${resultado.numero} creada, pero no se pudo adjuntar uno o más PDF. Edítala para cargarlos.` : envio ? `Cotización ${resultado.numero} V${resultado.version} registrada con estado ${resultado.estado}.` : `Cotización ${resultado.numero} V${resultado.version} quedó en estado ${resultado.estado}.`);
       if (cotizacionVersionId && solicitudEnEdicion) {
         navigate(`/comercial/requerimientos/${solicitudEnEdicion.solicitud.id}`);
       }
     } catch (error: unknown) {
-      const message = (error as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje;
-      mostrarToast("Error", message || "No se pudo guardar la cotización.");
+      const response = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
+      const message = response?.mensaje || response?.detail || (error instanceof Error ? error.message : "");
+      if (envio) setErrorEnvio(message || "No se pudo registrar el envío comercial.");
+      else mostrarToast("Error", message || "No se pudo guardar la cotización.");
+    }
+  };
+
+  const descargarPdf = async (versionId: number) => {
+    try {
+      const pdf = await cotizacionesVersionesApi.pdf(versionId);
+      const url = URL.createObjectURL(pdf);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `oferta-${ofertaPersistida?.numero ?? versionId}.pdf`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      mostrarToast("PDF no disponible", "No se pudo descargar el PDF de esta versión.");
+    }
+  };
+
+  const actualizarLinea = async (linea: CotizacionLineaBorrador) => {
+    if (!linea.persistida || !linea.backendDetailId) {
+      await guardarCotizacion();
+      return;
+    }
+    try {
+      await cotizacionesDetallesApi.update(linea.backendDetailId, {
+        cantidad: linea.cantidad,
+        precio_lista: linea.precio_lista,
+        descuento_porcentaje: linea.descuento_porcentaje,
+        unidad_comercial: linea.unidad_comercial,
+        peso_kg: linea.peso_kg,
+      });
+      mostrarToast("Línea actualizada", "Se guardaron cantidad, unidad, precio y descuento.");
+    } catch (error) {
+      const message = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
+      mostrarToast("No se pudo actualizar", message?.mensaje || message?.detail || "Intenta nuevamente.");
+    }
+  };
+
+  const quitarLinea = async (linea: CotizacionLineaBorrador) => {
+    try {
+      if (linea.persistida && linea.backendDetailId) await cotizacionesDetallesApi.remove(linea.backendDetailId);
+      setLineasCotizacion((actuales) => actuales.filter((item) => item.key !== linea.key));
+    } catch (error) {
+      const message = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
+      mostrarToast("No se pudo quitar el producto", message?.mensaje || message?.detail || "Intenta nuevamente.");
     }
   };
 
@@ -1029,10 +1148,48 @@ export default function RequerimientosPage() {
 
   return (
     <div className="space-y-6">
+      {vistaOferta === "seleccion_cliente" && <NuevaOfertaModal open cuentas={cuentas ?? []} cuentaId={cuentaComercialId} onSelect={setCuentaComercialId} onContinue={iniciarPreparacionOferta} onCancel={() => navigate("/comercial/requerimientoListPage")} />}
+      {vistaOferta === "detalle_oferta" && <OfertaComercialDetalle
+        cliente={cuentaSeleccionada ? nombreVisibleCliente(cuentaSeleccionada) : "Cliente seleccionado"}
+        numero={ofertaPersistida?.numero ?? (solicitudEnEdicion ? numeroOfertaDesdeSolicitud(solicitudEnEdicion.solicitud.id) : cotizacionEnEdicion?.numero ?? null)}
+        version={ofertaPersistida ? String(ofertaPersistida.version).padStart(2, "0") : versionEnEdicion ? String(versionEnEdicion.version).padStart(2, "0") : null}
+        estado={ofertaPersistida?.estado ?? versionEnEdicion?.estado ?? "Preparación temporal"}
+        cantidad={lineasCotizacion.length}
+        total={totalOferta.toLocaleString("es-BO", { minimumFractionDigits: 2 })}
+        evidenciaRegistrada={evidenciaRegistrada}
+        aviso={!lineasCotizacion.length ? "Antes de enviar: Agrega al menos un producto" : undefined}
+        onBack={() => navigate("/comercial/requerimientoListPage")}
+        onAddProduct={() => setMostrarCatalogo(true)}
+        onSend={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }}
+        onSaveDraft={lineasCotizacion.some((linea) => !linea.persistida) ? () => void guardarCotizacion() : undefined}
+        onPdf={versionActivaId ? () => void descargarPdf(versionActivaId) : undefined}
+      >
+        {!lineasCotizacion.length ? <div className="py-12 text-center text-sm text-slate-500">Agrega un producto homologado o crea uno comercial nuevo.</div> : <div className="space-y-3">
+          {lineasCotizacion.map((linea) => {
+            const subtotal = importeLineaCotizacion(linea);
+            const bloqueada = ofertaPersistida?.estado === "enviada" || ofertaPersistida?.estado === "aceptada";
+            return <article key={linea.key} className="min-w-0 space-y-4 rounded-lg border border-slate-200 p-3 sm:p-4">
+              <div className="min-w-0"><p className="break-words font-semibold text-slate-900">{linea.nombre}</p><p className="break-words text-xs text-slate-500">{linea.codigo} · {linea.tipo_producto === "bolsa" ? "Bolsa" : "Bobina"}</p></div>
+              <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <label className="min-w-0 text-xs text-slate-500">Cantidad<input type="number" min="0.01" step="0.01" disabled={bloqueada} value={linea.cantidad} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, cantidad: event.target.value } : item))} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100" /></label>
+                <label className="min-w-0 text-xs text-slate-500">Unidad<select disabled={bloqueada} value={linea.unidad_comercial} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, unidad_comercial: event.target.value } : item))} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100"><option value="unidad">Unidades</option><option value="kg">Kg</option><option value="bobina">Bobina</option><option value="fajo">Fajo</option><option value="metro">Metro</option></select></label>
+                <label className="min-w-0 text-xs text-slate-500">Precio unitario Bs<input type="number" min="0" step="0.01" disabled={bloqueada} value={linea.precio_lista} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, precio_lista: event.target.value } : item))} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100" /></label>
+                <label className="min-w-0 text-xs text-slate-500">Descuento %<input type="number" min="0" max="100" step="0.01" disabled={bloqueada} value={linea.descuento_porcentaje} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, descuento_porcentaje: event.target.value } : item))} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100" /></label>
+              </div>
+              <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
+                <div className="min-w-0 flex-1"><p className="text-xs text-slate-500">Importe</p><p className="font-semibold text-slate-900">Bs {subtotal.toLocaleString("es-BO", { minimumFractionDigits: 2 })}</p>{linea.producto_version_id ? <PesoProductoCatalogo productoVersionId={linea.producto_version_id} cantidad={linea.cantidad} /> : linea.especificacion ? <PesoProductoNuevo tipoProducto={linea.tipo_producto} cantidad={linea.cantidad} especificacion={linea.especificacion} especificacionBolsa={linea.especificacion_bolsa} especificacionBobina={linea.especificacion_bobina} /> : null}</div>
+                <div className="flex shrink-0 flex-wrap gap-2"><button type="button" disabled={bloqueada || formalizarCotizacion.isPending} onClick={() => void actualizarLinea(linea)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-50">Actualizar</button><button type="button" disabled={bloqueada || formalizarCotizacion.isPending} onClick={() => void quitarLinea(linea)} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50">Quitar</button></div>
+              </div>
+            </article>;
+          })}
+        </div>}
+      </OfertaComercialDetalle>}
+      <CatalogoOfertaModal open={mostrarCatalogo && vistaOferta === "detalle_oferta"} product={product} onProductType={setProduct} onClose={() => setMostrarCatalogo(false)} onAdd={(producto) => { agregarProductoAlCarrito(producto); setDatosCotizacion((actual) => actual ?? { cantidad: "", moneda: "BOB", precioLista: "", descuentoPorcentaje: "0", precioUnitario: "0.00", precioTotal: "0.00", fechaVencimiento: "", observaciones: "", prioridad, fechaEntrega, lugarEntrega, tipoLugarEntrega, departamentoEntrega: departamentoEntrega || "CB", empresaTransporte, sucursalEntrega: sucursalEntrega || "montes", observacionesSolicitud: observaciones }); }} onCreate={handleCrearProductoNuevo} versionsInCart={lineasCotizacion.map((linea) => linea.producto_version_id).filter((id): id is number => id !== undefined)} />
+      {false && <>
       {/* Encabezado */}
       <div>
         <h1 className="text-2xl font-semibold text-foreground">
-          {cotizacionVersionId ? `Agregar productos a ${cotizacionEnEdicion?.numero ?? "la cotización"} · versión ${versionEnEdicion?.version ?? ""}` : "Nueva cotización"}
+          {cotizacionVersionId ? `Agregar productos a ${cotizacionEnEdicion?.numero ?? "la cotización"} · versión ${versionEnEdicion?.version ?? ""}` : "Nueva oferta comercial"}
         </h1>
 
         <p className="mt-1 text-sm text-muted-foreground">
@@ -1120,19 +1277,21 @@ export default function RequerimientosPage() {
 
 
       {lineasCotizacion.length > 0 && (
-        <section className="space-y-4 rounded-xl border border-primary/30 bg-card p-5">
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_320px]">
+        <section className="space-y-4 rounded-xl border border-border bg-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">Carrito de cotización</h2>
+              <h2 className="text-lg font-semibold">Carrito de productos</h2>
               <p className="text-sm text-muted-foreground">{lineasCotizacion.length} {lineasCotizacion.length === 1 ? "producto" : "productos"} · Los importes se recalculan al guardar.</p>
             </div>
+            <button type="button" onClick={() => document.getElementById("catalogo-productos-oferta")?.scrollIntoView({ behavior: "smooth" })} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">＋ Agregar producto</button>
             {modoCatalogoExistente && step === 2 ? <button type="button" onClick={continuarConfiguracionExistentes} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">Continuar a cantidades y entrega</button> : !modoCatalogoExistente && <button
               type="button"
-              onClick={guardarCotizacion}
+              onClick={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }}
               disabled={formalizarCotizacion.isPending || !cuentaComercialId}
               className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
             >
-              {formalizarCotizacion.isPending ? "Guardando…" : "Guardar cotización"}
+              Guardar y registrar envío
             </button>}
           </div>
           <div className="space-y-3">
@@ -1185,16 +1344,26 @@ export default function RequerimientosPage() {
             <div><p className="text-xs text-muted-foreground">Total preliminar · sin impuestos añadidos</p><p className="text-xl font-semibold">{datosCotizacion?.moneda ?? "BOB"} {lineasCotizacion.reduce((sum, linea) => sum + Number(linea.cantidad || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100), 0).toFixed(2)}</p></div>
           </div>
         </section>
+        <aside className="space-y-4 rounded-xl border border-border bg-card p-5">
+          <h2 className="font-semibold">Acciones y estado</h2>
+          <p className="text-xs text-muted-foreground">{cuentaSeleccionada ? nombreVisibleCliente(cuentaSeleccionada) : "Selecciona un cliente"} · {lineasCotizacion.length} productos</p>
+          <div className="border-t border-border pt-4"><p className="text-xs text-muted-foreground">Valor actual</p><p className="mt-1 text-2xl font-bold">{datosCotizacion?.moneda ?? "BOB"} {lineasCotizacion.reduce((sum, linea) => sum + Number(linea.cantidad || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100), 0).toLocaleString("es-BO", { minimumFractionDigits: 2 })}</p><span className="mt-2 inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">Borrador: aún no enviado al cliente</span></div>
+          <button type="button" onClick={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }} disabled={formalizarCotizacion.isPending || !cuentaComercialId || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim())} className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">✓ Guardar y registrar envío</button>
+          {!modoCatalogoExistente && <button type="button" onClick={() => void guardarCotizacion()} disabled={formalizarCotizacion.isPending || !cuentaComercialId} className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium">Guardar borrador</button>}
+          {(!cuentaComercialId || !lineasCotizacion.length) && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">Selecciona el cliente y completa al menos un producto.</p>}
+        </aside>
+        </div>
       )}
+      {ultimaVersionCotizacion && <button type="button" onClick={async () => { try { const pdf = await cotizacionesVersionesApi.pdf(ultimaVersionCotizacion!); const url = URL.createObjectURL(pdf); const enlace = document.createElement("a"); enlace.href = url; enlace.download = `oferta-${ultimaVersionCotizacion}.pdf`; enlace.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); } catch { mostrarToast("PDF no disponible", "No se pudo descargar el PDF de esta versión."); } }} className="rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium">↓ PDF de la oferta</button>}
 
       {/* Contenido del paso */}
-      <div className="min-h-[500px] rounded-xl border border-border bg-card p-6">
+      <div id="catalogo-productos-oferta" className="min-h-[500px] rounded-xl border border-border bg-card p-6">
         {analizandoViabilidad ? (
           <ViabilidadAnalizando />
 
         ) : resultadoViabilidad ? (
           <ViabilidadResultado
-            resultado={resultadoViabilidad}
+            resultado={resultadoViabilidad!}
             onContinuarCotizacion={() => {
               setMostrarCotizacion(true);
             }}
@@ -1207,7 +1376,7 @@ export default function RequerimientosPage() {
 
         ) : errorViabilidad ? (
           <ViabilidadResultado
-            error={errorViabilidad}
+            error={errorViabilidad!}
             onCompletarEspecificacion={() => {
               setErrorViabilidad(null);
               setStep(2);
@@ -1470,7 +1639,7 @@ export default function RequerimientosPage() {
       {!analizandoViabilidad &&
         !resultadoViabilidad &&
         !errorViabilidad && (
-          modoCatalogoExistente && step === 3 ? <div className="flex justify-between border-t border-border px-6 py-4"><button type="button" onClick={() => setStep(1)} className="rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-secondary">Volver al catálogo</button><button type="button" onClick={guardarCotizacion} disabled={formalizarCotizacion.isPending || !cuentaComercialId || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim() || Number(linea.precio_lista) < 0)} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50">{formalizarCotizacion.isPending ? "Guardando…" : "Guardar cotización"}</button></div> : !modoCatalogoExistente && (step !== 1 || esProductoNuevo) && <RequerimientoNavigation
+          modoCatalogoExistente && step === 3 ? <div className="flex justify-between border-t border-border px-6 py-4"><button type="button" onClick={() => setStep(1)} className="rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-secondary">Volver al catálogo</button><button type="button" onClick={() => void guardarCotizacion()} disabled={formalizarCotizacion.isPending || !cuentaComercialId || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim() || Number(linea.precio_lista) < 0)} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50">{formalizarCotizacion.isPending ? "Guardando…" : "Guardar cotización"}</button></div> : !modoCatalogoExistente && (step !== 1 || esProductoNuevo) && <RequerimientoNavigation
             step={step}
             onNext={nextStep}
             onPrevious={previousStep}
@@ -1479,6 +1648,8 @@ export default function RequerimientosPage() {
             submitting={evaluarViabilidad.isPending}
           />
         )}
+
+      </>}
 
       {/* Modal de confirmación de producto */}
       {productoSeleccionado && !modoCatalogoExistente && (
@@ -1491,6 +1662,8 @@ export default function RequerimientosPage() {
           onClose={handleBuscarOtroProducto}
         />
       )}
+
+      <RegistrarEnvioComercialModal open={mostrarEnvioModal} pending={formalizarCotizacion.isPending} medio={medioEnvio} detalle={detalleEnvio} archivo={archivoEnvio} recordatorio={recordatorioEnvio} error={errorEnvio} onClose={() => setMostrarEnvioModal(false)} onMedio={setMedioEnvio} onDetalle={setDetalleEnvio} onArchivo={setArchivoEnvio} onFileError={setErrorEnvio} onRecordatorio={setRecordatorioEnvio} onConfirm={() => void guardarCotizacion({ medio: medioEnvio, detalle: detalleEnvio.trim(), recordatorio: recordatorioEnvio }, archivoEnvio)} />
 
       {mostrarCotizacion && <CotizacionModal
         open
@@ -1506,11 +1679,43 @@ export default function RequerimientosPage() {
         resultadoViabilidad={resultadoViabilidad}
         onCrear={handleCrearCotizacion}
       />}
+      <NuevaCuentaComercialWizard open={mostrarNuevoCliente} onClose={() => setMostrarNuevoCliente(false)} onSuccess={(id) => { setCuentaComercialId(id); setMostrarNuevoCliente(false); }} />
       <Toast
         open={toast}
         title={toastTitle}
         description={toastDescription}
         onClose={() => setToast(false)}
+      />
+      <ProductoComercialWizardModal
+        open={mostrarNuevoProducto}
+        onClose={() => setMostrarNuevoProducto(false)}
+        onSuccess={(producto: ProductoComercialCreado) => {
+          const version = producto.versiones[0];
+          if (!version) {
+            mostrarToast("Producto creado", "No se recibió una versión técnica; no se añadió al carrito.");
+            return;
+          }
+          setLineasCotizacion((actuales) => {
+            if (actuales.some((linea) => linea.producto_version_id === version.id)) return actuales;
+            return [...actuales, {
+              key: `producto-${version.id}`,
+              tipo_producto: product === "bag" ? "bolsa" : "bobina",
+              producto_version_id: version.id,
+              cantidad: "1",
+              precio_lista: "",
+              descuento_porcentaje: "0",
+              costo_estimado: null,
+              unidad_comercial: producto.unidad_medida,
+              peso_kg: null,
+              nombre: producto.nombre,
+              codigo: producto.codigo,
+            }];
+          });
+          setModoCatalogoExistente(true);
+          setEsProductoNuevo(false);
+          mostrarToast("Producto añadido", `${producto.codigo} se añadió al carrito. Completa cantidad y precio.`);
+          setMostrarNuevoProducto(false);
+        }}
       />
     </div>
   );
@@ -1628,3 +1833,4 @@ function PesoProductoNuevo({
     </div>
   );
 }
+

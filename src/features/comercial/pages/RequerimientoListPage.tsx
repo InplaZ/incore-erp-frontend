@@ -3,13 +3,16 @@ import { useNavigate } from "react-router-dom";
 import {
   Check,
   ChevronDown,
+  Eye,
+  History,
+  MessageSquarePlus,
+  Package,
   Plus,
   Search,
 } from "lucide-react";
 
 import {
   useCuentasComerciales,
-  useEjecutivosComerciales,
   useSolicitudesComerciales,
   useUpdateSolicitudComercial,
 } from "../comercial.hooks";
@@ -31,9 +34,6 @@ export default function RequerimientosListPage() {
 
   const { data: cuentas = [] } =
     useCuentasComerciales();
-
-  const { data: ejecutivos = [] } =
-    useEjecutivosComerciales();
 
   // Más recientes primero
   const requerimientos = useMemo(() => {
@@ -66,12 +66,8 @@ export default function RequerimientosListPage() {
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            GESTIÓN COMERCIAL
-          </p>
-
           <h1 className="mt-1 text-2xl font-semibold text-foreground">
-            Requerimientos
+            Ofertas comerciales
           </h1>
 
           <p className="mt-1 text-sm text-muted-foreground">
@@ -87,38 +83,49 @@ export default function RequerimientosListPage() {
           className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
-          Nueva cotización
+          Nueva oferta
         </button>
       </div>
 
       {/* Resumen */}
 
-      <div className="grid overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-4">
-        <SummaryItem
-          label="Total"
-          value={summary.total}
-          detail="Requerimientos"
-        />
-
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
         <SummaryItem
           label="En negociación"
           value={summary.negociacion}
-          detail="En gestión"
+          detail="Bs "
         />
 
         <SummaryItem
-          label="En viabilidad"
+          label="Esperando respuesta"
+          value={summary.negociacion}
+          detail="Bs "
+        />
+
+        <SummaryItem
+          label="Confirmada"
           value={summary.viabilidad}
-          detail="Pendientes"
+          detail="Bs "
         />
 
         <SummaryItem
-          label="Aprobados"
+          label="Rechazada"
           value={summary.aprobados}
-          detail="Aceptados"
+          detail="Bs "
+        />
+
+        <SummaryItem
+          label="Cerrada sin respuesta"
+          value={summary.aprobados}
+          detail="Bs "
+        />
+
+        <SummaryItem
+          label="Vencida"
+          value={summary.total}
+          detail="Bs "
         />
       </div>
-
       {/* Tabla */}
 
       <section className="overflow-hidden rounded-lg border border-border bg-card">
@@ -163,7 +170,7 @@ export default function RequerimientosListPage() {
 
         {!isLoading && !isError && (
           <div className="overflow-x-auto">
-            <div className="min-w-[1050px]">
+            <div className="min-w-[1350px]">
               <TableHeader />
 
               {requerimientos.map((requerimiento) => (
@@ -171,7 +178,6 @@ export default function RequerimientosListPage() {
                   key={requerimiento.id}
                   requerimiento={requerimiento}
                   cuentas={cuentas}
-                  ejecutivos={ejecutivos}
                   onView={() =>
                     navigate(
                       `/comercial/requerimientos/${requerimiento.id}`,
@@ -208,139 +214,130 @@ export default function RequerimientosListPage() {
 ============================================================ */
 
 function TableHeader() {
+  const columns =
+    "grid-cols-[90px_minmax(150px,1.3fr)_minmax(180px,1.7fr)_75px_110px_120px_140px_145px_115px_115px]";
+
   return (
-    <div className="grid grid-cols-[70px_2fr_2fr_1fr_1.2fr_1.2fr_1.5fr_1fr_60px] gap-4 border-b border-border bg-secondary/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-      <span>N.º</span>
-      <span>Cliente</span>
-      <span>Descripción</span>
-      <span>Cantidad</span>
+    <div className={`grid ${columns} items-center gap-4 border-b border-border bg-secondary/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground`}>
+      <span>N.º oferta</span>
+      <span>Fecha entrega</span>
+      <span>Cliente / alias</span>
+      <span>Versión</span>
+      <span>Importe Bs</span>
+      <span>Validez</span>
       <span>Estado</span>
-      <span>Prioridad</span>
-      <span>Responsable</span>
-      <span>Entrega</span>
-      <span />
+      <span>Nuevo seguimiento</span>
+      <span>Previsualizar</span>
+      <span>Ver versiones</span>
     </div>
   );
 }
 
 /* ============================================================
-   FILA
+   FILA DE OFERTA
 ============================================================ */
 
 function RequerimientoRow({
   requerimiento,
   cuentas,
-  ejecutivos,
   onView,
 }: {
   requerimiento: SolicitudComercial;
   cuentas: ReturnType<typeof useCuentasComerciales>["data"] extends infer T
-  ? NonNullable<T>
-  : never;
-  ejecutivos: ReturnType<typeof useEjecutivosComerciales>["data"] extends infer T
-  ? NonNullable<T>
-  : never;
+    ? NonNullable<T>
+    : never;
   onView: () => void;
 }) {
   const cuenta = cuentas.find(
-    (item) =>
-      item.id === requerimiento.cuenta_comercial,
+    (item) => item.id === requerimiento.cuenta_comercial,
   );
-
-  const ejecutivo = cuenta
-    ? ejecutivos.find(
-      (item) =>
-        item.id === cuenta.ejecutivo_asignado,
-    )
-    : undefined;
 
   const nombreCliente = cuenta
     ? cuenta.razon_social ||
-    `${cuenta.nombres ?? ""} ${cuenta.apellido_paterno ?? ""
-      }`.trim() ||
-    "Sin nombre"
+      `${cuenta.nombres ?? ""} ${cuenta.apellido_paterno ?? ""}`.trim() ||
+      "Sin nombre"
     : "Cliente no encontrado";
 
-  const nombreEjecutivo = ejecutivo
-    ? `${ejecutivo.first_name} ${ejecutivo.last_name}`.trim()
-    : "Sin asignar";
+  const columns =
+    "grid-cols-[90px_minmax(150px,1.3fr)_minmax(180px,1.7fr)_75px_110px_120px_140px_145px_115px_115px]";
 
   return (
-    <div className="grid grid-cols-[70px_2fr_2fr_1fr_1.2fr_1.2fr_1.5fr_1fr_60px] items-center gap-4 border-b border-border px-5 py-4 hover:bg-secondary/100">
-
-      {/* N.º */}
+    <div className={`grid ${columns} items-center gap-4 border-b border-border px-5 py-4 transition-colors hover:bg-secondary/40`}>
+      {/* Número de oferta/solicitud */}
       <button
         type="button"
         onClick={onView}
-        className="text-left text-sm font-semibold text-foreground"
+        className="text-left text-sm font-semibold text-primary hover:underline"
+        title="Abrir detalle de la solicitud"
       >
         REQ-{String(requerimiento.id).padStart(3, "0")}
       </button>
 
-      {/* Cliente */}
-      <button
-        type="button"
-        onClick={onView}
-        className="min-w-0 text-left"
-      >
-        <p className="truncate text-sm font-semibold text-foreground">
-          {nombreCliente}
-        </p>
-
-        <p className="mt-1 text-xs text-muted-foreground">
-          ID cliente: {requerimiento.cuenta_comercial}
-        </p>
-      </button>
-
-      {/* Descripción */}
-      <button
-        type="button"
-        onClick={onView}
-        className="truncate text-left text-sm text-foreground"
-      >
-        {requerimiento.descripcion || "Sin descripción"}
-      </button>
-
-      {/* Cantidad */}
-      <button
-        type="button"
-        onClick={onView}
-        className="text-left"
-      >
-        {requerimiento.cantidad_unidades ? (
-          <span className="text-sm font-medium text-foreground">
-            {requerimiento.cantidad_unidades}
-          </span>
-        ) : requerimiento.cantidad_kg ? (
-          <span className="text-sm font-medium text-foreground">
-            {requerimiento.cantidad_kg} kg
-          </span>
-        ) : (
-          <span className="text-sm text-muted-foreground">
-            —
-          </span>
-        )}
-      </button>
-
-      {/* Estado */}
-      <EstadoSelector
-        requerimiento={requerimiento}
-      />
-
-      {/* Prioridad */}
-      <PrioridadBadge
-        prioridad={requerimiento.prioridad}
-      />
-
-      {/* Responsable */}
-      <p className="truncate text-sm font-medium text-foreground">
-        {nombreEjecutivo}
-      </p>
-
-      {/* Entrega */}
-      <p className="text-sm text-foreground">
+      {/* Fecha de entrega */}
+      <span className="text-sm text-foreground">
         {formatearFecha(requerimiento.fecha_entrega)}
-      </p>
+      </span>
+
+      {/* Cliente / alias */}
+      <button type="button" onClick={onView} className="min-w-0 text-left">
+        <span className="block truncate text-sm font-semibold text-foreground">
+          {nombreCliente}
+        </span>
+        <span className="mt-1 block text-xs text-muted-foreground">
+          ID cliente: {requerimiento.cuenta_comercial}
+        </span>
+      </button>
+
+      {/* Versión comercial: todavía no está incluida en SolicitudComercial */}
+      <span className="text-sm text-muted-foreground" title="Pendiente de conectar con el modelo de versiones">
+        —
+      </span>
+
+      {/* Importe: requiere datos de cotización/oferta */}
+      <span className="text-sm text-muted-foreground" title="El importe no está disponible en los datos de la solicitud">
+        —
+      </span>
+
+      {/* Validez: requiere datos de la oferta */}
+      <span className="text-sm text-muted-foreground" title="La validez no está disponible en los datos de la solicitud">
+        —
+      </span>
+
+      {/* Estado editable */}
+      <EstadoSelector requerimiento={requerimiento} />
+
+      {/* Seguimiento: abre el detalle para registrar la acción */}
+      <button
+        type="button"
+        onClick={onView}
+        className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+        title="Abrir el detalle para gestionar un seguimiento"
+      >
+        <MessageSquarePlus className="h-3.5 w-3.5" />
+        Registrar
+      </button>
+
+      {/* La previsualización PDF requiere conectar el generador de ofertas */}
+      <button
+        type="button"
+        disabled
+        className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs font-medium text-muted-foreground opacity-60"
+        title="La previsualización PDF de ofertas aún no está conectada"
+      >
+        <Eye className="h-3.5 w-3.5" />
+        PDF
+      </button>
+
+      {/* Historial: abre el detalle de la solicitud */}
+      <button
+        type="button"
+        onClick={onView}
+        className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+        title="Abrir el detalle para consultar las versiones"
+      >
+        <History className="h-3.5 w-3.5" />
+        Versiones
+      </button>
     </div>
   );
 }
@@ -475,8 +472,8 @@ function EstadoSelector({
                   cambiarEstado(estado.value)
                 }
                 className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs transition-colors hover:bg-secondary ${seleccionado
-                    ? "bg-secondary"
-                    : ""
+                  ? "bg-secondary"
+                  : ""
                   }`}
               >
                 <span className="flex items-center gap-2">
@@ -569,20 +566,24 @@ function SummaryItem({
   detail: string;
 }) {
   return (
-    <div className="border-b border-border p-5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
-      <span className="block text-xs text-muted-foreground">
-        {label}
-      </span>
+    <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-medium text-slate-500">
+          {label}
+        </p>
 
-      <div className="mt-1 flex items-baseline gap-2">
-        <strong className="text-2xl font-semibold text-foreground">
-          {value}
-        </strong>
-
-        <span className="text-xs font-medium text-muted-foreground">
-          {detail}
-        </span>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+          <Package className="h-4 w-4" />
+        </div>
       </div>
+
+      <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
+        {value}
+      </p>
+
+      <p className="mt-2 text-[11px] leading-4 text-slate-500">
+        {detail}
+      </p>
     </div>
   );
 }

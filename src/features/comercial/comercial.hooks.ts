@@ -1182,8 +1182,8 @@ export function useCrearCotizacionDesdeSolicitud() {
 export function useFormalizarCotizacionDesdeWizard() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: FormalizarCotizacionWizardPayload) =>
-      cotizacionesApi.formalizarDesdeWizard(data),
+    mutationFn: (input: FormalizarCotizacionWizardPayload | { data: FormalizarCotizacionWizardPayload; evidencia?: File | null }) =>
+      "data" in input ? cotizacionesApi.formalizarDesdeWizard(input.data, input.evidencia) : cotizacionesApi.formalizarDesdeWizard(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizaciones() });
