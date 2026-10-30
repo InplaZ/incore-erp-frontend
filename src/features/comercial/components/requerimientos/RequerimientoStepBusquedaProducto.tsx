@@ -2,7 +2,7 @@ import { Eye, Layers3, Package, Ruler, Search, ShoppingCart, SlidersHorizontal, 
 import { useState } from "react";
 
 import { useBuscarProductosCatalogo } from "@/features/productos/productos.hooks";
-import type { ProductType } from "./RequerimientoStepProducto";
+import type { ProductType } from "./RequerimientoStepProducto"; //Archivo donde se define si es boboina o bolsa
 import type {
   MaterialProducto,
   ProductoBusquedaResultado,
@@ -95,7 +95,7 @@ export default function RequerimientoStepBusquedaProducto({
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h2 className="text-xl font-semibold tracking-tight text-foreground">Catálogo de productos</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">Busca y agrega {tipoProductoLabel} a la cotización.</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">Busca y agrega {tipoProductoLabel} a la oferta.</p>
         </div>
         <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
           <span className="text-sm text-muted-foreground" aria-live="polite">

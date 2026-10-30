@@ -1,5 +1,6 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
     ArrowLeft,
     Check,
@@ -13,10 +14,19 @@ import {
     Pencil,
 } from "lucide-react";
 
-import { useSolicitudComercial, useCrearCotizacionVersion } from "../comercial.hooks";
+import { useSolicitudComercial, useCrearCotizacionVersion, useCotizaciones, useCotizacionesVersiones, useOfertaSeguimiento, comercialQueryKeys } from "../comercial.hooks";
 import { useProductosCategorias } from "@/features/productos/productos.hooks";
 import ComunicacionesModal from "@/features/comercial/components/ComunicacionModal";
 import EditarRequerimientoModal from "@/features/comercial/components/EditarRequerimientoModal";
+import OfertaComercialDetalle from "../components/ofertas/OfertaComercialDetalle";
+import OfertaSeguimientoTimeline from "../components/ofertas/OfertaSeguimientoTimeline";
+import CatalogoOfertaModal from "../components/ofertas/CatalogoOfertaModal";
+import RegistrarComunicacionModal from "../components/RegistrarComunicacionModal";
+import NuevaActividadModal from "../components/actividades/NuevaActividadModal";
+import ProductoComercialWizardModal from "@/features/productos/ProductoComercialWizardModal";
+import type { ProductoComercialCreado } from "@/features/productos/productos.types";
+import type { ProductoBusquedaResultado, ProductType } from "../comercial.types";
+import { cotizacionesDetallesApi, cotizacionesVersionesApi } from "../comercial.api";
 import { api } from "@/api/api.config";
 
 interface LineaEdicionForm {
@@ -37,6 +47,8 @@ interface LineaEdicionForm {
 export default function RequerimientoDetallePage() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const queryClient = useQueryClient();
 
     const solicitudId = Number(id);
 
@@ -50,6 +62,27 @@ export default function RequerimientoDetallePage() {
     const [formLinea, setFormLinea] = useState<LineaEdicionForm | null>(null);
     const [guardandoLinea, setGuardandoLinea] = useState(false);
     const [calculandoPeso, setCalculandoPeso] = useState(false);
+    const pestañaParam = searchParams.get("tab");
+    const pestañaOferta: "productos" | "condiciones" | "seguimiento" | "versiones" = pestañaParam === "condiciones" || pestañaParam === "seguimiento" || pestañaParam === "versiones" ? pestañaParam : "productos";
+    const setPestañaOferta = (tab: "productos" | "condiciones" | "seguimiento" | "versiones") => {
+        const next = new URLSearchParams(searchParams);
+        if (tab === "productos") next.delete("tab"); else next.set("tab", tab);
+        setSearchParams(next, { replace: true });
+    };
+    const versionSeleccionadaId = Number(searchParams.get("version") || searchParams.get("version_preparada") || 0) || null;
+    const [mostrarCatalogo, setMostrarCatalogo] = useState(false);
+    const [mostrarProductoWizard, setMostrarProductoWizard] = useState(false);
+    const [tipoProductoCatalogo, setTipoProductoCatalogo] = useState<ProductType>("bag");
+    const [productoPendiente, setProductoPendiente] = useState<{ versionId: number; nombre: string; codigo: string; unidad: string } | null>(null);
+    const [cantidadPendiente, setCantidadPendiente] = useState("1");
+    const [unidadPendiente, setUnidadPendiente] = useState("unidad");
+    const [precioPendiente, setPrecioPendiente] = useState("");
+    const [descuentoPendiente, setDescuentoPendiente] = useState("0");
+    const [agregandoProducto, setAgregandoProducto] = useState(false);
+    const [errorAgregarProducto, setErrorAgregarProducto] = useState("");
+    const [errorAccionOferta, setErrorAccionOferta] = useState("");
+    const [accionOferta, setAccionOferta] = useState<"enviar" | "aceptar" | "rechazar" | "cerrar" | null>(null);
+    const [mostrarActividadOferta, setMostrarActividadOferta] = useState(false);
     const crearVersionCotizacion = useCrearCotizacionVersion();
     const cantidadPeso = formLinea?.cantidad;
     const materialPeso = formLinea?.tecnica.material;
@@ -115,6 +148,21 @@ export default function RequerimientoDetallePage() {
 
     const { data, isLoading, isError } =
         useSolicitudComercial(solicitudId);
+
+    const { data: cotizacionesData } = useCotizaciones();
+    const cotizacionDeSolicitud = cotizacionesData?.results?.find((item) => item.solicitud_comercial === solicitudId)
+        ?? data?.productosCotizados?.[0]?.cotizacion;
+    const { data: versionesData } = useCotizacionesVersiones(
+        cotizacionDeSolicitud ? { cotizacion: cotizacionDeSolicitud.id } : undefined,
+    );
+    const versionesDesdeSolicitud = Array.from(new Map(
+        (data?.productosCotizados ?? []).map((linea) => [linea.cotizacionVersion.id, linea.cotizacionVersion]),
+    ).values());
+    const versionesDisponibles = (versionesData?.results ?? versionesDesdeSolicitud)
+        .filter((version) => !cotizacionDeSolicitud || version.cotizacion === cotizacionDeSolicitud.id)
+        .sort((a, b) => b.version - a.version);
+    const versionSeleccionadaActual = versionesDisponibles.find((version) => version.id === versionSeleccionadaId) ?? versionesDisponibles[0] ?? null;
+    const { data: eventosSeguimiento = [] } = useOfertaSeguimiento(versionSeleccionadaActual?.id ?? 0);
 
     const { data: categorias } = useProductosCategorias();
 
@@ -195,9 +243,13 @@ export default function RequerimientoDetallePage() {
     const productoCotizado = (data.productosCotizados ?? []).find(
         (linea) => linea.cotizacionDetalle.id === lineaSeleccionadaId,
     ) ?? data.productosCotizados?.[0] ?? null;
-    const versionesCotizacion = Array.from(new Map(
-        (data.productosCotizados ?? []).map((linea) => [linea.cotizacionVersion.id, linea.cotizacionVersion]),
-    ).values()).sort((a, b) => b.version - a.version);
+    const versionesCotizacion = versionesDisponibles;
+    const versionSeleccionada = versionSeleccionadaActual;
+    const lineasVersionSeleccionada = (data.productosCotizados ?? []).filter((linea) => linea.cotizacionVersion.id === versionSeleccionada?.id);
+    const totalVersionSeleccionada = versionSeleccionada?.precio_total ?? "0.00";
+    const evidenciaActual = eventosSeguimiento
+        .filter((evento) => evento.version_id === versionSeleccionada?.id && evento.evidencias.length > 0)
+        .flatMap((evento) => evento.evidencias.map((evidencia) => ({ medio: evento.canal || evento.categoria, detalle: evento.descripcion, archivo: evidencia.nombre })))[0] ?? null;
     const versionEnviada = versionesCotizacion.find((version) => version.estado === "enviada");
     const productoVersion = productoCotizado?.productoVersion ?? null;
     const especificacionVersionada = productoCotizado?.especificacionProductoSolicitadoVersion ?? null;
@@ -311,7 +363,11 @@ export default function RequerimientoDetallePage() {
                 motivo_cambio: formLinea.motivo_cambio,
                 ...(hayCambioTecnico ? { datos_especificacion: datosEspecificacion } : {}),
             });
-            window.location.reload();
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitud(solicitudId) }),
+                queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() }),
+            ]);
+            setLineaEditandoId(null);
         } catch (error) {
             console.error("No se pudo guardar la modificación de la línea", error);
             alert("No se pudo guardar. Verifica la viabilidad de la nueva medida y que la versión esté en borrador.");
@@ -330,6 +386,224 @@ export default function RequerimientoDetallePage() {
         if (typeof valor === "boolean") return <label key={campo} className="flex items-center gap-2 text-sm text-foreground"><input type="checkbox" checked={valor} onChange={(event) => actualizarTecnica(campo, event.target.checked)} />{etiqueta}</label>;
         return <label key={campo} className="text-xs text-muted-foreground">{etiqueta}{opciones ? <select value={String(valor)} onChange={(event) => actualizarTecnica(campo, event.target.value)} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground"><option value="">—</option>{opciones.map((opcion) => <option key={opcion} value={opcion}>{opcion.replaceAll("_", " ")}</option>)}</select> : <input value={Array.isArray(valor) ? valor.join(", ") : String(valor)} onChange={(event) => actualizarTecnica(campo, event.target.value)} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />}</label>;
     };
+
+    const seleccionarVersion = (versionId: number) => {
+        const next = new URLSearchParams(searchParams);
+        next.set("version", String(versionId));
+        next.delete("version_preparada");
+        next.delete("tab");
+        setSearchParams(next, { replace: true });
+        setLineaEditandoId(null);
+    };
+
+    const guardarProductoAgregado = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!productoPendiente || !versionSeleccionada || versionSeleccionada.estado !== "borrador") return;
+        if (!cantidadPendiente.trim() || Number(cantidadPendiente) <= 0 || !precioPendiente.trim() || Number(precioPendiente) < 0) {
+            setErrorAgregarProducto("Ingresa una cantidad y un precio válidos para agregar el producto.");
+            return;
+        }
+        setAgregandoProducto(true);
+        setErrorAgregarProducto("");
+        try {
+            await cotizacionesVersionesApi.agregarDetalle(versionSeleccionada.id, {
+                producto_version_id: productoPendiente.versionId,
+                cantidad: cantidadPendiente,
+                precio_lista: precioPendiente,
+                descuento_porcentaje: descuentoPendiente || "0",
+                unidad_comercial: unidadPendiente,
+            });
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitud(solicitudId) }),
+                queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() }),
+            ]);
+            setProductoPendiente(null);
+            setPrecioPendiente("");
+            setCantidadPendiente("1");
+            setDescuentoPendiente("0");
+        } catch (error) {
+            const response = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
+            setErrorAgregarProducto(response?.mensaje || response?.detail || "No se pudo agregar el producto a esta versión.");
+        } finally {
+            setAgregandoProducto(false);
+        }
+    };
+
+    const eliminarLinea = async (lineaId: number) => {
+        if (!versionSeleccionada || versionSeleccionada.estado !== "borrador") return;
+        try {
+            await cotizacionesDetallesApi.remove(lineaId);
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitud(solicitudId) }),
+                queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() }),
+            ]);
+        } catch (error) {
+            const response = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
+            setErrorAccionOferta(response?.mensaje || response?.detail || "No se pudo quitar el producto.");
+        }
+    };
+
+    const prepararNuevaVersionOferta = async () => {
+        if (!cotizacionDeSolicitud || !versionSeleccionada || versionesCotizacion[0]?.id !== versionSeleccionada.id) return;
+        setErrorAccionOferta("");
+        try {
+            const resultado = await crearVersionCotizacion.mutateAsync({ cotizacionId: cotizacionDeSolicitud.id, moneda: versionSeleccionada.moneda });
+            seleccionarVersion(resultado.cotizacion_version);
+            await queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitud(solicitudId) });
+        } catch (error) {
+            const response = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
+            setErrorAccionOferta(response?.mensaje || response?.detail || "No se pudo crear una nueva versión.");
+        }
+    };
+
+    const descargarPdfVersion = async () => {
+        if (!versionSeleccionada) return;
+        try {
+            const pdf = await cotizacionesVersionesApi.pdf(versionSeleccionada.id);
+            const url = URL.createObjectURL(pdf);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${cotizacionDeSolicitud?.numero || `solicitud-${solicitudId}`}-V${versionSeleccionada.version}.pdf`;
+            link.click();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch {
+            setErrorAccionOferta("No se pudo descargar el PDF de esta versión.");
+        }
+    };
+
+    if (cotizacionDeSolicitud && versionSeleccionada) {
+        const nombreClienteOferta = cuentaComercial?.tipo_persona === "juridica"
+            ? cuentaComercial.razon_social
+            : [cuentaComercial?.nombres, cuentaComercial?.apellido_paterno, cuentaComercial?.apellido_materno].filter(Boolean).join(" ");
+        const estadoEtiqueta: Record<string, string> = {
+            borrador: "Borrador", enviada: "Enviada", aceptada: "Aceptada", rechazada: "Rechazada", anulada: "Anulada",
+        };
+        const esBorrador = versionSeleccionada.estado === "borrador";
+        const esEnviada = versionSeleccionada.estado === "enviada";
+        const ultimaVersion = versionesCotizacion[0];
+        const puedeCrearVersion = Boolean(ultimaVersion && ultimaVersion.id === versionSeleccionada.id && !["aceptada", "borrador", "anulada"].includes(versionSeleccionada.estado) && !["activa", "cerrada", "anulada"].includes(cotizacionDeSolicitud.estado));
+        const totalProductos = Number(totalVersionSeleccionada || 0).toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const acciones = <div className="space-y-2">
+            {errorAccionOferta && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{errorAccionOferta}</p>}
+            <button type="button" onClick={() => void descargarPdfVersion()} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700">↓ Descargar PDF V{versionSeleccionada.version}</button>
+            {esBorrador && <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("enviar"); }} disabled={!lineasVersionSeleccionada.length} className="w-full rounded-lg bg-blue-700 px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-50">✓ Guardar y registrar envío</button>}
+            {esEnviada && <>
+                <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("aceptar"); }} className="w-full rounded-lg bg-emerald-700 px-3 py-2.5 text-xs font-semibold text-white">✓ Registrar aceptación del cliente</button>
+                <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("rechazar"); }} className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">Rechazar oferta</button>
+            </>}
+            {puedeCrearVersion && <button type="button" onClick={() => void prepararNuevaVersionOferta()} disabled={crearVersionCotizacion.isPending} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 disabled:opacity-50">{crearVersionCotizacion.isPending ? "Creando versión…" : "+ Nueva versión para negociar"}</button>}
+            {!['activa', 'cerrada', 'anulada'].includes(cotizacionDeSolicitud.estado) && !["aceptada", "anulada"].includes(versionSeleccionada.estado) && <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("cerrar"); }} className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">Cerrar oportunidad</button>}
+            <button type="button" onClick={() => setMostrarActividadOferta(true)} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700">◉ Registrar seguimiento</button>
+        </div>;
+
+        const condiciones = <div className="space-y-4">
+            <div><h2 className="text-base font-bold text-slate-900">Condiciones de la oferta comercial</h2><p className="mt-1 text-xs text-slate-500">Datos guardados en la versión seleccionada.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {[
+                    ["Cliente / empresa", nombreClienteOferta], ["Registro automático", new Date(versionSeleccionada.created_at).toLocaleString("es-BO")],
+                    ["Forma de pago", versionSeleccionada.forma_pago], ["Validez (días)", versionSeleccionada.validez_dias],
+                    ["Plazo de entrega (días)", versionSeleccionada.plazo_entrega_dias], ["Tipo de días", versionSeleccionada.tipo_dias],
+                    ["Inicio del plazo", versionSeleccionada.inicio_plazo], ["Fecha de entrega comprometida", formatDate(versionSeleccionada.fecha_entrega_comprometida)],
+                    ["Lugar de entrega", versionSeleccionada.tipo_lugar_entrega], ["Departamento destino", versionSeleccionada.departamento_destino],
+                    ["Ciudad destino", versionSeleccionada.ciudad_destino], ["Ubicación del cliente", versionSeleccionada.ubicacion_cliente],
+                    ["Sucursal INPLAZ", versionSeleccionada.sucursal_inplaz],
+                ].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200 p-3"><p className="text-[11px] font-semibold text-slate-500">{label}</p><p className="mt-1 break-words text-sm text-slate-800">{value == null || value === "" ? "—" : String(value)}</p></div>)}
+            </div>
+            {versionSeleccionada.observaciones_comerciales && <div className="rounded-lg border border-slate-200 p-3"><p className="text-[11px] font-semibold text-slate-500">Observaciones comerciales</p><p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">{versionSeleccionada.observaciones_comerciales}</p></div>}
+        </div>;
+
+        const versiones = <div className="space-y-3">
+            <div><h2 className="text-base font-bold text-slate-900">Versiones de la oferta</h2><p className="mt-1 text-xs text-slate-500">Selecciona una versión para consultar su contenido y seguimiento.</p></div>
+            {versionesCotizacion.map((version) => {
+                const lineas = (data.productosCotizados ?? []).filter((linea) => linea.cotizacionVersion.id === version.id);
+                return <article key={version.id} className={`rounded-lg border p-4 ${version.id === versionSeleccionada.id ? "border-blue-300 bg-blue-50/50" : "border-slate-200"}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div><p className="font-semibold text-slate-900">{cotizacionDeSolicitud.numero} · V{String(version.version).padStart(2, "0")}</p><p className="mt-1 text-xs text-slate-500">{new Date(version.created_at).toLocaleString("es-BO")} · {estadoEtiqueta[version.estado] || version.estado} · {version.moneda} {Number(version.precio_total).toLocaleString("es-BO", { minimumFractionDigits: 2 })}</p><p className="mt-1 text-xs text-slate-500">{lineas.length} {lineas.length === 1 ? "producto" : "productos"}</p></div>
+                        <button type="button" onClick={() => seleccionarVersion(version.id)} aria-pressed={version.id === versionSeleccionada.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700">{version.id === versionSeleccionada.id ? "Versión seleccionada" : "Consultar versión"}</button>
+                    </div>
+                </article>;
+            })}
+        </div>;
+
+        const productos = <div className="space-y-3">
+            {errorAgregarProducto && !productoPendiente && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{errorAgregarProducto}</p>}
+            {!lineasVersionSeleccionada.length ? <p className="py-12 text-center text-sm text-slate-500">Esta versión no tiene productos registrados.</p> : lineasVersionSeleccionada.map((linea) => {
+                const detalle = linea.cotizacionDetalle;
+                const nombreProducto = linea.producto?.nombre || `Producto solicitado · especificación #${linea.especificacionProductoSolicitadoVersion?.id ?? "—"}`;
+                const especificacion = linea.especificacionProductoSolicitadoVersion;
+                const editing = lineaEditandoId === detalle.id && formLinea;
+                return <article key={detalle.id} className="min-w-0 rounded-lg border border-slate-200 p-3 sm:p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words font-semibold text-slate-900">{nombreProducto}</h3><p className="text-xs text-slate-500">{linea.producto?.codigo || "Sin código"} · {linea.categoria?.nombre || "Categoría no disponible"}</p></div>{linea.productoVersion?.estado && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">Estado: {linea.productoVersion.estado}</span>}</div>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <InfoItem label="Cantidad" value={`${detalle.cantidad} ${detalle.unidad_comercial}`} />
+                        <InfoItem label="Precio unitario" value={`${versionSeleccionada.moneda} ${Number(detalle.precio_lista).toLocaleString("es-BO", { minimumFractionDigits: 2 })}`} />
+                        <InfoItem label="Descuento" value={`${Number(detalle.descuento_porcentaje || 0).toFixed(2)}%`} />
+                        <InfoItem label="Importe" value={`${versionSeleccionada.moneda} ${Number(detalle.precio_total).toLocaleString("es-BO", { minimumFractionDigits: 2 })}`} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600"><span>Peso total: {detalle.peso_kg ? `${detalle.peso_kg} kg` : "No disponible"}</span>{especificacion && <span>Especificación técnica V{especificacion.version}{especificacion.especificacionBolsa ? ` · Bolsa ${especificacion.especificacionBolsa.ancho_doblado} × ${especificacion.especificacionBolsa.largo_doblado} cm` : especificacion.especificacionBobina ? ` · Bobina ${especificacion.especificacionBobina.ancho_desdoblado || especificacion.especificacionBobina.ancho_doblado} cm` : ""}</span>}{linea.productoVersion && <span>Versión de catálogo V{linea.productoVersion.numero_version}</span>}</div>
+                    {especificacion?.otras_caracteristicas && <p className="mt-2 whitespace-pre-wrap text-xs text-slate-500">{especificacion.otras_caracteristicas}</p>}
+                    {esBorrador && <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => iniciarEdicionLinea(linea)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-blue-700">Actualizar</button><button type="button" onClick={() => void eliminarLinea(detalle.id)} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Quitar</button></div>}
+                    {editing && <form onSubmit={(event) => { event.preventDefault(); void guardarEdicionLinea(linea); }} className="mt-4 space-y-4 rounded-lg border border-blue-200 bg-slate-50 p-3 sm:p-4">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <label className="text-xs text-slate-600">Cantidad<input type="number" min="0.01" step="0.01" value={formLinea.cantidad} onChange={(event) => setFormLinea({ ...formLinea, cantidad: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label>
+                            <label className="text-xs text-slate-600">Unidad<select value={formLinea.unidad_comercial} onChange={(event) => setFormLinea({ ...formLinea, unidad_comercial: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">{["unidad", "kg", "bobina", "fajo", "metro"].map((unit) => <option key={unit}>{unit}</option>)}</select></label>
+                            <label className="text-xs text-slate-600">Precio unitario<input type="number" min="0" step="0.01" value={formLinea.precio_lista} onChange={(event) => setFormLinea({ ...formLinea, precio_lista: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label>
+                            <label className="text-xs text-slate-600">Descuento %<input type="number" min="0" max="100" step="0.01" value={formLinea.descuento_porcentaje} onChange={(event) => setFormLinea({ ...formLinea, descuento_porcentaje: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label>
+                        </div>
+                        <p className="text-xs text-slate-500">Peso total calculado: {calculandoPeso ? "Calculando…" : formLinea.peso_kg ? `${formLinea.peso_kg} kg` : "No disponible"}</p>
+                        {especificacion && <fieldset className="space-y-3"><legend className="text-xs font-semibold text-slate-700">Especificaciones de esta línea</legend><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{campoTecnico("material", "Material", ["PEAD", "PEBD", "PP", "BOPP", "OTRO"])}{campoTecnico("capas", "Capas", ["monocapa", "bicapa", "tricapa"])}{campoTecnico("micraje", "Micraje")}{campoTecnico("color_bolsa", "Color")}{campoTecnico("impresion", "Lleva impresión")}{campoTecnico("color_impresion", "Colores (separados por coma)")}{especificacion.especificacionBolsa && <>{["ancho_doblado", "ancho_desdoblado", "largo_doblado", "largo_desdoblado"].map((field) => campoTecnico(`especificacion_bolsa.${field}`, `${field.replaceAll("_", " ")} (cm)`))}{campoTecnico("especificacion_bolsa.fuelle", "Tiene fuelle")}{campoTecnico("especificacion_bolsa.tipo_troquel", "Tipo de troquel", ["camiseta", "normal", "rinonera", "con_asa", "refuerzo", "solapa", "adhesiva", "cierre_facil"])}</>}{especificacion.especificacionBobina && <>{["ancho_doblado", "ancho_desdoblado", "longitud", "diametro", "peso"].map((field) => campoTecnico(`especificacion_bobina.${field}`, field.replaceAll("_", " ")))}{campoTecnico("especificacion_bobina.configuracion_pelicula", "Configuración", ["tubular", "corte_lateral", "corte_separacion"])}</>}{campoTecnico("otras_caracteristicas", "Otras características")}</div><label className="block max-w-lg text-xs text-slate-600">Motivo del cambio<input value={formLinea.motivo_cambio} onChange={(event) => setFormLinea({ ...formLinea, motivo_cambio: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label><p className="text-[11px] text-slate-500">Los cambios técnicos siguen el proceso existente de versionado y evaluación de viabilidad.</p></fieldset>}
+                        <div className="flex justify-end gap-2"><button type="button" onClick={() => setLineaEditandoId(null)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">Cancelar</button><button type="submit" disabled={guardandoLinea} className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{guardandoLinea ? "Guardando…" : "Guardar cambios"}</button></div>
+                    </form>}
+                </article>;
+            })}
+            {productoPendiente && esBorrador && <form onSubmit={(event) => void guardarProductoAgregado(event)} className="rounded-lg border border-blue-200 bg-blue-50/40 p-4">
+                <div className="mb-3"><p className="font-semibold text-slate-900">Agregar {productoPendiente.nombre}</p><p className="text-xs text-slate-500">{productoPendiente.codigo} · Completa los datos comerciales antes de guardarlo en esta versión.</p></div>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><label className="text-xs text-slate-600">Cantidad<input required type="number" min="0.01" step="0.01" value={cantidadPendiente} onChange={(event) => setCantidadPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label><label className="text-xs text-slate-600">Unidad<select value={unidadPendiente} onChange={(event) => setUnidadPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">{[productoPendiente.unidad, "unidad", "kg", "bobina", "fajo", "metro"].filter((item, index, arr) => arr.indexOf(item) === index).map((item) => <option key={item}>{item}</option>)}</select></label><label className="text-xs text-slate-600">Precio unitario<input required type="number" min="0" step="0.01" value={precioPendiente} onChange={(event) => setPrecioPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label><label className="text-xs text-slate-600">Descuento %<input type="number" min="0" max="100" step="0.01" value={descuentoPendiente} onChange={(event) => setDescuentoPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label></div>
+                {errorAgregarProducto && <p role="alert" className="mt-3 text-xs text-rose-700">{errorAgregarProducto}</p>}
+                <div className="mt-3 flex justify-end gap-2"><button type="button" onClick={() => setProductoPendiente(null)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">Cancelar</button><button type="submit" disabled={agregandoProducto} className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{agregandoProducto ? "Agregando…" : "Agregar a la versión"}</button></div>
+            </form>}
+        </div>;
+
+        return <>
+            <OfertaComercialDetalle
+                cliente={nombreClienteOferta || "Cliente"}
+                numero={cotizacionDeSolicitud.numero}
+                version={String(versionSeleccionada.version).padStart(2, "0")}
+                estado={estadoEtiqueta[versionSeleccionada.estado] || versionSeleccionada.estado}
+                cantidad={lineasVersionSeleccionada.length}
+                total={totalProductos}
+                moneda={versionSeleccionada.moneda === "BOB" ? "Bs" : versionSeleccionada.moneda}
+                versionCount={versionesCotizacion.length}
+                allowAddProduct={esBorrador}
+                pestañaActiva={pestañaOferta}
+                onPestaña={setPestañaOferta}
+                condiciones={condiciones}
+                versiones={versiones}
+                seguimiento={<OfertaSeguimientoTimeline versionId={versionSeleccionada.id} solicitudId={solicitudId} />}
+                acciones={acciones}
+                evidenciaRegistrada={evidenciaActual}
+                onBack={() => navigate("/comercial/requerimientoListPage")}
+                onAddProduct={() => { setErrorAgregarProducto(""); setMostrarCatalogo(true); }}
+                onSend={() => setAccionOferta("enviar")}
+            >{productos}</OfertaComercialDetalle>
+            {accionOferta && <RegistrarComunicacionModal open onClose={() => setAccionOferta(null)} solicitudInicial={solicitudId} cotizacionVersionInicial={versionSeleccionada.id} accionInicial={accionOferta} />}
+            <NuevaActividadModal open={mostrarActividadOferta} onClose={() => setMostrarActividadOferta(false)} cuentaComercialInicial={solicitud.cuenta_comercial} solicitudInicial={solicitudId} cotizacionVersionInicial={versionSeleccionada.id} />
+            <CatalogoOfertaModal open={mostrarCatalogo} product={tipoProductoCatalogo} onProductType={setTipoProductoCatalogo} onClose={() => setMostrarCatalogo(false)} versionsInCart={lineasVersionSeleccionada.map((linea) => linea.productoVersion?.id ?? 0).filter(Boolean)} onCreate={() => { setMostrarCatalogo(false); setMostrarProductoWizard(true); }} onAdd={(producto: ProductoBusquedaResultado) => {
+                if (lineasVersionSeleccionada.some((linea) => linea.productoVersion?.id === producto.version_id)) {
+                    setErrorAgregarProducto(`${producto.producto_codigo} ya forma parte de esta versión.`);
+                    return;
+                }
+                setProductoPendiente({ versionId: producto.version_id, nombre: producto.producto_nombre, codigo: producto.producto_codigo, unidad: producto.unidad_medida });
+                setCantidadPendiente("1"); setPrecioPendiente(""); setDescuentoPendiente("0"); setUnidadPendiente(producto.unidad_medida); setErrorAgregarProducto("");
+            }} />
+            <ProductoComercialWizardModal open={mostrarProductoWizard} onClose={() => setMostrarProductoWizard(false)} onSuccess={(producto: ProductoComercialCreado) => {
+                const version = producto.versiones[0];
+                if (!version) { setErrorAgregarProducto("El producto se creó, pero el backend no devolvió una versión técnica para agregarlo."); return; }
+                setProductoPendiente({ versionId: version.id, nombre: producto.nombre, codigo: producto.codigo, unidad: producto.unidad_medida });
+                setCantidadPendiente("1"); setPrecioPendiente(""); setDescuentoPendiente("0"); setUnidadPendiente(producto.unidad_medida); setMostrarProductoWizard(false);
+            }} />
+        </>;
+    }
 
     return (
         <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">

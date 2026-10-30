@@ -13,12 +13,17 @@ import {
 
 import {
   useCuentasComerciales,
+  useCotizaciones,
+  useCotizacionesVersiones,
   useSolicitudesComerciales,
   useUpdateSolicitudComercial,
 } from "../comercial.hooks";
+import { cotizacionesVersionesApi } from "../comercial.api";
 
 import type {
   EstadoSolicitud,
+  Cotizacion,
+  CotizacionVersion,
   SolicitudComercial,
 } from "../comercial.types";
 
@@ -34,6 +39,10 @@ export default function RequerimientosListPage() {
 
   const { data: cuentas = [] } =
     useCuentasComerciales();
+  const { data: cotizacionesData } = useCotizaciones();
+  const { data: versionesData } = useCotizacionesVersiones();
+  const cotizaciones = cotizacionesData?.results ?? [];
+  const versiones = versionesData?.results ?? [];
 
   // Más recientes primero
   const requerimientos = useMemo(() => {
@@ -173,18 +182,20 @@ export default function RequerimientosListPage() {
             <div className="min-w-[1350px]">
               <TableHeader />
 
-              {requerimientos.map((requerimiento) => (
-                <RequerimientoRow
+              {requerimientos.map((requerimiento) => {
+                const oferta = cotizaciones.find((cotizacion) => cotizacion.solicitud_comercial === requerimiento.id);
+                const version = versiones.filter((item) => item.cotizacion === oferta?.id).sort((a, b) => b.version - a.version)[0];
+                return <RequerimientoRow
                   key={requerimiento.id}
                   requerimiento={requerimiento}
                   cuentas={cuentas}
-                  onView={() =>
-                    navigate(
-                      `/comercial/requerimientos/${requerimiento.id}`,
-                    )
-                  }
-                />
-              ))}
+                  oferta={oferta}
+                  version={version}
+                  onView={() => navigate(`/comercial/requerimientos/${requerimiento.id}`)}
+                  onFollowup={() => navigate(`/comercial/requerimientos/${requerimiento.id}${version ? `?tab=seguimiento&version=${version.id}` : ""}`)}
+                  onVersions={() => navigate(`/comercial/requerimientos/${requerimiento.id}${version ? `?tab=versiones&version=${version.id}` : ""}`)}
+                />;
+              })}
 
               {requerimientos.length === 0 && (
                 <div className="px-5 py-10 text-center text-sm text-muted-foreground">
@@ -240,13 +251,21 @@ function TableHeader() {
 function RequerimientoRow({
   requerimiento,
   cuentas,
+  oferta,
+  version,
   onView,
+  onFollowup,
+  onVersions,
 }: {
   requerimiento: SolicitudComercial;
   cuentas: ReturnType<typeof useCuentasComerciales>["data"] extends infer T
     ? NonNullable<T>
     : never;
+  oferta?: Cotizacion;
+  version?: CotizacionVersion;
   onView: () => void;
+  onFollowup: () => void;
+  onVersions: () => void;
 }) {
   const cuenta = cuentas.find(
     (item) => item.id === requerimiento.cuenta_comercial,
@@ -270,7 +289,7 @@ function RequerimientoRow({
         className="text-left text-sm font-semibold text-primary hover:underline"
         title="Abrir detalle de la solicitud"
       >
-        REQ-{String(requerimiento.id).padStart(3, "0")}
+        {oferta?.numero || `REQ-${String(requerimiento.id).padStart(3, "0")}`}
       </button>
 
       {/* Fecha de entrega */}
@@ -288,28 +307,18 @@ function RequerimientoRow({
         </span>
       </button>
 
-      {/* Versión comercial: todavía no está incluida en SolicitudComercial */}
-      <span className="text-sm text-muted-foreground" title="Pendiente de conectar con el modelo de versiones">
-        —
-      </span>
+      <span className="text-sm text-muted-foreground">{version ? `V${String(version.version).padStart(2, "0")}` : "—"}</span>
 
-      {/* Importe: requiere datos de cotización/oferta */}
-      <span className="text-sm text-muted-foreground" title="El importe no está disponible en los datos de la solicitud">
-        —
-      </span>
+      <span className="text-sm text-muted-foreground">{version ? `${version.moneda} ${Number(version.precio_total).toLocaleString("es-BO", { minimumFractionDigits: 2 })}` : "—"}</span>
 
-      {/* Validez: requiere datos de la oferta */}
-      <span className="text-sm text-muted-foreground" title="La validez no está disponible en los datos de la solicitud">
-        —
-      </span>
+      <span className="text-sm text-muted-foreground">{version?.validez_dias ? `${version.validez_dias} días` : oferta?.fecha_vencimiento ? formatearFecha(oferta.fecha_vencimiento) : "—"}</span>
 
-      {/* Estado editable */}
-      <EstadoSelector requerimiento={requerimiento} />
+      {version ? <EstadoOferta estado={version.estado} /> : <EstadoSelector requerimiento={requerimiento} />}
 
       {/* Seguimiento: abre el detalle para registrar la acción */}
       <button
         type="button"
-        onClick={onView}
+        onClick={onFollowup}
         className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
         title="Abrir el detalle para gestionar un seguimiento"
       >
@@ -317,12 +326,19 @@ function RequerimientoRow({
         Registrar
       </button>
 
-      {/* La previsualización PDF requiere conectar el generador de ofertas */}
       <button
         type="button"
-        disabled
-        className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs font-medium text-muted-foreground opacity-60"
-        title="La previsualización PDF de ofertas aún no está conectada"
+        disabled={!version}
+        onClick={() => {
+          if (!version) return;
+          void cotizacionesVersionesApi.pdf(version.id).then((blob) => {
+            const url = URL.createObjectURL(blob);
+            window.open(url, "_blank", "noopener,noreferrer");
+            window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+          }).catch((error) => console.error("No se pudo abrir el PDF de la oferta", error));
+        }}
+        className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+        title={version ? "Abrir PDF de la versión vigente" : "La solicitud todavía no tiene una oferta"}
       >
         <Eye className="h-3.5 w-3.5" />
         PDF
@@ -331,7 +347,7 @@ function RequerimientoRow({
       {/* Historial: abre el detalle de la solicitud */}
       <button
         type="button"
-        onClick={onView}
+        onClick={onVersions}
         className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
         title="Abrir el detalle para consultar las versiones"
       >
@@ -496,6 +512,24 @@ function EstadoSelector({
       )}
     </div>
   );
+}
+
+function EstadoOferta({ estado }: { estado: CotizacionVersion["estado"] }) {
+  const labels: Record<CotizacionVersion["estado"], string> = {
+    borrador: "Borrador",
+    enviada: "Enviada",
+    aceptada: "Aceptada",
+    rechazada: "Rechazada",
+    anulada: "Anulada",
+  };
+  const colors: Record<CotizacionVersion["estado"], string> = {
+    borrador: "bg-amber-100 text-amber-800",
+    enviada: "bg-blue-100 text-blue-800",
+    aceptada: "bg-emerald-100 text-emerald-800",
+    rechazada: "bg-rose-100 text-rose-800",
+    anulada: "bg-slate-100 text-slate-700",
+  };
+  return <span className={`inline-flex w-fit rounded-full px-2.5 py-1.5 text-xs font-semibold ${colors[estado]}`}>{labels[estado]}</span>;
 }
 
 /* ============================================================

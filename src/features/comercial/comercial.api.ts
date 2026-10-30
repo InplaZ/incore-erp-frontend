@@ -66,6 +66,7 @@ import type {
   DocumentoCuentaComercial,
   DocumentoCuentaComercialCreate,
   HistorialCuentaComercial,
+  OfertaSeguimientoEvent,
 } from "./comercial.types";
 
 // ============================================================
@@ -543,6 +544,15 @@ export const comunicacionesApi = {
   create: async (
     data: ComunicacionCreate,
   ): Promise<Comunicacion> => {
+    if (data.evidencia) {
+      const form = new FormData();
+      for (const [key, value] of Object.entries(data)) {
+        if (key === "evidencia" || value === undefined || value === null) continue;
+        form.append(key, String(value));
+      }
+      form.append("evidencia", data.evidencia);
+      return api.post<Comunicacion>("/comercial/comunicaciones/", form);
+    }
     return api.post<Comunicacion>(
       "/comercial/comunicaciones/",
       data,
@@ -655,6 +665,14 @@ export const cotizacionesVersionesApi = {
       `/comercial/cotizaciones-versiones/${id}/`,
     );
   },
+
+  seguimiento: async (id: number): Promise<OfertaSeguimientoEvent[]> =>
+    api.get<OfertaSeguimientoEvent[]>(`/comercial/cotizaciones-versiones/${id}/seguimiento/`),
+
+  descargarEvidencia: async (versionId: number, evidenciaId: number): Promise<Blob> =>
+    api.get<Blob>(`/comercial/cotizaciones-versiones/${versionId}/evidencias/${evidenciaId}/descargar/`, {
+      config: { responseType: "blob" },
+    }),
 
   create: async (
     data: CotizacionVersionCreate,

@@ -12,12 +12,15 @@ import type {
   TipoComunicacion,
 } from "../comercial.types";
 
+type AccionCotizacion = "ninguna" | "enviar" | "aceptar" | "rechazar" | "cerrar";
+
 interface RegistrarComunicacionModalProps {
   open: boolean;
   onClose: () => void;
   solicitudInicial?: number;
   cotizacionVersionInicial?: number | null;
   actividadComercialInicial?: number | null;
+  accionInicial?: AccionCotizacion;
 }
 
 export default function RegistrarComunicacionModal({
@@ -26,6 +29,7 @@ export default function RegistrarComunicacionModal({
   solicitudInicial,
   cotizacionVersionInicial,
   actividadComercialInicial,
+  accionInicial = "ninguna",
 }: RegistrarComunicacionModalProps) {
   const createComunicacion = useCreateComunicacion();
 
@@ -64,8 +68,8 @@ export default function RegistrarComunicacionModal({
   const [asunto, setAsunto] = useState("");
 
   const [contenido, setContenido] = useState("");
-
-  type AccionCotizacion = "ninguna" | "enviar" | "aceptar";
+  const [archivoEvidencia, setArchivoEvidencia] = useState<File | null>(null);
+  const [errorEnvio, setErrorEnvio] = useState("");
 
   const [accionCotizacion, setAccionCotizacion] =
     useState<AccionCotizacion>("ninguna");
@@ -81,6 +85,13 @@ export default function RegistrarComunicacionModal({
         : "",
     );
   }, [solicitudInicial]);
+
+  useEffect(() => {
+    if (!open) return;
+    setAccionCotizacion(accionInicial);
+    setArchivoEvidencia(null);
+    setErrorEnvio("");
+  }, [open, accionInicial]);
 
   // ============================================================
   // CERRAR MODAL
@@ -114,6 +125,7 @@ export default function RegistrarComunicacionModal({
         contenido: contenido.trim(),
         cotizacion_version_id: cotizacionVersionInicial ?? null,
         actividad_comercial_id: actividadComercialInicial ?? null,
+        evidencia: archivoEvidencia,
         accion_cotizacion: cotizacionVersionInicial
           ? accionCotizacion
           : "ninguna",
@@ -135,9 +147,13 @@ export default function RegistrarComunicacionModal({
       setAsunto("");
       setContenido("");
       setAccionCotizacion("ninguna");
+      setArchivoEvidencia(null);
+      setErrorEnvio("");
 
       onClose();
     } catch (error) {
+      const data = (error as { response?: { data?: { detail?: string; evidencia?: string[]; cotizacion?: string } } })?.response?.data;
+      setErrorEnvio(data?.detail || data?.cotizacion || data?.evidencia?.join(" ") || "No se pudo registrar la comunicación.");
       console.error(
         "Error al registrar comunicación:",
         error,
@@ -167,6 +183,7 @@ export default function RegistrarComunicacionModal({
           <button
             type="button"
             onClick={onClose}
+            disabled={createComunicacion.isPending}
             className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Cerrar"
           >
@@ -386,6 +403,8 @@ export default function RegistrarComunicacionModal({
                 <option value="aceptar">
                   Registrar aceptación del cliente
                 </option>
+                <option value="rechazar">Rechazar oferta</option>
+                <option value="cerrar">Cerrar oportunidad</option>
               </select>
 
               <p className="text-xs text-muted-foreground">
@@ -396,6 +415,7 @@ export default function RegistrarComunicacionModal({
                   Registra la aceptación expresa aunque se haya recibido por llamada. Al guardar, se aceptará esta versión y se generará su pedido.
                 </p>
               )}
+              {(accionCotizacion === "enviar" || accionCotizacion === "aceptar" || accionCotizacion === "rechazar") && <label className="block space-y-2 text-sm font-medium text-foreground">Adjuntar evidencia (opcional, máx. 1,5 MB)<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (file && file.size > 1572864) { setErrorEnvio("El comprobante no puede superar 1,5 MB."); setArchivoEvidencia(null); event.target.value = ""; return; } setErrorEnvio(""); setArchivoEvidencia(file); }} className="block w-full rounded-lg border border-border bg-background p-2 text-xs" />{archivoEvidencia && <span className="block text-xs text-muted-foreground">{archivoEvidencia.name}</span>}</label>}
             </div>
           )}
 
@@ -443,11 +463,10 @@ export default function RegistrarComunicacionModal({
               ERROR
           ====================================================== */}
 
-          {createComunicacion.isError && (
+          {(createComunicacion.isError || errorEnvio) && (
             <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
               <p className="text-sm text-destructive">
-                No se pudo registrar la comunicación.
-                Verifica los datos e inténtalo nuevamente.
+                {errorEnvio || "No se pudo registrar la comunicación. Verifica los datos e inténtalo nuevamente."}
               </p>
             </div>
           )}
@@ -461,6 +480,7 @@ export default function RegistrarComunicacionModal({
             <button
               type="button"
               onClick={onClose}
+              disabled={createComunicacion.isPending}
               className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
               Cancelar

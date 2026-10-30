@@ -211,10 +211,10 @@ export interface CrearCuentaCRMResponse {
 
 export type TipoActividad =
   | "llamada"
+  | "whatsapp"
+  | "correo"
   | "reunion"
-  | "cotizacion"
-  | "seguimiento"
-  | "confirmacion";
+  | "visita";
 
 export type EstadoActividad =
   | "pendiente"
@@ -227,6 +227,8 @@ export interface ActividadComercial {
 
   cuenta_comercial: number;
   solicitud_comercial: number | null;
+  cotizacion_version: number | null;
+  cotizaciones_relacionadas: number[];
 
   usuario: number;
   ejecutivo_asignado: string;
@@ -235,10 +237,12 @@ export interface ActividadComercial {
   descripcion: string;
 
   fecha_programada: string;
+  fecha_proxima: string | null;
   fecha_completada: string | null;
 
   estado: EstadoActividad;
   resultado: string | null;
+  observaciones_privadas: string;
 
   created_at: string;
   updated_at: string;
@@ -247,19 +251,29 @@ export interface ActividadComercial {
 export interface ActividadComercialCreate {
   cuenta_comercial: number;
   solicitud_comercial?: number | null;
+  cotizacion_version?: number | null;
+  cotizaciones_relacionadas?: number[];
   tipo: TipoActividad;
   descripcion: string;
   fecha_programada: string;
+  fecha_proxima?: string | null;
+  resultado?: string | null;
+  observaciones_privadas?: string;
 }
 
 export type ActividadComercialUpdate = {
   cuenta_comercial?: number;
+  solicitud_comercial?: number | null;
+  cotizacion_version?: number | null;
+  cotizaciones_relacionadas?: number[];
   tipo?: TipoActividad;
   descripcion?: string;
   fecha_programada?: string;
+  fecha_proxima?: string | null;
   fecha_completada?: string | null;
   estado?: EstadoActividad;
   resultado?: string | null;
+  observaciones_privadas?: string;
 }
 
 export interface RequerimientoDetalle {
@@ -936,6 +950,8 @@ export interface Comunicacion {
   direccion: DireccionComunicacion | null;
   asunto: string | null;
   contenido: string;
+  cotizacion_version: number | null;
+  evento_oferta: "" | "envio" | "seguimiento" | "aceptacion" | "rechazo" | "cierre";
   created_at: string;
   updated_at: string;
 }
@@ -949,7 +965,24 @@ export interface ComunicacionCreate {
   asunto?: string | null;
   contenido: string;
   cotizacion_version_id?: number | null;
-  accion_cotizacion?: "ninguna" | "enviar" | "aceptar";
+  accion_cotizacion?: "ninguna" | "enviar" | "aceptar" | "rechazar" | "cerrar";
+  evidencia?: File | null;
+}
+
+export interface OfertaSeguimientoEvent {
+  id: string;
+  categoria: "version" | "actividad" | "comunicacion" | "envio" | "seguimiento" | "aceptacion" | "rechazo";
+  titulo: string;
+  fecha: string;
+  usuario: string;
+  canal: string;
+  descripcion: string;
+  resultado?: string | null;
+  estado?: string;
+  fecha_proxima?: string | null;
+  version_id: number;
+  version_numero: number;
+  evidencias: Array<{ id: number; nombre: string }>;
 }
 
 export type ComunicacionUpdate = {
@@ -1076,6 +1109,18 @@ export interface CotizacionVersion {
   moneda: Moneda;
   precio_total: string;
   estado: EstadoCotizacionVersion;
+  forma_pago: string;
+  validez_dias: number | null;
+  plazo_entrega_dias: number | null;
+  tipo_dias: "calendario" | "habiles";
+  inicio_plazo: "confirmacion" | "anticipo" | "emision";
+  fecha_entrega_comprometida: string | null;
+  tipo_lugar_entrega: TipoLugarEntrega;
+  departamento_destino: DepartamentoBolivia | "";
+  ciudad_destino: string;
+  ubicacion_cliente: number | null;
+  sucursal_inplaz: string;
+  observaciones_comerciales: string;
   created_at: string;
   updated_at: string;
 }
@@ -1090,6 +1135,18 @@ export interface CotizacionVersionCreate {
   precio_total: string;
 
   estado?: EstadoCotizacionVersion;
+  forma_pago?: string;
+  validez_dias?: number | null;
+  plazo_entrega_dias?: number | null;
+  tipo_dias?: "calendario" | "habiles";
+  inicio_plazo?: "confirmacion" | "anticipo" | "emision";
+  fecha_entrega_comprometida?: string | null;
+  tipo_lugar_entrega?: TipoLugarEntrega;
+  departamento_destino?: DepartamentoBolivia | "";
+  ciudad_destino?: string;
+  ubicacion_cliente?: number | null;
+  sucursal_inplaz?: string;
+  observaciones_comerciales?: string;
 }
 
 export type CotizacionVersionUpdate =
@@ -1367,6 +1424,20 @@ export interface FormalizarCotizacionWizardPayload {
     fecha_vencimiento?: string | null;
     observaciones?: string;
     moneda: Moneda;
+    condiciones?: {
+      forma_pago: string;
+      validez_dias: number | null;
+      plazo_entrega_dias: number | null;
+      tipo_dias: "calendario" | "habiles";
+      inicio_plazo: "confirmacion" | "anticipo" | "emision";
+      fecha_entrega_comprometida: string | null;
+      tipo_lugar_entrega: TipoLugarEntrega;
+      departamento_destino: DepartamentoBolivia | "";
+      ciudad_destino: string;
+      ubicacion_cliente: number | null;
+      sucursal_inplaz: string;
+      observaciones_comerciales: string;
+    };
   };
   detalle?: {
     cantidad: string;

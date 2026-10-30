@@ -128,6 +128,8 @@ export const comercialQueryKeys = {
 
   cotizacionVersion: (id: number) =>
     [...comercialQueryKeys.cotizacionesVersiones(), id] as const,
+  ofertaSeguimiento: (versionId: number) =>
+    [...comercialQueryKeys.cotizacionVersion(versionId), "seguimiento"] as const,
 
   cotizacionesDetalles: () =>
     [...comercialQueryKeys.all, "cotizaciones-detalles"] as const,
@@ -503,6 +505,7 @@ export function useCreateActividadComercial() {
       queryClient.invalidateQueries({
         queryKey: comercialQueryKeys.actividades(),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() });
     },
   });
 }
@@ -899,6 +902,7 @@ export function useCreateComunicacion() {
       queryClient.invalidateQueries({
         queryKey: comercialQueryKeys.solicitudes(),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() });
     },
   });
 }
@@ -1052,6 +1056,14 @@ export function useCotizacionVersion(id: number) {
   });
 }
 
+export function useOfertaSeguimiento(versionId: number) {
+  return useQuery({
+    queryKey: comercialQueryKeys.ofertaSeguimiento(versionId),
+    queryFn: () => cotizacionesVersionesApi.seguimiento(versionId),
+    enabled: Boolean(versionId),
+  });
+}
+
 export function useCreateCotizacionVersion() {
   const queryClient = useQueryClient();
 
@@ -1066,6 +1078,7 @@ export function useCreateCotizacionVersion() {
         queryKey:
           comercialQueryKeys.cotizacionesVersiones(),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
     },
   });
 }
@@ -1213,6 +1226,7 @@ export function useCrearCotizacionVersion() {
         queryKey:
           comercialQueryKeys.cotizacionesVersiones(),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
     },
   });
 }
@@ -1295,6 +1309,7 @@ export function useAceptarCotizacion() {
         queryKey:
           comercialQueryKeys.cotizaciones(),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() });
     },
   });
 }

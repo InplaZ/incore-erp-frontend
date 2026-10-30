@@ -15,6 +15,9 @@ import {
   useCotizacionVersion,
   useCotizacion,
   useSolicitudComercial,
+  useUbicacionesCuentaComercial,
+  useUpdateCotizacionVersion,
+  useCrearCotizacionVersion,
 } from "@/features/comercial/comercial.hooks";
 
 import CotizacionModal, {
@@ -70,6 +73,10 @@ import OfertaComercialDetalle from "../components/ofertas/OfertaComercialDetalle
 import CatalogoOfertaModal from "../components/ofertas/CatalogoOfertaModal";
 import RegistrarEnvioComercialModal, { type MedioEnvioComercial } from "../components/ofertas/RegistrarEnvioComercialModal";
 import type { ProductoComercialCreado } from "@/features/productos/productos.types";
+import OfertaCondicionesForm, { type OfertaCondiciones } from "../components/ofertas/OfertaCondicionesForm";
+import OfertaSeguimientoTimeline from "../components/ofertas/OfertaSeguimientoTimeline";
+import RegistrarComunicacionModal from "../components/RegistrarComunicacionModal";
+import NuevaActividadModal from "../components/actividades/NuevaActividadModal";
 export type RequirementStep = 1 | 2 | 3 | 4 | 5;
 
 type CotizacionLineaBorrador = NonNullable<FormalizarCotizacionWizardPayload["detalles"]>[number] & {
@@ -104,23 +111,46 @@ function numeroOfertaDesdeSolicitud(solicitudId: number) {
   return `REQ-${String(solicitudId).padStart(3, "0")}`;
 }
 
+const condicionesVacias = (): OfertaCondiciones => ({
+  forma_pago: "Contado", validez_dias: "10", plazo_entrega_dias: "15",
+  tipo_dias: "calendario", inicio_plazo: "confirmacion",
+  fecha_entrega_comprometida: "", tipo_lugar_entrega: "casa_matriz",
+  departamento_destino: "LP", ciudad_destino: "", ubicacion_cliente: "",
+  sucursal_inplaz: "", observaciones_comerciales: "",
+});
+
+function fechaMasDias(fecha: Date, dias: number) {
+  const resultado = new Date(fecha);
+  resultado.setDate(resultado.getDate() + dias);
+  return `${resultado.getFullYear()}-${String(resultado.getMonth() + 1).padStart(2, "0")}-${String(resultado.getDate()).padStart(2, "0")}`;
+}
+
 export default function RequerimientosPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const cotizacionVersionId = Number(searchParams.get("cotizacion_version_id") || 0);
   const [vistaOferta, setVistaOferta] = useState<"seleccion_cliente" | "detalle_oferta">(cotizacionVersionId ? "detalle_oferta" : "seleccion_cliente");
+  const [pestañaOferta, setPestañaOferta] = useState<"productos" | "condiciones" | "seguimiento">("productos");
+  const [condicionesOferta, setCondicionesOferta] = useState<OfertaCondiciones>(condicionesVacias);
+  const [fechaRegistroTemporal, setFechaRegistroTemporal] = useState(() => new Date().toISOString());
   const [versionActivaId, setVersionActivaId] = useState<number | null>(cotizacionVersionId || null);
-  const [ofertaPersistida, setOfertaPersistida] = useState<{ numero: string; version: number; estado: string } | null>(null);
+  const [ofertaPersistida, setOfertaPersistida] = useState<{ numero: string; version: number; estado: string; cotizacion: number } | null>(null);
+  const [accionComercial, setAccionComercial] = useState<"aceptar" | "rechazar" | "cerrar" | null>(null);
+  const [mostrarActividadOferta, setMostrarActividadOferta] = useState(false);
   const [evidenciaRegistrada, setEvidenciaRegistrada] = useState<{ medio: string; detalle: string; archivo?: string | null } | null>(null);
-  const { data: versionEnEdicion } = useCotizacionVersion(cotizacionVersionId);
+  const idVersionConsultada = cotizacionVersionId || versionActivaId;
+  const { data: versionEnEdicion } = useCotizacionVersion(idVersionConsultada || 0);
   const { data: cotizacionEnEdicion } = useCotizacion(versionEnEdicion?.cotizacion || 0);
   const { data: solicitudEnEdicion } = useSolicitudComercial(cotizacionEnEdicion?.solicitud_comercial || 0);
+  const actualizarVersion = useUpdateCotizacionVersion();
+  const crearVersionCotizacion = useCrearCotizacionVersion();
   const [step, setStep] = useState<RequirementStep>(1);
   /*
    * Cliente
    */
   const [cuentaComercialId, setCuentaComercialId] =
     useState<number | null>(null);
+  const { data: ubicacionesCliente = [] } = useUbicacionesCuentaComercial(cuentaComercialId || 0);
   const [buscarCliente, setBuscarCliente] = useState("");
   const [mostrarSugerenciasCliente, setMostrarSugerenciasCliente] = useState(false);
   const [mostrarNuevoCliente, setMostrarNuevoCliente] = useState(false);
@@ -352,14 +382,31 @@ export default function RequerimientosPage() {
   };
 
   useEffect(() => {
-    if (!cotizacionVersionId || !versionEnEdicion || !cotizacionEnEdicion || !solicitudEnEdicion) return;
-    if (versionEnEdicion.estado !== "borrador") {
-      mostrarToast("Versión bloqueada", "Solo se pueden agregar productos a una versión en borrador.");
-      navigate(`/comercial/requerimientos/${solicitudEnEdicion.solicitud.id}`);
-      return;
-    }
+    if (cotizacionVersionId) setVersionActivaId(cotizacionVersionId);
+  }, [cotizacionVersionId]);
+
+  useEffect(() => {
+    if (!versionEnEdicion || !cotizacionEnEdicion || !solicitudEnEdicion) return;
     setCuentaComercialId(solicitudEnEdicion.solicitud.cuenta_comercial);
-    setOfertaPersistida({ numero: numeroOfertaDesdeSolicitud(solicitudEnEdicion.solicitud.id), version: versionEnEdicion.version, estado: versionEnEdicion.estado });
+    setOfertaPersistida({ numero: cotizacionEnEdicion.numero || numeroOfertaDesdeSolicitud(solicitudEnEdicion.solicitud.id), version: versionEnEdicion.version, estado: versionEnEdicion.estado, cotizacion: versionEnEdicion.cotizacion });
+    setFechaRegistroTemporal(versionEnEdicion.created_at);
+    const diasValidezExistentes = cotizacionEnEdicion.fecha_vencimiento
+      ? Math.max(1, Math.ceil((new Date(`${cotizacionEnEdicion.fecha_vencimiento}T12:00:00`).getTime() - new Date(versionEnEdicion.created_at).getTime()) / 86400000))
+      : null;
+    setCondicionesOferta({
+      forma_pago: versionEnEdicion.forma_pago || "Contado",
+      validez_dias: String(versionEnEdicion.validez_dias ?? diasValidezExistentes ?? 10),
+      plazo_entrega_dias: String(versionEnEdicion.plazo_entrega_dias ?? 15),
+      tipo_dias: versionEnEdicion.tipo_dias || "calendario",
+      inicio_plazo: versionEnEdicion.inicio_plazo || "confirmacion",
+      fecha_entrega_comprometida: versionEnEdicion.fecha_entrega_comprometida || solicitudEnEdicion.solicitud.fecha_entrega || "",
+      tipo_lugar_entrega: versionEnEdicion.tipo_lugar_entrega || solicitudEnEdicion.solicitud.tipo_lugar_entrega || "casa_matriz",
+      departamento_destino: versionEnEdicion.departamento_destino || solicitudEnEdicion.solicitud.departamento_entrega || "LP",
+      ciudad_destino: versionEnEdicion.ciudad_destino || "",
+      ubicacion_cliente: versionEnEdicion.ubicacion_cliente ? String(versionEnEdicion.ubicacion_cliente) : "",
+      sucursal_inplaz: versionEnEdicion.sucursal_inplaz || (solicitudEnEdicion.solicitud.sucursal_entrega === "montes" ? "La Paz · Montes" : solicitudEnEdicion.solicitud.sucursal_entrega === "sucursal_santa_cruz" ? "Santa Cruz · Av. Paragua" : ""),
+      observaciones_comerciales: versionEnEdicion.observaciones_comerciales || solicitudEnEdicion.solicitud.observaciones || "",
+    });
     setDatosCotizacion((actual) => actual ?? {
       cantidad: "",
       moneda: versionEnEdicion.moneda,
@@ -391,7 +438,33 @@ export default function RequerimientosPage() {
     setFechaEntrega(solicitud.fecha_entrega || "");
     setPrioridad(solicitud.prioridad);
     setObservaciones(solicitud.observaciones || "");
-  }, [cotizacionVersionId, versionEnEdicion, cotizacionEnEdicion, solicitudEnEdicion, navigate]);
+  }, [versionEnEdicion, cotizacionEnEdicion, solicitudEnEdicion]);
+
+  useEffect(() => {
+    if (!versionEnEdicion || !solicitudEnEdicion) return;
+    const lines = (solicitudEnEdicion.productosCotizados ?? [])
+      .filter((item) => item.cotizacionVersion.id === versionEnEdicion.id)
+      .map((item): CotizacionLineaBorrador => {
+        const esBobina = Boolean(item.especificacionProductoSolicitadoVersion?.especificacionBobina)
+          || (item.categoria?.nombre || "").toLocaleLowerCase().includes("bobina");
+        return {
+          key: `version-${item.cotizacionDetalle.id}`,
+          backendDetailId: item.cotizacionDetalle.id,
+          persistida: true,
+          tipo_producto: esBobina ? "bobina" : "bolsa",
+          producto_version_id: item.productoVersion?.id,
+          cantidad: String(item.cotizacionDetalle.cantidad),
+          precio_lista: String(item.cotizacionDetalle.precio_lista ?? "0"),
+          descuento_porcentaje: String(item.cotizacionDetalle.descuento_porcentaje ?? "0"),
+          costo_estimado: item.cotizacionDetalle.costo_estimado,
+          unidad_comercial: item.cotizacionDetalle.unidad_comercial || "unidad",
+          peso_kg: item.cotizacionDetalle.peso_kg,
+          nombre: item.producto?.nombre || `Producto solicitado · ${item.categoria?.nombre || "sin categoría"}`,
+          codigo: item.producto?.codigo || "Sin código definitivo",
+        };
+      });
+    if (lines.length) setLineasCotizacion((actual) => actual.length ? actual : lines);
+  }, [versionEnEdicion, solicitudEnEdicion]);
 
   /*
    * Cliente seleccionado
@@ -447,6 +520,9 @@ const iniciarPreparacionOferta = () => {
   };
 
   setDatosCotizacion(datosBase);
+  setCondicionesOferta(condicionesVacias());
+  setFechaRegistroTemporal(new Date().toISOString());
+  setPestañaOferta("productos");
   setVistaOferta("detalle_oferta");
 };
 
@@ -454,6 +530,66 @@ const iniciarPreparacionOferta = () => {
     () => lineasCotizacion.reduce((total, linea) => total + importeLineaCotizacion(linea), 0),
     [lineasCotizacion],
   );
+
+  const guardarCondiciones = async () => {
+    if (!condicionesOferta.fecha_entrega_comprometida) {
+      mostrarToast("Fecha requerida", "Calcula o selecciona la fecha de entrega comprometida.");
+      return;
+    }
+    const idVersion = versionActivaId || cotizacionVersionId;
+    if (!idVersion) {
+      mostrarToast("Condiciones guardadas", "Quedaron asociadas a la preparación y se persistirán al guardar la oferta con sus productos.");
+      return;
+    }
+    try {
+      await actualizarVersion.mutateAsync({
+        id: idVersion,
+        data: {
+          forma_pago: condicionesOferta.forma_pago,
+          validez_dias: Number(condicionesOferta.validez_dias) || null,
+          plazo_entrega_dias: Number(condicionesOferta.plazo_entrega_dias) || null,
+          tipo_dias: condicionesOferta.tipo_dias,
+          inicio_plazo: condicionesOferta.inicio_plazo,
+          fecha_entrega_comprometida: condicionesOferta.fecha_entrega_comprometida,
+          tipo_lugar_entrega: condicionesOferta.tipo_lugar_entrega,
+          departamento_destino: condicionesOferta.departamento_destino,
+          ciudad_destino: condicionesOferta.ciudad_destino,
+          ubicacion_cliente: condicionesOferta.ubicacion_cliente ? Number(condicionesOferta.ubicacion_cliente) : null,
+          sucursal_inplaz: condicionesOferta.sucursal_inplaz,
+          observaciones_comerciales: condicionesOferta.observaciones_comerciales,
+        },
+      });
+      mostrarToast("Condiciones guardadas", "Las condiciones quedaron guardadas en esta versión de la oferta.");
+    } catch (error: unknown) {
+      const response = (error as { response?: { data?: Record<string, unknown> } })?.response?.data;
+      const detail = response ? Object.values(response).flat().join(" ") : "";
+      mostrarToast("Error al guardar", detail || (error instanceof Error ? error.message : "No se pudieron guardar las condiciones."));
+    }
+  };
+
+  const prepararNuevaVersion = async () => {
+    const cotizacionId = versionEnEdicion?.cotizacion || ofertaPersistida?.cotizacion;
+    if (!cotizacionId) {
+      mostrarToast("Oferta no disponible", "No se puede crear otra versión antes de que la oferta exista en el backend.");
+      return;
+    }
+    const solicitudIdDestino = solicitudEnEdicion?.solicitud.id;
+    if (!solicitudIdDestino) {
+      mostrarToast("Solicitud no disponible", "No se pudo identificar la solicitud a la que pertenece la oferta.");
+      return;
+    }
+    try {
+      const resultado = await crearVersionCotizacion.mutateAsync({ cotizacionId, moneda: versionEnEdicion?.moneda || datosCotizacion?.moneda || "BOB" });
+      setLineasCotizacion([]);
+      setVersionActivaId(resultado.cotizacion_version);
+      setOfertaPersistida((actual) => actual ? { ...actual, version: resultado.version, estado: resultado.estado, cotizacion: resultado.cotizacion } : actual);
+      setPestañaOferta("productos");
+      navigate(`/comercial/requerimientos/${solicitudIdDestino}?version=${resultado.cotizacion_version}`);
+    } catch (error: unknown) {
+      const response = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
+      mostrarToast("No se pudo crear la versión", response?.mensaje || response?.detail || "La cotización no está disponible para versionado.");
+    }
+  };
 
   const { data: categorias = [] } =
     useProductosCategorias();
@@ -766,6 +902,23 @@ const iniciarPreparacionOferta = () => {
       const kilos = lineasPendientes
         .filter((linea) => linea.unidad_comercial === "kg")
         .reduce((total, linea) => total + Number(linea.cantidad || 0), 0);
+      const condicionesPayload = {
+        forma_pago: condicionesOferta.forma_pago,
+        validez_dias: Number(condicionesOferta.validez_dias) || null,
+        plazo_entrega_dias: Number(condicionesOferta.plazo_entrega_dias) || null,
+        tipo_dias: condicionesOferta.tipo_dias,
+        inicio_plazo: condicionesOferta.inicio_plazo,
+        fecha_entrega_comprometida: condicionesOferta.fecha_entrega_comprometida || null,
+        tipo_lugar_entrega: condicionesOferta.tipo_lugar_entrega,
+        departamento_destino: condicionesOferta.departamento_destino,
+        ciudad_destino: condicionesOferta.ciudad_destino,
+        ubicacion_cliente: condicionesOferta.ubicacion_cliente ? Number(condicionesOferta.ubicacion_cliente) : null,
+        sucursal_inplaz: condicionesOferta.sucursal_inplaz,
+        observaciones_comerciales: condicionesOferta.observaciones_comerciales,
+      };
+      const fechaVencimiento = condicionesPayload.validez_dias
+        ? fechaMasDias(new Date(fechaRegistroTemporal), condicionesPayload.validez_dias)
+        : datosCotizacion.fechaVencimiento || null;
       const payload: FormalizarCotizacionWizardPayload = {
         ...(envio ? { envio } : {}),
         cotizacion_version_id: versionActivaId || cotizacionVersionId || undefined,
@@ -777,21 +930,22 @@ const iniciarPreparacionOferta = () => {
           cantidad_unidades: unidades ? String(unidades) : "0",
           cantidad_kg: kilos ? String(kilos) : "0",
 
-          fecha_entrega: datosCotizacion.fechaEntrega || null,
+          fecha_entrega: condicionesOferta.fecha_entrega_comprometida || datosCotizacion.fechaEntrega || null,
           lugar_entrega: datosCotizacion.lugarEntrega,
 
-          tipo_lugar_entrega: datosCotizacion.tipoLugarEntrega,
-          departamento_entrega: datosCotizacion.departamentoEntrega,
+          tipo_lugar_entrega: condicionesOferta.tipo_lugar_entrega,
+          departamento_entrega: condicionesOferta.departamento_destino || datosCotizacion.departamentoEntrega,
           empresa_transporte: datosCotizacion.empresaTransporte,
-          sucursal_entrega: datosCotizacion.sucursalEntrega,
+          sucursal_entrega: condicionesOferta.sucursal_inplaz === "La Paz · Montes" ? "montes" : condicionesOferta.sucursal_inplaz === "Santa Cruz · Av. Paragua" ? "sucursal_santa_cruz" : datosCotizacion.sucursalEntrega,
 
-          observaciones: datosCotizacion.observaciones,
+          observaciones: condicionesOferta.observaciones_comerciales || datosCotizacion.observaciones,
           prioridad: datosCotizacion.prioridad,
         },
         cotizacion: {
-          fecha_vencimiento: datosCotizacion.fechaVencimiento || null,
+          fecha_vencimiento: fechaVencimiento,
           observaciones: datosCotizacion.observaciones || "",
           moneda: datosCotizacion.moneda,
+          condiciones: condicionesPayload,
         },
         detalles: lineasPendientes.map(({ key: _key, nombre: _nombre, codigo: _codigo, archivo_color_impresion: _archivo, persistida: _persistida, ...linea }) => linea),
       };
@@ -809,7 +963,7 @@ const iniciarPreparacionOferta = () => {
         }
       }
       setVersionActivaId(resultado.cotizacion_version);
-      setOfertaPersistida({ numero: numeroOfertaDesdeSolicitud(resultado.solicitud_comercial), version: resultado.version, estado: resultado.estado });
+      setOfertaPersistida({ numero: resultado.numero || numeroOfertaDesdeSolicitud(resultado.solicitud_comercial), version: resultado.version, estado: resultado.estado, cotizacion: resultado.cotizacion });
       setLineasCotizacion((actuales) => actuales.map((linea) => {
         if (linea.persistida) return linea;
         const pendingIndex = lineasPendientes.findIndex((pending) => pending.key === linea.key);
@@ -824,8 +978,8 @@ const iniciarPreparacionOferta = () => {
         setRecordatorioEnvio(false);
       }
       mostrarToast(archivoPendiente ? "Cotización creada; PDF pendiente" : envio ? "Envío comercial registrado" : "Borrador guardado", archivoPendiente ? `Cotización ${resultado.numero} creada, pero no se pudo adjuntar uno o más PDF. Edítala para cargarlos.` : envio ? `Cotización ${resultado.numero} V${resultado.version} registrada con estado ${resultado.estado}.` : `Cotización ${resultado.numero} V${resultado.version} quedó en estado ${resultado.estado}.`);
-      if (cotizacionVersionId && solicitudEnEdicion) {
-        navigate(`/comercial/requerimientos/${solicitudEnEdicion.solicitud.id}`);
+      if (resultado.solicitud_comercial && resultado.cotizacion_version) {
+        navigate(`/comercial/requerimientos/${resultado.solicitud_comercial}?version=${resultado.cotizacion_version}`);
       }
     } catch (error: unknown) {
       const response = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
@@ -1151,23 +1305,50 @@ const iniciarPreparacionOferta = () => {
       {vistaOferta === "seleccion_cliente" && <NuevaOfertaModal open cuentas={cuentas ?? []} cuentaId={cuentaComercialId} onSelect={setCuentaComercialId} onContinue={iniciarPreparacionOferta} onCancel={() => navigate("/comercial/requerimientoListPage")} />}
       {vistaOferta === "detalle_oferta" && <OfertaComercialDetalle
         cliente={cuentaSeleccionada ? nombreVisibleCliente(cuentaSeleccionada) : "Cliente seleccionado"}
-        numero={ofertaPersistida?.numero ?? (solicitudEnEdicion ? numeroOfertaDesdeSolicitud(solicitudEnEdicion.solicitud.id) : cotizacionEnEdicion?.numero ?? null)}
-        version={ofertaPersistida ? String(ofertaPersistida.version).padStart(2, "0") : versionEnEdicion ? String(versionEnEdicion.version).padStart(2, "0") : null}
-        estado={ofertaPersistida?.estado ?? versionEnEdicion?.estado ?? "Preparación temporal"}
+        numero={cotizacionEnEdicion?.numero ?? ofertaPersistida?.numero ?? (solicitudEnEdicion ? numeroOfertaDesdeSolicitud(solicitudEnEdicion.solicitud.id) : null)}
+        version={versionEnEdicion ? String(versionEnEdicion.version).padStart(2, "0") : ofertaPersistida ? String(ofertaPersistida.version).padStart(2, "0") : null}
+        estado={versionEnEdicion?.estado ?? ofertaPersistida?.estado ?? "Preparación temporal"}
         cantidad={lineasCotizacion.length}
         total={totalOferta.toLocaleString("es-BO", { minimumFractionDigits: 2 })}
         evidenciaRegistrada={evidenciaRegistrada}
+        pestañaActiva={pestañaOferta}
+        allowVersionsTab={false}
+        onPestaña={(tab) => { if (tab !== "versiones") setPestañaOferta(tab); }}
+        seguimiento={idVersionConsultada && solicitudEnEdicion && cuentaComercialId
+          ? <OfertaSeguimientoTimeline versionId={idVersionConsultada} solicitudId={solicitudEnEdicion.solicitud.id} />
+          : <div className="py-12 text-center text-sm text-slate-500">El seguimiento estará disponible cuando la oferta tenga una versión persistida.</div>}
+        accionesSeguimiento={<>
+          <button type="button" onClick={() => { if (idVersionConsultada) void descargarPdf(idVersionConsultada); }} disabled={!idVersionConsultada} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 disabled:opacity-50">↓ Descargar PDF V{versionEnEdicion?.version ?? ofertaPersistida?.version ?? "—"}</button>
+          <button type="button" onClick={() => setAccionComercial("aceptar")} disabled={!idVersionConsultada || (versionEnEdicion?.estado ?? ofertaPersistida?.estado) !== "enviada"} className="w-full rounded-lg bg-emerald-700 px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-50">✓ Registrar aceptación del cliente</button>
+          <button type="button" onClick={() => void prepararNuevaVersion()} disabled={!idVersionConsultada || !ofertaPersistida?.cotizacion || crearVersionCotizacion.isPending || ["aceptada", "anulada"].includes(cotizacionEnEdicion?.estado || "")} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 disabled:opacity-50">＋ Nueva versión para negociar</button>
+          <button type="button" onClick={() => setAccionComercial("rechazar")} disabled={(versionEnEdicion?.estado ?? ofertaPersistida?.estado) !== "enviada"} className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700 disabled:opacity-50">Rechazar oferta</button>
+          <button type="button" onClick={() => setAccionComercial("cerrar")} disabled={!ofertaPersistida?.cotizacion || cotizacionEnEdicion?.estado === "cerrada" || cotizacionEnEdicion?.estado === "anulada"} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 disabled:opacity-50">Cerrar oportunidad</button>
+          <button type="button" onClick={() => setMostrarActividadOferta(true)} disabled={!idVersionConsultada || !solicitudEnEdicion || !cuentaComercialId} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 disabled:opacity-50">◉ Registrar seguimiento</button>
+          <div className="mt-2 rounded-lg border border-slate-200 p-3"><p className="text-xs font-semibold text-slate-800">Acciones rápidas V3</p><p className="mt-1 text-[10px] leading-4 text-slate-500">La aceptación formal utiliza la versión seleccionada y el pedido se genera una sola vez desde el proceso comercial existente.</p></div>
+        </>}
+        condiciones={<OfertaCondicionesForm
+          cliente={cuentaSeleccionada ? nombreVisibleCliente(cuentaSeleccionada) : "Cliente seleccionado"}
+          registroAutomatico={versionEnEdicion?.created_at || fechaRegistroTemporal}
+          value={condicionesOferta}
+          ubicaciones={ubicacionesCliente.filter((ubicacion) => ubicacion.activo)}
+          disabled={Boolean(versionEnEdicion && versionEnEdicion.estado !== "borrador")}
+          saving={actualizarVersion.isPending}
+          onChange={setCondicionesOferta}
+          onSave={() => void guardarCondiciones()}
+        />}
         aviso={!lineasCotizacion.length ? "Antes de enviar: Agrega al menos un producto" : undefined}
         onBack={() => navigate("/comercial/requerimientoListPage")}
         onAddProduct={() => setMostrarCatalogo(true)}
         onSend={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }}
         onSaveDraft={lineasCotizacion.some((linea) => !linea.persistida) ? () => void guardarCotizacion() : undefined}
-        onPdf={versionActivaId ? () => void descargarPdf(versionActivaId) : undefined}
+        onPdf={idVersionConsultada ? () => void descargarPdf(idVersionConsultada) : undefined}
       >
         {!lineasCotizacion.length ? <div className="py-12 text-center text-sm text-slate-500">Agrega un producto homologado o crea uno comercial nuevo.</div> : <div className="space-y-3">
           {lineasCotizacion.map((linea) => {
             const subtotal = importeLineaCotizacion(linea);
-            const bloqueada = ofertaPersistida?.estado === "enviada" || ofertaPersistida?.estado === "aceptada";
+            const bloqueada = versionEnEdicion
+              ? versionEnEdicion.estado !== "borrador"
+              : ofertaPersistida?.estado === "enviada" || ofertaPersistida?.estado === "aceptada";
             return <article key={linea.key} className="min-w-0 space-y-4 rounded-lg border border-slate-200 p-3 sm:p-4">
               <div className="min-w-0"><p className="break-words font-semibold text-slate-900">{linea.nombre}</p><p className="break-words text-xs text-slate-500">{linea.codigo} · {linea.tipo_producto === "bolsa" ? "Bolsa" : "Bobina"}</p></div>
               <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1178,12 +1359,29 @@ const iniciarPreparacionOferta = () => {
               </div>
               <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
                 <div className="min-w-0 flex-1"><p className="text-xs text-slate-500">Importe</p><p className="font-semibold text-slate-900">Bs {subtotal.toLocaleString("es-BO", { minimumFractionDigits: 2 })}</p>{linea.producto_version_id ? <PesoProductoCatalogo productoVersionId={linea.producto_version_id} cantidad={linea.cantidad} /> : linea.especificacion ? <PesoProductoNuevo tipoProducto={linea.tipo_producto} cantidad={linea.cantidad} especificacion={linea.especificacion} especificacionBolsa={linea.especificacion_bolsa} especificacionBobina={linea.especificacion_bobina} /> : null}</div>
-                <div className="flex shrink-0 flex-wrap gap-2"><button type="button" disabled={bloqueada || formalizarCotizacion.isPending} onClick={() => void actualizarLinea(linea)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-50">Actualizar</button><button type="button" disabled={bloqueada || formalizarCotizacion.isPending} onClick={() => void quitarLinea(linea)} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50">Quitar</button></div>
+                {/**/}
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  {/*<button type="button" disabled={bloqueada || formalizarCotizacion.isPending} onClick={() => void actualizarLinea(linea)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-50">Actualizar</button>*/}
+                  <button type="button" disabled={bloqueada || formalizarCotizacion.isPending} onClick={() => void quitarLinea(linea)} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50">Quitar</button></div>
               </div>
             </article>;
           })}
         </div>}
       </OfertaComercialDetalle>}
+      {Boolean(accionComercial && idVersionConsultada && solicitudEnEdicion) && <RegistrarComunicacionModal
+        open
+        onClose={() => setAccionComercial(null)}
+        solicitudInicial={solicitudEnEdicion!.solicitud.id}
+        cotizacionVersionInicial={idVersionConsultada}
+        accionInicial={accionComercial!}
+      />}
+      {mostrarActividadOferta && idVersionConsultada && solicitudEnEdicion && cuentaComercialId && <NuevaActividadModal
+        open
+        onClose={() => setMostrarActividadOferta(false)}
+        cuentaComercialInicial={cuentaComercialId}
+        solicitudInicial={solicitudEnEdicion.solicitud.id}
+        cotizacionVersionInicial={idVersionConsultada}
+      />}
       <CatalogoOfertaModal open={mostrarCatalogo && vistaOferta === "detalle_oferta"} product={product} onProductType={setProduct} onClose={() => setMostrarCatalogo(false)} onAdd={(producto) => { agregarProductoAlCarrito(producto); setDatosCotizacion((actual) => actual ?? { cantidad: "", moneda: "BOB", precioLista: "", descuentoPorcentaje: "0", precioUnitario: "0.00", precioTotal: "0.00", fechaVencimiento: "", observaciones: "", prioridad, fechaEntrega, lugarEntrega, tipoLugarEntrega, departamentoEntrega: departamentoEntrega || "CB", empresaTransporte, sucursalEntrega: sucursalEntrega || "montes", observacionesSolicitud: observaciones }); }} onCreate={handleCrearProductoNuevo} versionsInCart={lineasCotizacion.map((linea) => linea.producto_version_id).filter((id): id is number => id !== undefined)} />
       {false && <>
       {/* Encabezado */}
