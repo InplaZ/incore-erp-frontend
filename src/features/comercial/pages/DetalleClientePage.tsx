@@ -1578,7 +1578,7 @@ function EstadoSolicitudBadge({
       ? "bg-red-500/10 text-red-600 dark:text-red-400"
       : estado === "en_negociacion"
         ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-        : estado === "aprobada"
+      : estado === "aprobada" || estado === "confirmada"
           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
           : "bg-primary/10 text-primary";
 
@@ -1805,6 +1805,9 @@ function getSolicitudEstadoLabel(
 
     case "aprobada":
       return "Aprobada";
+
+    case "confirmada":
+      return "Confirmada";
 
     case "rechazada":
       return "Rechazada";

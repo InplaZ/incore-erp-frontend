@@ -406,7 +406,11 @@ export type EstadoSolicitud =
   | "en_negociacion"
   | "en_viabilidad"
   | "aprobada"
+  | "esperando_respuesta"
+  | "confirmada"
   | "rechazada"
+  | "cerrada_sin_respuesta"
+  | "vencida"
   | "convertida"
   | "cancelada";
 
@@ -967,7 +971,16 @@ export interface ComunicacionCreate {
   cotizacion_version_id?: number | null;
   accion_cotizacion?: "ninguna" | "enviar" | "aceptar" | "rechazar" | "cerrar";
   evidencia?: File | null;
+  tipo_evidencia?: "deposito" | "contrato" | "licitacion" | "orden_compra" | "email" | "whatsapp" | "otro";
+  codigo_erp?: string;
+  anticipo_recibido?: string | number;
+  dias_credito?: number;
+  referencia_comprobante?: string;
+  fecha_vencimiento_contrato?: string | null;
+  documento_cuenta?: number | null;
 }
+
+export type TipoEvidenciaAceptacion = "deposito" | "contrato" | "licitacion" | "orden_compra" | "email" | "whatsapp" | "otro";
 
 export interface OfertaSeguimientoEvent {
   id: string;
@@ -1210,6 +1223,12 @@ export interface Pedido {
   estado: EstadoPedido;
   fecha_entrega_comprometida: string;
   observaciones: string;
+  codigo_erp: string;
+  anticipo_recibido: string;
+  dias_credito: number;
+  referencia_comprobante: string;
+  fecha_vencimiento_contrato: string | null;
+  documento_cuenta: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -1227,6 +1246,12 @@ export interface PedidoCreate {
   fecha_entrega_comprometida: string;
 
   observaciones?: string;
+  codigo_erp?: string;
+  anticipo_recibido?: string | number;
+  dias_credito?: number;
+  referencia_comprobante?: string;
+  fecha_vencimiento_contrato?: string | null;
+  documento_cuenta?: number | null;
 }
 
 export type PedidoUpdate =
@@ -1393,6 +1418,7 @@ export interface CrearCotizacionVersionResponse {
   moneda: Moneda;
   estado: string;
   precio_total: number;
+  reutilizada?: boolean;
 }
 
 export interface AgregarDetalleCotizacionResponse {
@@ -1412,7 +1438,7 @@ export interface AgregarDetalleCotizacionResponse {
 }
 
 export interface FormalizarCotizacionWizardPayload {
-  envio?: { medio: "telefono" | "email" | "whatsapp" | "presencial" | "videollamada" | "otro"; detalle: string; recordatorio: boolean };
+  envio?: { medio: "telefono" | "email" | "whatsapp" | "presencial" | "videollamada" | "otro"; detalle: string; recordatorio: boolean; fecha_recordatorio?: string | null };
   cotizacion_version_id?: number;
   solicitud: Omit<SolicitudComercialCreate, "estado">;
   tipo_producto?: "bolsa" | "bobina";
@@ -1471,7 +1497,7 @@ export interface FormalizarCotizacionWizardResponse {
   estado: EstadoCotizacionVersion;
   detalles: AgregarDetalleCotizacionResponse[];
   precio_total: string;
-  envio?: { comunicacion: number; evidencia: number; medio: string; detalle: string; archivo_nombre: string | null; estado?: EstadoCotizacionVersion } | null;
+  envio?: { comunicacion: number; evidencia: number; medio: string; detalle: string; archivo_nombre: string | null; actividad_recordatorio?: number; fecha_recordatorio?: string; estado?: EstadoCotizacionVersion } | null;
 }
 
 export interface EspecificacionProductoSolicitadoVersionCreateRequest {

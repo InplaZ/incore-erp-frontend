@@ -1,8 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Check,
-  ChevronDown,
   Eye,
   History,
   MessageSquarePlus,
@@ -16,16 +14,18 @@ import {
   useCotizaciones,
   useCotizacionesVersiones,
   useSolicitudesComerciales,
-  useUpdateSolicitudComercial,
 } from "../comercial.hooks";
 import { cotizacionesVersionesApi } from "../comercial.api";
 
 import type {
-  EstadoSolicitud,
   Cotizacion,
   CotizacionVersion,
   SolicitudComercial,
 } from "../comercial.types";
+import { getSolicitudEstadoLabel } from "../utils/comercial.formatters";
+
+const COTIZACIONES_VACIAS: Cotizacion[] = [];
+const VERSIONES_VACIAS: CotizacionVersion[] = [];
 
 export default function RequerimientosListPage() {
   const navigate = useNavigate();
@@ -41,8 +41,8 @@ export default function RequerimientosListPage() {
     useCuentasComerciales();
   const { data: cotizacionesData } = useCotizaciones();
   const { data: versionesData } = useCotizacionesVersiones();
-  const cotizaciones = cotizacionesData?.results ?? [];
-  const versiones = versionesData?.results ?? [];
+  const cotizaciones = cotizacionesData?.results ?? COTIZACIONES_VACIAS;
+  const versiones = versionesData?.results ?? VERSIONES_VACIAS;
 
   // Más recientes primero
   const requerimientos = useMemo(() => {
@@ -53,21 +53,32 @@ export default function RequerimientosListPage() {
     );
   }, [data]);
 
-  const summary = useMemo(
-    () => ({
-      total: requerimientos.length,
-      negociacion: requerimientos.filter(
-        (item) => item.estado === "en_negociacion",
-      ).length,
-      viabilidad: requerimientos.filter(
-        (item) => item.estado === "en_viabilidad",
-      ).length,
-      aprobados: requerimientos.filter(
-        (item) => item.estado === "aprobada",
-      ).length,
-    }),
-    [requerimientos],
-  );
+  const ofertas = useMemo(() => requerimientos.map((requerimiento) => {
+    const oferta = cotizaciones.find((item) => item.solicitud_comercial === requerimiento.id);
+    const version = versiones
+      .filter((item) => item.cotizacion === oferta?.id)
+      .sort((a, b) => b.version - a.version)[0];
+    return { requerimiento, oferta, version, estado: obtenerEstadoOferta(requerimiento) };
+  }), [requerimientos, cotizaciones, versiones]);
+
+  const summary = useMemo(() => {
+    const items = ofertas.filter((item) => item.estado.codigo !== null);
+    return ESTADOS_OFERTA.map((estado) => {
+      const coincidencias = items.filter((item) => item.estado.codigo === estado.codigo);
+      const importesPorMoneda = coincidencias.reduce<Record<string, number>>((totales, item) => {
+        const moneda = item.version?.moneda ?? "BOB";
+        totales[moneda] = (totales[moneda] ?? 0) + Number(item.version?.precio_total ?? 0);
+        return totales;
+      }, {});
+      return {
+        ...estado,
+        cantidad: coincidencias.length,
+        detalle: Object.entries(importesPorMoneda)
+          .map(([moneda, total]) => `${moneda} ${total.toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          .join(" · ") || "Sin importe",
+      };
+    });
+  }, [ofertas]);
 
   return (
     <div className="space-y-6">
@@ -99,41 +110,7 @@ export default function RequerimientosListPage() {
       {/* Resumen */}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
-        <SummaryItem
-          label="En negociación"
-          value={summary.negociacion}
-          detail="Bs "
-        />
-
-        <SummaryItem
-          label="Esperando respuesta"
-          value={summary.negociacion}
-          detail="Bs "
-        />
-
-        <SummaryItem
-          label="Confirmada"
-          value={summary.viabilidad}
-          detail="Bs "
-        />
-
-        <SummaryItem
-          label="Rechazada"
-          value={summary.aprobados}
-          detail="Bs "
-        />
-
-        <SummaryItem
-          label="Cerrada sin respuesta"
-          value={summary.aprobados}
-          detail="Bs "
-        />
-
-        <SummaryItem
-          label="Vencida"
-          value={summary.total}
-          detail="Bs "
-        />
+        {summary.map((item) => <SummaryItem key={item.codigo} label={item.label} value={item.cantidad} detail={item.detalle} />)}
       </div>
       {/* Tabla */}
 
@@ -182,15 +159,14 @@ export default function RequerimientosListPage() {
             <div className="min-w-[1350px]">
               <TableHeader />
 
-              {requerimientos.map((requerimiento) => {
-                const oferta = cotizaciones.find((cotizacion) => cotizacion.solicitud_comercial === requerimiento.id);
-                const version = versiones.filter((item) => item.cotizacion === oferta?.id).sort((a, b) => b.version - a.version)[0];
+              {ofertas.map(({ requerimiento, oferta, version, estado }) => {
                 return <RequerimientoRow
                   key={requerimiento.id}
                   requerimiento={requerimiento}
                   cuentas={cuentas}
                   oferta={oferta}
                   version={version}
+                  estadoOferta={estado}
                   onView={() => navigate(`/comercial/requerimientos/${requerimiento.id}`)}
                   onFollowup={() => navigate(`/comercial/requerimientos/${requerimiento.id}${version ? `?tab=seguimiento&version=${version.id}` : ""}`)}
                   onVersions={() => navigate(`/comercial/requerimientos/${requerimiento.id}${version ? `?tab=versiones&version=${version.id}` : ""}`)}
@@ -253,6 +229,7 @@ function RequerimientoRow({
   cuentas,
   oferta,
   version,
+  estadoOferta,
   onView,
   onFollowup,
   onVersions,
@@ -263,6 +240,7 @@ function RequerimientoRow({
     : never;
   oferta?: Cotizacion;
   version?: CotizacionVersion;
+  estadoOferta: EstadoOfertaCalculado;
   onView: () => void;
   onFollowup: () => void;
   onVersions: () => void;
@@ -313,7 +291,7 @@ function RequerimientoRow({
 
       <span className="text-sm text-muted-foreground">{version?.validez_dias ? `${version.validez_dias} días` : oferta?.fecha_vencimiento ? formatearFecha(oferta.fecha_vencimiento) : "—"}</span>
 
-      {version ? <EstadoOferta estado={version.estado} /> : <EstadoSelector requerimiento={requerimiento} />}
+      <EstadoOferta estado={estadoOferta} />
 
       {/* Seguimiento: abre el detalle para registrar la acción */}
       <button
@@ -362,228 +340,40 @@ function RequerimientoRow({
    ESTADO
 ============================================================ */
 
-const ESTADOS: {
-  value: EstadoSolicitud;
-  label: string;
-  className: string;
-  dotClass: string;
-}[] = [
-    {
-      value: "recibida",
-      label: "Recibida",
-      className:
-        "bg-blue-500/10 text-blue-700 dark:text-blue-400",
-      dotClass: "bg-blue-500",
-    },
-    {
-      value: "en_negociacion",
-      label: "En negociación",
-      className:
-        "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
-      dotClass: "bg-yellow-500",
-    },
-    {
-      value: "en_viabilidad",
-      label: "En viabilidad",
-      className:
-        "bg-secondary text-secondary-foreground",
-      dotClass: "bg-secondary",
-    },
-    {
-      value: "aprobada",
-      label: "Aprobada",
-      className:
-        "bg-success/10 text-success",
-      dotClass: "bg-success",
-    },
-    {
-      value: "rechazada",
-      label: "Rechazada",
-      className:
-        "bg-destructive/10 text-destructive",
-      dotClass: "bg-destructive",
-    },
-    {
-      value: "convertida",
-      label: "Convertida",
-      className:
-        "bg-sidebar/10 text-sidebar-foreground",
-      dotClass: "bg-sidebar-active",
-    },
-    {
-      value: "cancelada",
-      label: "Cancelada",
-      className:
-        "bg-gray-500/10 text-gray-600 dark:text-gray-400",
-      dotClass: "bg-gray-500",
-    },
-  ];
+type CodigoEstadoOferta = "negociacion" | "esperando" | "confirmada" | "rechazada" | "cerrada" | "vencida";
+type EstadoOfertaCalculado = { codigo: CodigoEstadoOferta | null; label: string; className: string };
 
-function EstadoSelector({
-  requerimiento,
-}: {
-  requerimiento: SolicitudComercial;
-}) {
-  const [abierto, setAbierto] = useState(false);
+const ESTADOS_OFERTA: { codigo: CodigoEstadoOferta; label: string; className: string }[] = [
+  { codigo: "negociacion", label: "En negociación", className: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400" },
+  { codigo: "esperando", label: "Esperando respuesta", className: "bg-blue-100 text-blue-800" },
+  { codigo: "confirmada", label: "Confirmada", className: "bg-emerald-100 text-emerald-800" },
+  { codigo: "rechazada", label: "Rechazada", className: "bg-rose-100 text-rose-800" },
+  { codigo: "cerrada", label: "Cerrada sin respuesta", className: "bg-slate-100 text-slate-700" },
+  { codigo: "vencida", label: "Vencida", className: "bg-orange-100 text-orange-800" },
+];
 
-  const updateSolicitud =
-    useUpdateSolicitudComercial();
-
-  const estadoActual =
-    ESTADOS.find(
-      (estado) =>
-        estado.value === requerimiento.estado,
-    ) ?? ESTADOS[0];
-
-  const cambiarEstado = async (
-    estado: EstadoSolicitud,
-  ) => {
-    setAbierto(false);
-
-    if (estado === requerimiento.estado) {
-      return;
-    }
-
-    try {
-      await updateSolicitud.mutateAsync({
-        id: requerimiento.id,
-        data: { estado },
-      });
-    } catch (error) {
-      console.error(
-        "Error al cambiar estado:",
-        error,
-      );
-    }
+function obtenerEstadoOferta(
+  solicitud: SolicitudComercial,
+): EstadoOfertaCalculado {
+  const estadosPorSolicitud: Partial<Record<SolicitudComercial["estado"], CodigoEstadoOferta>> = {
+    en_negociacion: "negociacion",
+    esperando_respuesta: "esperando",
+    confirmada: "confirmada",
+    rechazada: "rechazada",
+    cerrada_sin_respuesta: "cerrada",
+    vencida: "vencida",
   };
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        disabled={updateSolicitud.isPending}
-        onClick={() =>
-          setAbierto((actual) => !actual)
-        }
-        className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 ${estadoActual.className}`}
-      >
-
-        {estadoActual.label}
-
-        <ChevronDown className="h-3 w-3" />
-      </button>
-
-      {abierto && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-lg border border-border bg-card p-1.5 shadow-lg">
-          {ESTADOS.map((estado) => {
-            const seleccionado =
-              estado.value ===
-              requerimiento.estado;
-
-            return (
-              <button
-                key={estado.value}
-                type="button"
-                onClick={() =>
-                  cambiarEstado(estado.value)
-                }
-                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs transition-colors hover:bg-secondary ${seleccionado
-                  ? "bg-secondary"
-                  : ""
-                  }`}
-              >
-                <span className="flex items-center gap-2">
-                  <span
-                    className={`h-2 w-2 rounded-full ${estado.dotClass}`}
-                  />
-
-                  <span className="text-foreground">
-                    {estado.label}
-                  </span>
-                </span>
-
-                {seleccionado && (
-                  <Check className="h-3.5 w-3.5 text-primary" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+  const codigo = estadosPorSolicitud[solicitud.estado] ?? null;
+  const estadoOferta = ESTADOS_OFERTA.find((item) => item.codigo === codigo);
+  return estadoOferta ?? {
+    codigo: null,
+    label: getSolicitudEstadoLabel(solicitud.estado),
+    className: "bg-secondary text-secondary-foreground",
+  };
 }
 
-function EstadoOferta({ estado }: { estado: CotizacionVersion["estado"] }) {
-  const labels: Record<CotizacionVersion["estado"], string> = {
-    borrador: "Borrador",
-    enviada: "Enviada",
-    aceptada: "Aceptada",
-    rechazada: "Rechazada",
-    anulada: "Anulada",
-  };
-  const colors: Record<CotizacionVersion["estado"], string> = {
-    borrador: "bg-amber-100 text-amber-800",
-    enviada: "bg-blue-100 text-blue-800",
-    aceptada: "bg-emerald-100 text-emerald-800",
-    rechazada: "bg-rose-100 text-rose-800",
-    anulada: "bg-slate-100 text-slate-700",
-  };
-  return <span className={`inline-flex w-fit rounded-full px-2.5 py-1.5 text-xs font-semibold ${colors[estado]}`}>{labels[estado]}</span>;
-}
-
-/* ============================================================
-   PRIORIDAD
-============================================================ */
-
-function PrioridadBadge({
-  prioridad,
-}: {
-  prioridad?: string;
-}) {
-  const config: Record<
-    string,
-    {
-      label: string;
-      className: string;
-    }
-  > = {
-    baja: {
-      label: "Baja",
-      className:
-        "bg-secondary text-muted-foreground",
-    },
-    normal: {
-      label: "Normal",
-      className:
-        "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-    },
-    alta: {
-      label: "Alta",
-      className:
-        "bg-warning/10 text-warning",
-    },
-    urgente: {
-      label: "Urgente",
-      className:
-        "bg-destructive/10 text-destructive",
-    },
-  };
-
-  const item =
-    config[prioridad ?? ""] ?? {
-      label: prioridad || "—",
-      className:
-        "bg-secondary text-muted-foreground",
-    };
-
-  return (
-    <span
-      className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-medium ${item.className}`}
-    >
-      {item.label}
-    </span>
-  );
+function EstadoOferta({ estado }: { estado: EstadoOfertaCalculado }) {
+  return <span className={`inline-flex w-fit rounded-full px-2.5 py-1.5 text-xs font-semibold capitalize ${estado.className}`}>{estado.label}</span>;
 }
 
 /* ============================================================

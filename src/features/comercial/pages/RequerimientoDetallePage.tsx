@@ -14,7 +14,7 @@ import {
     Pencil,
 } from "lucide-react";
 
-import { useSolicitudComercial, useCrearCotizacionVersion, useCotizaciones, useCotizacionesVersiones, useOfertaSeguimiento, comercialQueryKeys } from "../comercial.hooks";
+import { useSolicitudComercial, useCrearCotizacionVersion, useCotizacionVersion, useCotizaciones, useCotizacionesVersiones, useOfertaSeguimiento, comercialQueryKeys } from "../comercial.hooks";
 import { useProductosCategorias } from "@/features/productos/productos.hooks";
 import ComunicacionesModal from "@/features/comercial/components/ComunicacionModal";
 import EditarRequerimientoModal from "@/features/comercial/components/EditarRequerimientoModal";
@@ -161,7 +161,11 @@ export default function RequerimientoDetallePage() {
     const versionesDisponibles = (versionesData?.results ?? versionesDesdeSolicitud)
         .filter((version) => !cotizacionDeSolicitud || version.cotizacion === cotizacionDeSolicitud.id)
         .sort((a, b) => b.version - a.version);
-    const versionSeleccionadaActual = versionesDisponibles.find((version) => version.id === versionSeleccionadaId) ?? versionesDisponibles[0] ?? null;
+    const { data: versionConsultada, isLoading: cargandoVersionConsultada } = useCotizacionVersion(versionSeleccionadaId ?? 0);
+    const versionSeleccionadaActual = versionSeleccionadaId
+        ? versionesDisponibles.find((version) => version.id === versionSeleccionadaId)
+            ?? (versionConsultada?.cotizacion === cotizacionDeSolicitud?.id ? versionConsultada : null)
+        : versionesDisponibles[0] ?? null;
     const { data: eventosSeguimiento = [] } = useOfertaSeguimiento(versionSeleccionadaActual?.id ?? 0);
 
     const { data: categorias } = useProductosCategorias();
@@ -232,6 +236,25 @@ export default function RequerimientoDetallePage() {
         );
     }
 
+    if (versionSeleccionadaId && !versionSeleccionadaActual && cargandoVersionConsultada) {
+        return (
+            <div className="flex min-h-[60vh] items-center justify-center text-sm text-slate-500">
+                Cargando la versión seleccionada…
+            </div>
+        );
+    }
+
+    if (versionSeleccionadaId && !versionSeleccionadaActual && !cargandoVersionConsultada) {
+        return (
+            <div className="mx-auto mt-10 max-w-lg rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+                No se pudo cargar la versión seleccionada. Vuelve al historial y selecciona una versión disponible.
+                <button type="button" onClick={() => navigate(`/comercial/requerimientos/${solicitudId}`)} className="mt-3 block font-semibold underline">
+                    Volver a la oferta
+                </button>
+            </div>
+        );
+    }
+
     const {
         solicitud,
         cuentaComercial,
@@ -244,6 +267,7 @@ export default function RequerimientoDetallePage() {
         (linea) => linea.cotizacionDetalle.id === lineaSeleccionadaId,
     ) ?? data.productosCotizados?.[0] ?? null;
     const versionesCotizacion = versionesDisponibles;
+    const borradorPendiente = versionesCotizacion[0]?.estado === "borrador" ? versionesCotizacion[0] : null;
     const versionSeleccionada = versionSeleccionadaActual;
     const lineasVersionSeleccionada = (data.productosCotizados ?? []).filter((linea) => linea.cotizacionVersion.id === versionSeleccionada?.id);
     const totalVersionSeleccionada = versionSeleccionada?.precio_total ?? "0.00";
@@ -396,6 +420,15 @@ export default function RequerimientoDetallePage() {
         setLineaEditandoId(null);
     };
 
+    const abrirVersionParaEditar = async (versionId: number) => {
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitud(solicitudId) }),
+            queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() }),
+            queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionVersion(versionId) }),
+        ]);
+        seleccionarVersion(versionId);
+    };
+
     const guardarProductoAgregado = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!productoPendiente || !versionSeleccionada || versionSeleccionada.estado !== "borrador") return;
@@ -444,12 +477,26 @@ export default function RequerimientoDetallePage() {
     };
 
     const prepararNuevaVersionOferta = async () => {
-        if (!cotizacionDeSolicitud || !versionSeleccionada || versionesCotizacion[0]?.id !== versionSeleccionada.id) return;
+        if (!cotizacionDeSolicitud) {
+            setErrorAccionOferta("No se pudo identificar la cotización para preparar una versión.");
+            return;
+        }
         setErrorAccionOferta("");
+        const ultimaVersion = versionesCotizacion[0];
+
+        const continuarBorrador = ultimaVersion?.estado === "borrador";
+        if (!continuarBorrador && (!versionSeleccionada || ultimaVersion?.id !== versionSeleccionada.id)) {
+            setErrorAccionOferta("Selecciona la versión más reciente para iniciar una negociación.");
+            if (ultimaVersion) seleccionarVersion(ultimaVersion.id);
+            return;
+        }
+
         try {
-            const resultado = await crearVersionCotizacion.mutateAsync({ cotizacionId: cotizacionDeSolicitud.id, moneda: versionSeleccionada.moneda });
-            seleccionarVersion(resultado.cotizacion_version);
-            await queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitud(solicitudId) });
+            const resultado = await crearVersionCotizacion.mutateAsync({
+                cotizacionId: cotizacionDeSolicitud.id,
+                moneda: continuarBorrador ? ultimaVersion!.moneda : versionSeleccionada!.moneda,
+            });
+            await abrirVersionParaEditar(resultado.cotizacion_version);
         } catch (error) {
             const response = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
             setErrorAccionOferta(response?.mensaje || response?.detail || "No se pudo crear una nueva versión.");
@@ -675,12 +722,15 @@ export default function RequerimientoDetallePage() {
                             <h2 className="text-lg font-semibold">Historial de cotizaciones</h2>
                             <p className="text-sm text-muted-foreground">Selecciona una línea para consultar su detalle. Las versiones anteriores conservan sus importes.</p>
                         </div>
-                        {solicitud.estado !== "aprobada" && solicitud.estado !== "convertida" && !["aceptada", "borrador"].includes(versionesCotizacion[0].estado) && (
+                        {(borradorPendiente || (solicitud.estado !== "aprobada" && solicitud.estado !== "confirmada" && solicitud.estado !== "convertida" && !["aceptada", "borrador"].includes(versionesCotizacion[0].estado))) && (
                             <button type="button" onClick={async () => {
-                                const response = await crearVersionCotizacion.mutateAsync({ cotizacionId: versionesCotizacion[0].cotizacion, moneda: versionesCotizacion[0].moneda });
-                                window.location.assign(`/comercial/requerimientos/${solicitudId}?version_preparada=${response.cotizacion_version}`);
+                                if (borradorPendiente) {
+                                    void prepararNuevaVersionOferta();
+                                    return;
+                                }
+                                void prepararNuevaVersionOferta();
                             }} disabled={crearVersionCotizacion.isPending} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50">
-                                {crearVersionCotizacion.isPending ? "Preparando…" : "Preparar nueva versión para editar"}
+                                {crearVersionCotizacion.isPending ? "Preparando…" : borradorPendiente ? `Continuar versión V${String(borradorPendiente.version).padStart(2, "0")} en preparación` : "Preparar nueva versión para editar"}
                             </button>
                         )}
                     </div>

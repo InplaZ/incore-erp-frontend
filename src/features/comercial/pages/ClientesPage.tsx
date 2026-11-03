@@ -377,7 +377,7 @@ export default function ClientesPage() {
       <div className="grid gap-4 sm:grid-cols-4">
         <CrmStatCard icon={<ContactRound className="h-5 w-5" />} label="Contacto" value={summary.activos} detail="Cuentas en seguimiento inicial" tone="blue" />
         <CrmStatCard icon={<BriefcaseBusiness className="h-5 w-5" />} label="Lead" value={summary.activos} detail="Relaciones comerciales activas" tone="green" />
-        <CrmStatCard icon={<ArrowUpNarrowWide className="h-5 w-5" />} label="Opertunidad" value={summary.inactivos} detail="Cuentas conservadas en el sistema" tone="slate" />
+        <CrmStatCard icon={<ArrowUpNarrowWide className="h-5 w-5" />} label="Oportunidad" value={summary.inactivos} detail="Cuentas conservadas en el sistema" tone="slate" />
         <CrmStatCard icon={<User className="h-5 w-5" />} label="Cliente" value={summary.inactivos} detail="Cuentas conservadas en el sistema" tone="slate" />
       </div>
 

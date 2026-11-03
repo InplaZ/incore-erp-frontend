@@ -26,7 +26,6 @@ import type {
   EspecificacionBobinaSolicitadaUpdate,
   VarianteColorSolicitadaUpdate,
   PrioridadSolicitud,
-  EstadoSolicitud,
   MaterialProducto,
   Opacidad,
   TipoImpresion,
@@ -39,6 +38,7 @@ import type {
   CaraImpresion,
   ProductType,
 } from "../comercial.types";
+import { getSolicitudEstadoLabel } from "../utils/comercial.formatters";
 
 interface EditarRequerimientoModalProps {
   open: boolean;
@@ -52,16 +52,6 @@ const prioridades: { value: PrioridadSolicitud; label: string }[] = [
   { value: "normal", label: "Normal" },
   { value: "alta", label: "Alta" },
   { value: "urgente", label: "Urgente" },
-];
-
-const estados: { value: EstadoSolicitud; label: string }[] = [
-  { value: "recibida", label: "Recibida" },
-  { value: "en_negociacion", label: "En negociación" },
-  { value: "en_viabilidad", label: "En viabilidad" },
-  { value: "aprobada", label: "Aprobada" },
-  { value: "rechazada", label: "Rechazada" },
-  { value: "convertida", label: "Convertida" },
-  { value: "cancelada", label: "Cancelada" },
 ];
 
 const materiales: { value: MaterialProducto; label: string }[] = [
@@ -464,16 +454,10 @@ export default function EditarRequerimientoModal({
 
                       <div>
                         <label className="mb-1.5 block text-sm font-medium">Estado</label>
-                        <select
-                          value={solicitud.estado || "recibida"}
-                          onChange={(e) => handleSolicitudChange("estado", e.target.value as EstadoSolicitud)}
-                          disabled={isPending}
-                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                        >
-                          {estados.map((e) => (
-                            <option key={e.value} value={e.value}>{e.label}</option>
-                          ))}
-                        </select>
+                        <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                          <span className="font-medium">{getSolicitudEstadoLabel(solicitud.estado ?? "recibida")}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">Se actualiza automáticamente con el flujo de la oferta.</span>
+                        </div>
                       </div>
 
                       <div>

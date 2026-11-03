@@ -125,6 +125,16 @@ function fechaMasDias(fecha: Date, dias: number) {
   return `${resultado.getFullYear()}-${String(resultado.getMonth() + 1).padStart(2, "0")}-${String(resultado.getDate()).padStart(2, "0")}`;
 }
 
+function recordatorioInicial() {
+  const fecha = new Date();
+  fecha.setDate(fecha.getDate() + 1);
+  fecha.setHours(9, 0, 0, 0);
+  return {
+    fecha: `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`,
+    hora: "09:00",
+  };
+}
+
 export default function RequerimientosPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -191,7 +201,9 @@ export default function RequerimientosPage() {
   const [medioEnvio, setMedioEnvio] = useState<MedioEnvioComercial>("whatsapp");
   const [detalleEnvio, setDetalleEnvio] = useState("");
   const [archivoEnvio, setArchivoEnvio] = useState<File | null>(null);
-  const [recordatorioEnvio, setRecordatorioEnvio] = useState(false);
+  const [recordatorioEnvio, setRecordatorioEnvio] = useState(true);
+  const [fechaRecordatorioEnvio, setFechaRecordatorioEnvio] = useState(() => recordatorioInicial().fecha);
+  const [horaRecordatorioEnvio, setHoraRecordatorioEnvio] = useState(() => recordatorioInicial().hora);
   const [errorEnvio, setErrorEnvio] = useState("");
   const [ultimaVersionCotizacion, setUltimaVersionCotizacion] = useState<number | null>(null);
   const [lineasCotizacion, setLineasCotizacion] = useState<CotizacionLineaBorrador[]>([]);
@@ -892,7 +904,20 @@ const iniciarPreparacionOferta = () => {
     }
   };
 
-  const guardarCotizacion = async (envio?: { medio: "telefono" | "email" | "whatsapp" | "presencial" | "videollamada" | "otro"; detalle: string; recordatorio: boolean }, evidencia?: File | null) => {
+  const guardarCotizacion = async (envio?: { medio: "telefono" | "email" | "whatsapp" | "presencial" | "videollamada" | "otro"; detalle: string; recordatorio: boolean; fecha: string; hora: string }, evidencia?: File | null) => {
+    let fechaRecordatorioIso: string | null = null;
+    if (envio?.recordatorio) {
+      if (!envio.fecha || !envio.hora) {
+        setErrorEnvio("Completa la fecha y hora del recordatorio.");
+        return;
+      }
+      const fechaProgramada = new Date(`${envio.fecha}T${envio.hora}:00`);
+      if (Number.isNaN(fechaProgramada.getTime()) || fechaProgramada <= new Date()) {
+        setErrorEnvio("El recordatorio debe programarse para una fecha y hora futuras.");
+        return;
+      }
+      fechaRecordatorioIso = fechaProgramada.toISOString();
+    }
     const lineasPendientes = lineasCotizacion.filter((linea) => !linea.persistida);
     if (!cuentaComercialId || !datosCotizacion || (!lineasPendientes.length && !(envio && versionActivaId))) return;
     try {
@@ -920,7 +945,7 @@ const iniciarPreparacionOferta = () => {
         ? fechaMasDias(new Date(fechaRegistroTemporal), condicionesPayload.validez_dias)
         : datosCotizacion.fechaVencimiento || null;
       const payload: FormalizarCotizacionWizardPayload = {
-        ...(envio ? { envio } : {}),
+        ...(envio ? { envio: { medio: envio.medio, detalle: envio.detalle, recordatorio: envio.recordatorio, fecha_recordatorio: fechaRecordatorioIso } } : {}),
         cotizacion_version_id: versionActivaId || cotizacionVersionId || undefined,
         solicitud: {
           cuenta_comercial: cuentaComercialId,
@@ -975,9 +1000,15 @@ const iniciarPreparacionOferta = () => {
         setMostrarEnvioModal(false);
         setArchivoEnvio(null);
         setDetalleEnvio("");
-        setRecordatorioEnvio(false);
+        setRecordatorioEnvio(true);
+        const recordatorioInicialNuevo = recordatorioInicial();
+        setFechaRecordatorioEnvio(recordatorioInicialNuevo.fecha);
+        setHoraRecordatorioEnvio(recordatorioInicialNuevo.hora);
       }
-      mostrarToast(archivoPendiente ? "Cotización creada; PDF pendiente" : envio ? "Envío comercial registrado" : "Borrador guardado", archivoPendiente ? `Cotización ${resultado.numero} creada, pero no se pudo adjuntar uno o más PDF. Edítala para cargarlos.` : envio ? `Cotización ${resultado.numero} V${resultado.version} registrada con estado ${resultado.estado}.` : `Cotización ${resultado.numero} V${resultado.version} quedó en estado ${resultado.estado}.`);
+      const recordatorioRegistrado = envio?.recordatorio && resultado.envio?.fecha_recordatorio
+        ? ` Recordatorio: ${new Date(resultado.envio.fecha_recordatorio).toLocaleString("es-BO", { dateStyle: "medium", timeStyle: "short" })}.`
+        : "";
+      mostrarToast(archivoPendiente ? "Cotización creada; PDF pendiente" : envio ? "Envío comercial registrado" : "Borrador guardado", archivoPendiente ? `Cotización ${resultado.numero} creada, pero no se pudo adjuntar uno o más PDF. Edítala para cargarlos.` : envio ? `Cotización ${resultado.numero} V${resultado.version} registrada con estado ${resultado.estado}.${recordatorioRegistrado}` : `Cotización ${resultado.numero} V${resultado.version} quedó en estado ${resultado.estado}.`);
       if (resultado.solicitud_comercial && resultado.cotizacion_version) {
         navigate(`/comercial/requerimientos/${resultado.solicitud_comercial}?version=${resultado.cotizacion_version}`);
       }
@@ -1861,7 +1892,7 @@ const iniciarPreparacionOferta = () => {
         />
       )}
 
-      <RegistrarEnvioComercialModal open={mostrarEnvioModal} pending={formalizarCotizacion.isPending} medio={medioEnvio} detalle={detalleEnvio} archivo={archivoEnvio} recordatorio={recordatorioEnvio} error={errorEnvio} onClose={() => setMostrarEnvioModal(false)} onMedio={setMedioEnvio} onDetalle={setDetalleEnvio} onArchivo={setArchivoEnvio} onFileError={setErrorEnvio} onRecordatorio={setRecordatorioEnvio} onConfirm={() => void guardarCotizacion({ medio: medioEnvio, detalle: detalleEnvio.trim(), recordatorio: recordatorioEnvio }, archivoEnvio)} />
+      <RegistrarEnvioComercialModal open={mostrarEnvioModal} pending={formalizarCotizacion.isPending} medio={medioEnvio} detalle={detalleEnvio} archivo={archivoEnvio} recordatorio={recordatorioEnvio} fechaRecordatorio={fechaRecordatorioEnvio} horaRecordatorio={horaRecordatorioEnvio} error={errorEnvio} onClose={() => setMostrarEnvioModal(false)} onMedio={setMedioEnvio} onDetalle={setDetalleEnvio} onArchivo={setArchivoEnvio} onFileError={setErrorEnvio} onRecordatorio={setRecordatorioEnvio} onFechaRecordatorio={(fecha) => { setFechaRecordatorioEnvio(fecha); setErrorEnvio(""); }} onHoraRecordatorio={(hora) => { setHoraRecordatorioEnvio(hora); setErrorEnvio(""); }} onConfirm={() => void guardarCotizacion({ medio: medioEnvio, detalle: detalleEnvio.trim(), recordatorio: recordatorioEnvio, fecha: fechaRecordatorioEnvio, hora: horaRecordatorioEnvio }, archivoEnvio)} />
 
       {mostrarCotizacion && <CotizacionModal
         open

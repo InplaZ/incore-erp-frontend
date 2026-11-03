@@ -30,7 +30,7 @@ export default function RegistrarEnvioComercialModal({
   };
   return <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/60 p-0 sm:items-center sm:p-4">
     <section role="dialog" aria-modal="true" aria-labelledby="registro-envio-titulo" className="flex max-h-[96dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl border border-border bg-white shadow-2xl sm:rounded-2xl">
-      <header className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4"><h2 id="registro-envio-titulo" className="font-semibold text-slate-900">Guardar y registrar envío al cliente</h2><button type="button" onClick={onClose} disabled={pending} aria-label="Cerrar" className="text-xl text-slate-400 disabled:opacity-50"><X className="h-5 w-5" /></button></header>
+      <header className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4"><h2 id="registro-envio-titulo" className="font-semibold text-slate-900">Guardar y registrar envío al cliente"</h2><button type="button" onClick={onClose} disabled={pending} aria-label="Cerrar" className="text-xl text-slate-400 disabled:opacity-50"><X className="h-5 w-5" /></button></header>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
         <p className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-slate-600">La oferta solo pasará a Enviada cuando se registre su constancia. Puedes programar un recordatorio inmediato.</p>
         {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}

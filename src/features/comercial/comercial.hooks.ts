@@ -903,6 +903,7 @@ export function useCreateComunicacion() {
         queryKey: comercialQueryKeys.solicitudes(),
       });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.pedidos() });
     },
   });
 }
@@ -1188,6 +1189,7 @@ export function useCrearCotizacionDesdeSolicitud() {
       queryClient.invalidateQueries({
         queryKey: comercialQueryKeys.cotizaciones(),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
     },
   });
 }
@@ -1280,6 +1282,7 @@ export function useEnviarCotizacion() {
         queryKey:
           comercialQueryKeys.cotizacionesVersiones(),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
     },
   });
 }
@@ -1309,7 +1312,8 @@ export function useAceptarCotizacion() {
         queryKey:
           comercialQueryKeys.cotizaciones(),
       });
-      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.pedidos() });
     },
   });
 }
@@ -1334,6 +1338,7 @@ export function useRechazarCotizacion() {
         queryKey:
           comercialQueryKeys.cotizacionesVersiones(),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
     },
   });
 }

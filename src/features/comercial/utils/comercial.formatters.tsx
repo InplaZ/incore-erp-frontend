@@ -181,17 +181,32 @@ export function getSolicitudEstadoLabel(
     case "recibida":
       return "Recibida";
 
-    case "en_revision":
-      return "En revisión";
-
     case "en_negociacion":
       return "En negociación";
+
+    case "esperando_respuesta":
+      return "Esperando respuesta";
+
+    case "confirmada":
+      return "Confirmada";
+
+    case "cerrada_sin_respuesta":
+      return "Cerrada sin respuesta";
+
+    case "vencida":
+      return "Vencida";
+
+    case "en_viabilidad":
+      return "En viabilidad";
 
     case "aprobada":
       return "Aprobada";
 
     case "rechazada":
       return "Rechazada";
+
+    case "convertida":
+      return "Convertida";
 
     case "cancelada":
       return "Cancelada";
