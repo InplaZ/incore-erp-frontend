@@ -14,6 +14,7 @@ import type {
   MedioComunicacion,
   TipoComunicacion,
   TipoEvidenciaAceptacion,
+  MotivoRechazoCotizacion,
 } from "../comercial.types";
 
 type AccionCotizacion = "ninguna" | "enviar" | "aceptar" | "rechazar" | "cerrar";
@@ -77,6 +78,9 @@ export default function RegistrarComunicacionModal({
   const [asunto, setAsunto] = useState("");
 
   const [contenido, setContenido] = useState("");
+  const [motivoRechazo, setMotivoRechazo] =
+    useState<MotivoRechazoCotizacion>("precio");
+  const [observacionRechazo, setObservacionRechazo] = useState("");
   const [archivoEvidencia, setArchivoEvidencia] = useState<File | null>(null);
   const [errorEnvio, setErrorEnvio] = useState("");
 
@@ -92,6 +96,13 @@ export default function RegistrarComunicacionModal({
   const [detalleAceptacion, setDetalleAceptacion] = useState("");
   const [observacionesAceptacion, setObservacionesAceptacion] = useState("");
   const [confirmarAceptacion, setConfirmarAceptacion] = useState(false);
+
+  // Cuando el modal se abre desde "Cerrar oportunidad", la acción
+  // ya viene definida y no es necesario mostrar el selector de acciones.
+  const esPanelCierreInicial = accionInicial === "cerrar" || accionInicial === "rechazar";
+  const esCierre = accionCotizacion === "cerrar";
+  const esRechazo = accionCotizacion === "rechazar";
+  const muestraMotivoCierre = esCierre || esRechazo;
 
   // ============================================================
   // SINCRONIZAR SOLICITUD INICIAL
@@ -110,6 +121,8 @@ export default function RegistrarComunicacionModal({
     setAccionCotizacion(accionInicial);
     setArchivoEvidencia(null);
     setErrorEnvio("");
+    setMotivoRechazo("precio");
+    setObservacionRechazo("");
     setConfirmarAceptacion(false);
     setDetalleAceptacion("");
     setObservacionesAceptacion("");
@@ -137,13 +150,22 @@ export default function RegistrarComunicacionModal({
     e.preventDefault();
 
     const esAceptacion = Boolean(cotizacionVersionInicial && accionCotizacion === "aceptar");
+    const esRechazo = Boolean(cotizacionVersionInicial && accionCotizacion === "rechazar");
+    const esCierreConMotivo = Boolean(
+      cotizacionVersionInicial &&
+      (accionCotizacion === "rechazar" || accionCotizacion === "cerrar")
+    );
+
     const contenidoRegistro = esAceptacion
       ? [detalleAceptacion.trim(), observacionesAceptacion.trim() && `Observaciones de aceptación / pago: ${observacionesAceptacion.trim()}`].filter(Boolean).join("\n") || `Aceptación del cliente registrada. Evidencia: ${tipoEvidencia}.`
-      : contenido.trim();
+      : esCierreConMotivo
+        ? observacionRechazo.trim() || `${esRechazo ? "Motivo de rechazo" : "Motivo de cierre"}: ${motivoRechazo}`
+        : contenido.trim();
 
     if (
       !solicitudComercial ||
       !contenidoRegistro ||
+      (esCierreConMotivo && !motivoRechazo) ||
       (esAceptacion && (!codigoErp.trim() || !confirmarAceptacion || Number(anticipo || 0) > Number(cotizacionVersion?.precio_total ?? 0)))
     ) {
       if (esAceptacion && Number(anticipo || 0) > Number(cotizacionVersion?.precio_total ?? 0)) {
@@ -161,6 +183,7 @@ export default function RegistrarComunicacionModal({
         asunto: asunto.trim() || null,
         contenido: contenidoRegistro,
         cotizacion_version_id: cotizacionVersionInicial ?? null,
+        ...(esRechazo || esCierre ? { motivo_rechazo: motivoRechazo } : {}),
         actividad_comercial_id: actividadComercialInicial ?? null,
         evidencia: archivoEvidencia,
         ...(esAceptacion ? {
@@ -192,6 +215,8 @@ export default function RegistrarComunicacionModal({
       setDireccion("saliente");
       setAsunto("");
       setContenido("");
+      setMotivoRechazo("precio");
+      setObservacionRechazo("");
       setAccionCotizacion("ninguna");
       setArchivoEvidencia(null);
       setErrorEnvio("");
@@ -207,8 +232,9 @@ export default function RegistrarComunicacionModal({
 
       onClose();
     } catch (error) {
-      const data = (error as { response?: { data?: { detail?: string; evidencia?: string[]; cotizacion?: string } } })?.response?.data;
-      setErrorEnvio(data?.detail || data?.cotizacion || data?.evidencia?.join(" ") || "No se pudo registrar la comunicación.");
+      const data = (error as { response?: { data?: { detail?: string; evidencia?: string[]; cotizacion?: string; motivo_rechazo?: string | string[] } } })?.response?.data;
+      const motivoError = Array.isArray(data?.motivo_rechazo) ? data.motivo_rechazo.join(" ") : data?.motivo_rechazo;
+      setErrorEnvio(data?.detail || data?.cotizacion || motivoError || data?.evidencia?.join(" ") || "No se pudo registrar la comunicación.");
       console.error(
         "Error al registrar comunicación:",
         error,
@@ -227,11 +253,23 @@ export default function RegistrarComunicacionModal({
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-foreground">
-              {accionCotizacion === "aceptar" ? "Aceptación respaldada → Generar pedido" : "Registrar comunicación"}
+              {accionCotizacion === "aceptar"
+                ? "Aceptación respaldada → Generar pedido"
+                : esRechazo
+                  ? "Cerrar cotización"
+                  : esCierre
+                    ? "Cerrar oportunidad"
+                    : "Registrar comunicación"}
             </h2>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              {accionCotizacion === "aceptar" ? "Completa los datos comerciales y la evidencia de aceptación del cliente." : "Registra una interacción con el cliente."}
+              {accionCotizacion === "aceptar"
+                ? "Completa los datos comerciales y la evidencia de aceptación del cliente."
+                : esRechazo
+                  ? "Registra el motivo por el que el cliente no acepta la cotización."
+                  : esCierre
+                    ? "Registra el motivo por el que se cierra la oportunidad."
+                    : "Registra una interacción con el cliente."}
             </p>
           </div>
 
@@ -259,7 +297,7 @@ export default function RegistrarComunicacionModal({
               SOLICITUD
           ====================================================== */}
 
-          {accionCotizacion !== "aceptar" && <div className="space-y-2">
+          {accionCotizacion !== "aceptar" && !muestraMotivoCierre && <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               Solicitud comercial
             </label>
@@ -313,7 +351,7 @@ export default function RegistrarComunicacionModal({
               TIPO / MEDIO
           ====================================================== */}
 
-          {accionCotizacion !== "aceptar" && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {accionCotizacion !== "aceptar" && !muestraMotivoCierre && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
             {/* Tipo */}
 
@@ -404,7 +442,7 @@ export default function RegistrarComunicacionModal({
               DIRECCIÓN
           ====================================================== */}
 
-          {accionCotizacion !== "aceptar" && <div className="space-y-2">
+          {accionCotizacion !== "aceptar" && !muestraMotivoCierre && <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               Dirección de la comunicación
             </label>
@@ -432,7 +470,7 @@ export default function RegistrarComunicacionModal({
             </p>
           </div>}
 
-          {cotizacionVersionInicial && accionCotizacion !== "aceptar" && (
+          {cotizacionVersionInicial && accionCotizacion !== "aceptar" && !esPanelCierreInicial && (
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">
                 Acción sobre la cotización
@@ -465,7 +503,44 @@ export default function RegistrarComunicacionModal({
               <p className="text-xs text-muted-foreground">
                 Cotización versión #{cotizacionVersionInicial}
               </p>
-              {(accionCotizacion === "enviar" || accionCotizacion === "rechazar") && <label className="block space-y-2 text-sm font-medium text-foreground">Adjuntar evidencia (opcional, máx. 1,5 MB)<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (file && file.size > 1572864) { setErrorEnvio("El comprobante no puede superar 1,5 MB."); setArchivoEvidencia(null); event.target.value = ""; return; } setErrorEnvio(""); setArchivoEvidencia(file); }} className="block w-full rounded-lg border border-border bg-background p-2 text-xs" />{archivoEvidencia && <span className="block text-xs text-muted-foreground">{archivoEvidencia.name}</span>}</label>}
+              {accionCotizacion === "enviar" && <label className="block space-y-2 text-sm font-medium text-foreground">Adjuntar evidencia (opcional, máx. 1,5 MB)<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (file && file.size > 1572864) { setErrorEnvio("El comprobante no puede superar 1,5 MB."); setArchivoEvidencia(null); event.target.value = ""; return; } setErrorEnvio(""); setArchivoEvidencia(file); }} className="block w-full rounded-lg border border-border bg-background p-2 text-xs" />{archivoEvidencia && <span className="block text-xs text-muted-foreground">{archivoEvidencia.name}</span>}</label>}
+            </div>
+          )}
+
+          {cotizacionVersionInicial && muestraMotivoCierre && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  {esRechazo || esCierre ? "Motivo de rechazo" : "Motivo de cierre"}
+                </label>
+                <select
+                  value={motivoRechazo}
+                  onChange={(e) => setMotivoRechazo(e.target.value as MotivoRechazoCotizacion)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20"
+                  required
+                >
+                  <option value="precio">Precio</option>
+                  <option value="competencia">Competencia</option>
+                  <option value="plazo">Plazo</option>
+                  <option value="caracteristicas">No cumple características</option>
+                  {!(esRechazo || esCierre) && <option value="sin_respuesta">Sin respuesta</option>}
+                  <option value="cancelacion_cliente">Cancelación del cliente</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  Observación
+                </label>
+                <textarea
+                  value={observacionRechazo}
+                  onChange={(e) => setObservacionRechazo(e.target.value)}
+                  rows={3}
+                  placeholder="Agrega una observación (opcional)..."
+                  className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20"
+                />
+              </div>
             </div>
           )}
 
@@ -504,7 +579,7 @@ export default function RegistrarComunicacionModal({
               ASUNTO
           ====================================================== */}
 
-          {accionCotizacion !== "aceptar" && <div className="space-y-2">
+          {accionCotizacion !== "aceptar" && !muestraMotivoCierre && <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               Asunto
             </label>
@@ -523,7 +598,7 @@ export default function RegistrarComunicacionModal({
               CONTENIDO
           ====================================================== */}
 
-          {accionCotizacion !== "aceptar" && <div className="space-y-2">
+          {accionCotizacion !== "aceptar" && !muestraMotivoCierre && <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               Contenido
             </label>
@@ -572,13 +647,23 @@ export default function RegistrarComunicacionModal({
               disabled={
                 createComunicacion.isPending ||
                 !solicitudComercial ||
-                (accionCotizacion === "aceptar" ? !codigoErp.trim() || !confirmarAceptacion : !contenido.trim())
+                (accionCotizacion === "aceptar"
+                  ? !codigoErp.trim() || !confirmarAceptacion
+                  : muestraMotivoCierre
+                    ? !motivoRechazo
+                    : !contenido.trim())
               }
               className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {createComunicacion.isPending
                 ? "Guardando..."
-                : accionCotizacion === "aceptar" ? "Registrar aceptación y generar pedido" : "Registrar comunicación"}
+                : accionCotizacion === "aceptar"
+                  ? "Registrar aceptación y generar pedido"
+                  : esRechazo
+                    ? "Registrar rechazo"
+                    : esCierre
+                      ? "Cerrar oportunidad"
+                      : "Registrar comunicación"}
             </button>
 
           </div>

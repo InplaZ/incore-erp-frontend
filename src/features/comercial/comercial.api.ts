@@ -579,14 +579,27 @@ export const comunicacionesApi = {
 // COTIZACIONES
 // ============================================================
 
+function normalizarRespuestaPaginada<T>(
+  respuesta: PaginatedResponse<T> | T[],
+): PaginatedResponse<T> {
+  if (!Array.isArray(respuesta)) return respuesta;
+  return {
+    count: respuesta.length,
+    next: null,
+    previous: null,
+    results: respuesta,
+  };
+}
+
 export const cotizacionesApi = {
   list: async (
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<Cotizacion>> => {
-    return api.get<PaginatedResponse<Cotizacion>>(
+    const respuesta = await api.get<PaginatedResponse<Cotizacion> | Cotizacion[]>(
       "/comercial/cotizaciones/",
       { params },
     );
+    return normalizarRespuestaPaginada(respuesta);
   },
 
   get: async (id: number): Promise<Cotizacion> => {
@@ -654,10 +667,11 @@ export const cotizacionesVersionesApi = {
   list: async (
     params?: ApiQueryParams,
   ): Promise<PaginatedResponse<CotizacionVersion>> => {
-    return api.get<PaginatedResponse<CotizacionVersion>>(
+    const respuesta = await api.get<PaginatedResponse<CotizacionVersion> | CotizacionVersion[]>(
       "/comercial/cotizaciones-versiones/",
       { params },
     );
+    return normalizarRespuestaPaginada(respuesta);
   },
 
   get: async (id: number): Promise<CotizacionVersion> => {

@@ -924,6 +924,14 @@ export type EspecificacionBobinaSolicitadaUpdate =
 // ============================================================
 // COMUNICACIONES
 // ============================================================
+export type MotivoRechazoCotizacion =
+  | "precio"
+  | "competencia"
+  | "plazo"
+  | "caracteristicas"
+  | "sin_respuesta"
+  | "cancelacion_cliente"
+  | "otro";
 
 export type TipoComunicacion = 
   | "llamada"
@@ -958,6 +966,7 @@ export interface Comunicacion {
   evento_oferta: "" | "envio" | "seguimiento" | "aceptacion" | "rechazo" | "cierre";
   created_at: string;
   updated_at: string;
+  motivo_rechazo: MotivoRechazoCotizacion | "";
 }
 
 export interface ComunicacionCreate {
@@ -970,6 +979,9 @@ export interface ComunicacionCreate {
   contenido: string;
   cotizacion_version_id?: number | null;
   accion_cotizacion?: "ninguna" | "enviar" | "aceptar" | "rechazar" | "cerrar";
+  recordatorio?: boolean;
+  fecha_recordatorio?: string | null;
+  motivo_rechazo?: MotivoRechazoCotizacion;
   evidencia?: File | null;
   tipo_evidencia?: "deposito" | "contrato" | "licitacion" | "orden_compra" | "email" | "whatsapp" | "otro";
   codigo_erp?: string;

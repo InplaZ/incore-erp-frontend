@@ -14,20 +14,27 @@ import {
     Pencil,
 } from "lucide-react";
 
-import { useSolicitudComercial, useCrearCotizacionVersion, useCotizacionVersion, useCotizaciones, useCotizacionesVersiones, useOfertaSeguimiento, comercialQueryKeys } from "../comercial.hooks";
+import { useSolicitudComercial, useCrearCotizacionVersion, useCotizacionVersion, useCotizaciones, useCotizacionesVersiones, useOfertaSeguimiento, useCreateComunicacion, comercialQueryKeys } from "../comercial.hooks";
 import { useProductosCategorias } from "@/features/productos/productos.hooks";
 import ComunicacionesModal from "@/features/comercial/components/ComunicacionModal";
 import EditarRequerimientoModal from "@/features/comercial/components/EditarRequerimientoModal";
 import OfertaComercialDetalle from "../components/ofertas/OfertaComercialDetalle";
 import OfertaSeguimientoTimeline from "../components/ofertas/OfertaSeguimientoTimeline";
 import CatalogoOfertaModal from "../components/ofertas/CatalogoOfertaModal";
-import RegistrarComunicacionModal from "../components/RegistrarComunicacionModal";
 import NuevaActividadModal from "../components/actividades/NuevaActividadModal";
 import ProductoComercialWizardModal from "@/features/productos/ProductoComercialWizardModal";
 import type { ProductoComercialCreado } from "@/features/productos/productos.types";
 import type { ProductoBusquedaResultado, ProductType } from "../comercial.types";
 import { cotizacionesDetallesApi, cotizacionesVersionesApi } from "../comercial.api";
 import { api } from "@/api/api.config";
+import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
+import RegistrarEnvioComercialModal, { type MedioEnvioComercial } from "../components/ofertas/RegistrarEnvioComercialModal";
+
+function obtenerNumeroOfertaVisible(numero: string) {
+    const coincidencia = numero.match(/^COT-\d{8}-(\d+)(-\d+)?$/i);
+    if (!coincidencia) return numero;
+    return `OF-${coincidencia[1].padStart(4, "0")}${coincidencia[2] ?? ""}`;
+}
 
 interface LineaEdicionForm {
     cantidad: string;
@@ -82,8 +89,19 @@ export default function RequerimientoDetallePage() {
     const [errorAgregarProducto, setErrorAgregarProducto] = useState("");
     const [errorAccionOferta, setErrorAccionOferta] = useState("");
     const [accionOferta, setAccionOferta] = useState<"enviar" | "aceptar" | "rechazar" | "cerrar" | null>(null);
+    const [medioEnvioOferta, setMedioEnvioOferta] = useState<MedioEnvioComercial>("whatsapp");
+    const [detalleEnvioOferta, setDetalleEnvioOferta] = useState("");
+    const [archivoEnvioOferta, setArchivoEnvioOferta] = useState<File | null>(null);
+    const [recordatorioEnvioOferta, setRecordatorioEnvioOferta] = useState(true);
+    const [fechaRecordatorioOferta, setFechaRecordatorioOferta] = useState(() => {
+        const fecha = new Date();
+        fecha.setDate(fecha.getDate() + 1);
+        return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
+    });
+    const [horaRecordatorioOferta, setHoraRecordatorioOferta] = useState("09:00");
     const [mostrarActividadOferta, setMostrarActividadOferta] = useState(false);
     const crearVersionCotizacion = useCrearCotizacionVersion();
+    const crearComunicacion = useCreateComunicacion();
     const cantidadPeso = formLinea?.cantidad;
     const materialPeso = formLinea?.tecnica.material;
     const micrajePeso = formLinea?.tecnica.micraje;
@@ -503,6 +521,50 @@ export default function RequerimientoDetallePage() {
         }
     };
 
+    const confirmarEnvioOferta = async () => {
+        if (!versionSeleccionada || !detalleEnvioOferta.trim()) {
+            setErrorAccionOferta("Describe cómo se envió la oferta al cliente.");
+            return;
+        }
+        let fechaRecordatorioIso: string | undefined;
+        if (recordatorioEnvioOferta) {
+            const fechaHora = new Date(`${fechaRecordatorioOferta}T${horaRecordatorioOferta}:00`);
+            if (!fechaRecordatorioOferta || !horaRecordatorioOferta || Number.isNaN(fechaHora.getTime()) || fechaHora <= new Date()) {
+                setErrorAccionOferta("El recordatorio debe tener una fecha y hora futuras.");
+                return;
+            }
+            fechaRecordatorioIso = fechaHora.toISOString();
+        }
+
+        setErrorAccionOferta("");
+        try {
+            await crearComunicacion.mutateAsync({
+                solicitud_comercial: solicitudId,
+                tipo: "mensaje",
+                medio: medioEnvioOferta,
+                direccion: "saliente",
+                asunto: `Envío de oferta ${cotizacionDeSolicitud?.numero ?? ""} V${versionSeleccionada.version}`,
+                contenido: detalleEnvioOferta.trim(),
+                cotizacion_version_id: versionSeleccionada.id,
+                accion_cotizacion: "enviar",
+                evidencia: archivoEnvioOferta,
+                recordatorio: recordatorioEnvioOferta,
+                fecha_recordatorio: fechaRecordatorioIso,
+            });
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitud(solicitudId) }),
+                queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() }),
+                queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionVersion(versionSeleccionada.id) }),
+            ]);
+            setAccionOferta(null);
+            setDetalleEnvioOferta("");
+            setArchivoEnvioOferta(null);
+        } catch (error) {
+            const response = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
+            setErrorAccionOferta(response?.mensaje || response?.detail || "No se pudo registrar el envío de la oferta.");
+        }
+    };
+
     const descargarPdfVersion = async () => {
         if (!versionSeleccionada) return;
         try {
@@ -614,7 +676,7 @@ export default function RequerimientoDetallePage() {
         return <>
             <OfertaComercialDetalle
                 cliente={nombreClienteOferta || "Cliente"}
-                numero={cotizacionDeSolicitud.numero}
+                numero={obtenerNumeroOfertaVisible(cotizacionDeSolicitud.numero)}
                 version={String(versionSeleccionada.version).padStart(2, "0")}
                 estado={estadoEtiqueta[versionSeleccionada.estado] || versionSeleccionada.estado}
                 cantidad={lineasVersionSeleccionada.length}
@@ -633,7 +695,33 @@ export default function RequerimientoDetallePage() {
                 onAddProduct={() => { setErrorAgregarProducto(""); setMostrarCatalogo(true); }}
                 onSend={() => setAccionOferta("enviar")}
             >{productos}</OfertaComercialDetalle>
-            {accionOferta && <RegistrarComunicacionModal open onClose={() => setAccionOferta(null)} solicitudInicial={solicitudId} cotizacionVersionInicial={versionSeleccionada.id} accionInicial={accionOferta} />}
+            {accionOferta === "enviar" && <RegistrarEnvioComercialModal
+                open
+                pending={crearComunicacion.isPending}
+                medio={medioEnvioOferta}
+                detalle={detalleEnvioOferta}
+                archivo={archivoEnvioOferta}
+                recordatorio={recordatorioEnvioOferta}
+                fechaRecordatorio={fechaRecordatorioOferta}
+                horaRecordatorio={horaRecordatorioOferta}
+                error={errorAccionOferta}
+                onClose={() => setAccionOferta(null)}
+                onMedio={setMedioEnvioOferta}
+                onDetalle={setDetalleEnvioOferta}
+                onArchivo={setArchivoEnvioOferta}
+                onFileError={setErrorAccionOferta}
+                onRecordatorio={setRecordatorioEnvioOferta}
+                onFechaRecordatorio={setFechaRecordatorioOferta}
+                onHoraRecordatorio={setHoraRecordatorioOferta}
+                onConfirm={() => void confirmarEnvioOferta()}
+            />}
+            {accionOferta && accionOferta !== "enviar" && <RegistrarComunicacionModal
+                open
+                onClose={() => setAccionOferta(null)}
+                solicitudInicial={solicitudId}
+                cotizacionVersionInicial={versionSeleccionada.id}
+                accionInicial={accionOferta}
+            />}
             <NuevaActividadModal open={mostrarActividadOferta} onClose={() => setMostrarActividadOferta(false)} cuentaComercialInicial={solicitud.cuenta_comercial} solicitudInicial={solicitudId} cotizacionVersionInicial={versionSeleccionada.id} />
             <CatalogoOfertaModal open={mostrarCatalogo} product={tipoProductoCatalogo} onProductType={setTipoProductoCatalogo} onClose={() => setMostrarCatalogo(false)} versionsInCart={lineasVersionSeleccionada.map((linea) => linea.productoVersion?.id ?? 0).filter(Boolean)} onCreate={() => { setMostrarCatalogo(false); setMostrarProductoWizard(true); }} onAdd={(producto: ProductoBusquedaResultado) => {
                 if (lineasVersionSeleccionada.some((linea) => linea.productoVersion?.id === producto.version_id)) {

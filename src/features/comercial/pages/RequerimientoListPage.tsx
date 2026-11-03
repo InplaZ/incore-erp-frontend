@@ -67,7 +67,8 @@ export default function RequerimientosListPage() {
       const coincidencias = items.filter((item) => item.estado.codigo === estado.codigo);
       const importesPorMoneda = coincidencias.reduce<Record<string, number>>((totales, item) => {
         const moneda = item.version?.moneda ?? "BOB";
-        totales[moneda] = (totales[moneda] ?? 0) + Number(item.version?.precio_total ?? 0);
+        const monto = Number(item.version?.precio_total ?? 0);
+        totales[moneda] = (totales[moneda] ?? 0) + monto;
         return totales;
       }, {});
       return {
@@ -236,8 +237,8 @@ function RequerimientoRow({
 }: {
   requerimiento: SolicitudComercial;
   cuentas: ReturnType<typeof useCuentasComerciales>["data"] extends infer T
-    ? NonNullable<T>
-    : never;
+  ? NonNullable<T>
+  : never;
   oferta?: Cotizacion;
   version?: CotizacionVersion;
   estadoOferta: EstadoOfertaCalculado;
@@ -251,8 +252,8 @@ function RequerimientoRow({
 
   const nombreCliente = cuenta
     ? cuenta.razon_social ||
-      `${cuenta.nombres ?? ""} ${cuenta.apellido_paterno ?? ""}`.trim() ||
-      "Sin nombre"
+    `${cuenta.nombres ?? ""} ${cuenta.apellido_paterno ?? ""}`.trim() ||
+    "Sin nombre"
     : "Cliente no encontrado";
 
   const columns =
@@ -287,9 +288,19 @@ function RequerimientoRow({
 
       <span className="text-sm text-muted-foreground">{version ? `V${String(version.version).padStart(2, "0")}` : "—"}</span>
 
-      <span className="text-sm text-muted-foreground">{version ? `${version.moneda} ${Number(version.precio_total).toLocaleString("es-BO", { minimumFractionDigits: 2 })}` : "—"}</span>
+      <span className="text-sm font-semibold text-foreground">
+        {version
+          ? `${version.moneda === "BOB" ? "Bs" : version.moneda} ${Number(version.precio_total).toLocaleString(
+            "es-BO",
+            {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }
+          )}`
+          : "—"}
+      </span>
 
-      <span className="text-sm text-muted-foreground">{version?.validez_dias ? `${version.validez_dias} días` : oferta?.fecha_vencimiento ? formatearFecha(oferta.fecha_vencimiento) : "—"}</span>
+      <span className="text-sm text-muted-foreground">{version?.validez_dias != null ? `${version.validez_dias} días` : oferta?.fecha_vencimiento ? formatearFecha(oferta.fecha_vencimiento) : "—"}</span>
 
       <EstadoOferta estado={estadoOferta} />
 
