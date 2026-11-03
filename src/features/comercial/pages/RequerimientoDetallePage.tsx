@@ -101,6 +101,17 @@ export default function RequerimientoDetallePage() {
     const [horaRecordatorioOferta, setHoraRecordatorioOferta] = useState("09:00");
     const [mostrarActividadOferta, setMostrarActividadOferta] = useState(false);
     const crearVersionCotizacion = useCrearCotizacionVersion();
+
+    // Abrir modal de actividad si se navega con el parámetro actividad=true
+    useEffect(() => {
+        if (searchParams.get("actividad") === "true") {
+            setMostrarActividadOferta(true);
+            // Limpiar el parámetro para que no se reabra al navegar
+            const next = new URLSearchParams(searchParams);
+            next.delete("actividad");
+            setSearchParams(next, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
     const crearComunicacion = useCreateComunicacion();
     const cantidadPeso = formLinea?.cantidad;
     const materialPeso = formLinea?.tecnica.material;

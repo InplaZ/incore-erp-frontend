@@ -169,7 +169,7 @@ export default function RequerimientosListPage() {
                   version={version}
                   estadoOferta={estado}
                   onView={() => navigate(`/comercial/requerimientos/${requerimiento.id}`)}
-                  onFollowup={() => navigate(`/comercial/requerimientos/${requerimiento.id}${version ? `?tab=seguimiento&version=${version.id}` : ""}`)}
+                  onFollowup={() => navigate(`/comercial/requerimientos/${requerimiento.id}${version ? `?tab=seguimiento&version=${version.id}&actividad=true` : "?actividad=true"}`)}
                   onVersions={() => navigate(`/comercial/requerimientos/${requerimiento.id}${version ? `?tab=versiones&version=${version.id}` : ""}`)}
                 />;
               })}
