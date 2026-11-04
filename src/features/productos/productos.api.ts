@@ -36,6 +36,9 @@ export const productosApi = {
   createComercial: async (data: ProductoComercialCreate): Promise<ProductoComercialCreado> =>
     api.post("/productos/productos/crear-comercial/", data),
 
+  updateComercial: async (id: number, data: ProductoComercialCreate): Promise<ProductoComercialCreado> =>
+    api.patch(`/productos/productos/${id}/editar-comercial/`, data),
+
   update: async (id: number, data: Partial<Producto> | FormData): Promise<Producto> =>
     api.patch(`/productos/productos/${id}/`, data),
 

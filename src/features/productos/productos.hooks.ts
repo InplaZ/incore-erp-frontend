@@ -182,6 +182,18 @@ export function useCreateProductoComercial() {
   });
 }
 
+export function useUpdateProductoComercial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ProductoComercialCreate }) =>
+      productosApi.updateComercial(id, data),
+    onSuccess: (_producto, variables) => {
+      queryClient.invalidateQueries({ queryKey: productosQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: productosQueryKeys.producto(variables.id) });
+    },
+  });
+}
+
 export function useUpdateProducto() {
   const queryClient = useQueryClient();
 

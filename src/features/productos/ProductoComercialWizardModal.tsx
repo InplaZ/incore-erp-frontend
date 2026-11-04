@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, X } from "lucide-react";
-import { useProductos, useProductosCategorias, useCreateProductoComercial } from "@/features/productos/productos.hooks";
-import type { ProductoComercialCreado } from "@/features/productos/productos.types";
+import { useProducto, useProductos, useProductosCategorias, useProductosSubcategorias, useCreateProductoComercial, useUpdateProductoComercial } from "@/features/productos/productos.hooks";
+import type { ProductoComercialCreado, Producto, ProductoComercialDetalle } from "@/features/productos/productos.types";
 import { viabilidadApi } from "@/features/viabilidad/viabilidad.api";
 import type { EvaluarViabilidadPayload, EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
 import ViabilidadPreviaPanel from "@/features/viabilidad/requerimientos/ViabilidadPreviaPanel";
@@ -55,7 +55,7 @@ type Wizard = {
   colorsFaceA: string;
   colorsFaceB: string;
   designId: string;
-  unit: "unidad" | "kg" | "rollos"; unitsPerPack: string;
+  unit: "unidad" | "kg" | "rollos"; unitsPerPack: string; fajosPerBundle: string;
   packagesPerJaba: string; jabasPerBundle: string; finishes: string[]; otherFinish: string; notes: string;
   quantity: string;
   filmConfig: "tubular" | "corte_lateral" | "corte_separacion";
@@ -97,7 +97,7 @@ const initialForm: Wizard = {
   colorsFaceA: "",
   colorsFaceB: "",
   printColors: "",
-  designId: "", unit: "unidad", unitsPerPack: "0", packagesPerJaba: "0", jabasPerBundle: "0",
+  designId: "", unit: "unidad", unitsPerPack: "0", fajosPerBundle: "0", packagesPerJaba: "0", jabasPerBundle: "0",
   finishes: [], otherFinish: "", notes: "",
   quantity: "",
   filmConfig: "tubular",
@@ -462,7 +462,7 @@ function FilmConfigSVG({ type }: FilmConfigSVGProps) {
 const finishOptions = ["aromatizada", "perforada", "antideslizante", "oxobiodegradable", "otro"];
 const finishLabels: Record<string, string> = { aromatizada: "Aromatizada", perforada: "Perforada", antideslizante: "Antideslizante", oxobiodegradable: "Oxobiodegradable", otro: "Otro" };
 
-export default function ProductoComercialWizardModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess?: (producto: ProductoComercialCreado) => void }) {
+export default function ProductoComercialWizardModal({ open, onClose, onSuccess, producto }: { open: boolean; onClose: () => void; onSuccess?: (producto: ProductoComercialCreado) => void; producto?: Producto | null }) {
   // Estado de navegación y datos temporales de esta creación.
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<Wizard>(initialForm);
@@ -480,10 +480,84 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
   const [weightError, setWeightError] = useState("");
 
   const create = useCreateProductoComercial();
+  const update = useUpdateProductoComercial();
+  const { data: productoDetalle, isLoading: cargandoDetalle } = useProducto(producto?.id ?? 0, open && Boolean(producto));
   const { data: categories = [] } = useProductosCategorias();
   const { data: products = [] } = useProductos();
   const categoryId = Number(form.categoria) || undefined;
+  const { data: subcategorias = [] } = useProductosSubcategorias(categoryId);
   const commercialProducts = useMemo(() => products.filter(p => p.estado_homologacion === "homologado"), [products]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!producto) return;
+    if (!productoDetalle) return;
+    const detalle = productoDetalle as ProductoComercialDetalle;
+    const version = [...(detalle.versiones ?? [])].sort((a, b) => b.numero_version - a.numero_version)[0];
+    const bolsa = version?.especificacion_bolsa;
+    const bobina = version?.especificacion_bobina;
+    const descripcion = detalle.descripcion ?? "";
+    const extraer = (etiqueta: string) => descripcion.match(new RegExp(`(?:^|\\n)${etiqueta}:\\s*(.*)`, "i"))?.[1] ?? "";
+    const acabado = bolsa?.acabado_especial?.split(",").map(v => v.trim()).filter(Boolean) ?? [];
+    const formPrecargado: Wizard = {
+      ...initialForm,
+      name: detalle.nombre,
+      productType: bobina || categories.find(c => c.id === detalle.categoria)?.nombre.toLowerCase().includes("bobina") ? "bobina" : "bolsa",
+      categoria: String(detalle.categoria),
+      subcategoria: detalle.subcategoria ? String(detalle.subcategoria) : "",
+      application: extraer("Aplicación prevista") || initialForm.application,
+      use: extraer("Uso específico"),
+      content: extraer("Contenido"),
+      material: version?.material ?? initialForm.material,
+      layers: version?.capas ?? initialForm.layers,
+      food: version?.apto_alimento ?? false,
+      micraje: String(version?.micraje ?? ""),
+      color: version?.color_bolsa ?? "",
+      width: String(bolsa?.ancho_doblado ?? bobina?.ancho ?? ""),
+      widthFlat: String(bolsa?.ancho_desdoblado ?? ""),
+      length: String(bolsa?.largo_doblado ?? ""),
+      foldLength: String(bolsa?.largo_desdoblado ?? ""),
+      fuelle: bolsa?.fuelle ?? false,
+      sides: [
+        ...(bolsa?.fuelle_superior ? ["Arriba"] : []),
+        ...(bolsa?.fuelle_inferior ? ["Abajo"] : []),
+        ...(bolsa?.fuelle_izquierdo ? ["Izquierda"] : []),
+        ...(bolsa?.fuelle_derecho ? ["Derecha"] : []),
+      ],
+      sideMeasures: { Izquierda: String(bolsa?.fuelle_izquierdo ?? ""), Derecha: String(bolsa?.fuelle_derecho ?? ""), Abajo: String(bolsa?.fuelle_inferior ?? ""), Arriba: String(bolsa?.fuelle_superior ?? "") },
+      sideSymmetry: bolsa?.fuelle_izquierdo && bolsa?.fuelle_derecho && String(bolsa.fuelle_izquierdo) === String(bolsa.fuelle_derecho) ? "simetrico" : "asimetrico",
+      commonSideMeasure: bolsa?.fuelle_izquierdo && bolsa?.fuelle_izquierdo === bolsa?.fuelle_derecho ? String(bolsa.fuelle_izquierdo) : "",
+      troquel: bolsa?.tipo_troquel ?? initialForm.troquel,
+      sello: bolsa?.tipo_sello ?? initialForm.sello,
+      pestana: bolsa?.pestana ?? initialForm.pestana,
+      filmConfig: bobina?.configuracion_pelicula ?? initialForm.filmConfig,
+      meters: String(bobina?.longitud ?? version?.metros ?? ""),
+      diameter: String(bobina?.diametro ?? ""),
+      coreDiameter: String(bobina?.diametro_nucleo ?? ""),
+      coreType: bobina?.tipo_nucleo ?? "",
+      weight: String(bobina?.peso ?? ""),
+      impression: version?.impresion ?? false,
+      printType: version?.tipo_impresion ?? initialForm.printType,
+      printTreatment: version?.tratamiento_impresion ?? initialForm.printTreatment,
+      printFace: version?.cara_impresion ?? initialForm.printFace,
+      printColors: version?.color_impresion?.join(", ") ?? "",
+      designId: String(version?.diseno ?? ""),
+      unit: detalle.unidad_medida,
+      unitsPerPack: String(detalle.presentacion?.unidades_por_fajo ?? 0),
+      fajosPerBundle: String(detalle.presentacion?.fajos_por_bulto ?? 0),
+      packagesPerJaba: String(detalle.presentacion?.paquetes_por_jaba ?? 0),
+      jabasPerBundle: String(detalle.presentacion?.jabas_por_bulto ?? 0),
+      finishes: acabado.filter(v => finishOptions.includes(v)),
+      otherFinish: acabado.find(v => !finishOptions.includes(v)) ?? "",
+      notes: version?.observaciones || bolsa?.otras_caracteristicas || bobina?.otras_caracteristicas || "",
+    };
+    const timer = window.setTimeout(() => {
+      setForm(formPrecargado);
+      setStep(0);
+      setError("");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [open, producto, productoDetalle, categories]);
 
 
   // Vista previa: usa el endpoint y las reglas de viabilidad existentes.
@@ -677,6 +751,9 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
   if (!open) return null;
   const set = <K extends keyof Wizard>(key: K, value: Wizard[K]) => setForm(current => ({ ...current, [key]: value }));
   const activeCategories = categories.filter(c => c.activo);
+  const categoryOptions = producto && !activeCategories.some(c => c.id === producto.categoria)
+    ? [...activeCategories, ...categories.filter(c => c.id === producto.categoria)]
+    : activeCategories;
   const field = (label: string, key: keyof Wizard, props: { type?: string; required?: boolean; placeholder?: string; options?: string[] } = {}) => (
     <label className="block"><span className={labelClass}>{label}{props.required && <b className="text-red-500"> *</b>}</span>
       {props.options ? <select className={inputClass} value={String(form[key])} required={props.required} onChange={e => set(key, e.target.value as never)}><option value="">Seleccionar</option>{props.options.map(v => <option key={v} value={v}>{v}</option>)}</select> :
@@ -715,6 +792,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
   // Construye el contrato de creación del módulo Productos y lo envía a la API.
   const save = async () => {
     setError("");
+    if (producto && cargandoDetalle) { setError("Espera a que termine de cargar la ficha del producto."); return; }
     if (!categoryId) { setError("Selecciona una categoría activa del catálogo."); setStep(0); return; }
     if (!form.name.trim()) { setError("Indica el nombre o denominación del producto."); setStep(0); return; }
     if (!form.width || !form.length && form.productType === "bolsa" || !form.meters && form.productType === "bobina") {
@@ -725,9 +803,14 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
       form.use && `Uso específico: ${form.use}`,
       form.content && `Contenido: ${form.content}`,
     ].filter(Boolean).join("\n");
+    const descripcionExistente = (productoDetalle as ProductoComercialDetalle | undefined)?.descripcion ?? "";
+    const descripcionAdicional = producto
+      ? descripcionExistente.split("\n").filter(linea => !/^(Aplicación prevista|Uso específico|Contenido):/i.test(linea.trim())).join("\n").trim()
+      : "";
+    const descripcionFinal = [descripcionAdicional, description].filter(Boolean).join("\n");
     const versionObservations = [form.notes, form.designId ? `Diseño asociado: ${form.designId}` : ""].filter(Boolean).join("\n");
     const request: ProductoComercialCreate = {
-      producto: { categoria: categoryId, subcategoria: Number(form.subcategoria) || null, nombre: form.name.trim(), descripcion: description, unidad_medida: form.unit },
+      producto: { categoria: categoryId, subcategoria: Number(form.subcategoria) || null, nombre: form.name.trim(), descripcion: descripcionFinal, unidad_medida: form.unit },
       version: {
         material: form.material, capas: form.layers, apto_alimento: form.food, micraje: form.micraje || null,
         color_bolsa: form.color, impresion: form.impression, tipo_impresion: form.printType,
@@ -752,9 +835,15 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
           peso: form.weight || null, longitud: form.meters || null, otras_caracteristicas: form.notes
         }
       }),
-      ...(form.productType === "bolsa" ? { presentacion: { unidades_por_fajo: Number(form.unitsPerPack) || 0, paquetes_por_jaba: Number(form.packagesPerJaba) || 0, jabas_por_bulto: Number(form.jabasPerBundle) || 0 } } : {}),
+      ...(form.productType === "bolsa" ? { presentacion: { unidades_por_fajo: Number(form.unitsPerPack) || 0, fajos_por_bulto: Number(form.fajosPerBundle) || 0, paquetes_por_jaba: Number(form.packagesPerJaba) || 0, jabas_por_bulto: Number(form.jabasPerBundle) || 0 } } : {}),
     };
-    try { const producto = await create.mutateAsync(request); onSuccess?.(producto); onClose(); }
+    try {
+      const guardado = producto
+        ? await update.mutateAsync({ id: producto.id, data: request })
+        : await create.mutateAsync(request);
+      onSuccess?.(guardado);
+      onClose();
+    }
     catch (e) {
       const response = (e as { response?: { data?: Record<string, unknown> } }).response?.data;
       const detail = response ? Object.values(response).flat().map(String).join(" ") : "";
@@ -847,7 +936,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
           value={form.categoria}
           required
           onChange={(e) => {
-            const categoriaSeleccionada = activeCategories.find(
+            const categoriaSeleccionada = categoryOptions.find(
               (c) => String(c.id) === e.target.value
             );
 
@@ -874,11 +963,19 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
         >
           <option value="">Seleccionar categoría</option>
 
-          {activeCategories.map((categoria) => (
+          {categoryOptions.map((categoria) => (
             <option key={categoria.id} value={String(categoria.id)}>
               {categoria.nombre}
             </option>
           ))}
+        </select>
+      </label>
+      <label className="block">
+        <span className={labelClass}>Subcategoría</span>
+        <select className={inputClass} value={form.subcategoria} onChange={e => set("subcategoria", e.target.value)}>
+          <option value="">Sin subcategoría</option>
+          {form.subcategoria && !subcategorias.some(s => String(s.id) === form.subcategoria) && <option value={form.subcategoria}>Subcategoría actual (inactiva)</option>}
+          {subcategorias.map(subcategoria => <option key={subcategoria.id} value={String(subcategoria.id)}>{subcategoria.nombre}</option>)}
         </select>
       </label>
       <label className="block"><span className={labelClass}>Aplicación prevista</span><select className={inputClass} value={form.application} onChange={e => set("application", e.target.value)}>{applications.map(a => <option key={a}>{a}</option>)}</select></label>
@@ -1073,7 +1170,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
 
       )}
 
-      {form.productType === "bolsa" && <div className="space-y-4 border-t border-slate-200 pt-4"><h4 className="text-sm font-semibold text-slate-800">Presentación y empaquetado</h4><div className="grid gap-3 sm:grid-cols-4"><label className="block"><span className={labelClass}>Unidad base</span><input className={`${inputClass} bg-slate-50`} value="Bolsa" readOnly /></label>{field("Bolsas por paquete/fajo", "unitsPerPack", { type: "number" })}{field("Paquetes por jaba", "packagesPerJaba", { type: "number" })}{field("Jabas por bulto", "jabasPerBundle", { type: "number" })}</div><div><h4 className="mb-2 text-sm font-semibold text-slate-800">Acabados opcionales</h4><div className="flex flex-wrap gap-x-5 gap-y-2">{finishOptions.map(option => <label key={option} className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" className="h-4 w-4 accent-blue-600" checked={form.finishes.includes(option)} onChange={e => set("finishes", e.target.checked ? [...form.finishes, option] : form.finishes.filter(v => v !== option))} />{finishLabels[option]}</label>)}</div>{form.finishes.includes("otro") && <input className={`${inputClass} mt-3 max-w-md`} value={form.otherFinish} onChange={e => set("otherFinish", e.target.value)} placeholder="Especifica otro acabado" />}</div></div>}
+      {form.productType === "bolsa" && <div className="space-y-4 border-t border-slate-200 pt-4"><h4 className="text-sm font-semibold text-slate-800">Presentación y empaquetado</h4><div className="grid gap-3 sm:grid-cols-5"><label className="block"><span className={labelClass}>Unidad base</span><input className={`${inputClass} bg-slate-50`} value="Bolsa" readOnly /></label>{field("Bolsas por paquete/fajo", "unitsPerPack", { type: "number" })}{field("Fajos por bulto", "fajosPerBundle", { type: "number" })}{field("Paquetes por jaba", "packagesPerJaba", { type: "number" })}{field("Jabas por bulto", "jabasPerBundle", { type: "number" })}</div><div><h4 className="mb-2 text-sm font-semibold text-slate-800">Acabados opcionales</h4><div className="flex flex-wrap gap-x-5 gap-y-2">{finishOptions.map(option => <label key={option} className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" className="h-4 w-4 accent-blue-600" checked={form.finishes.includes(option)} onChange={e => set("finishes", e.target.checked ? [...form.finishes, option] : form.finishes.filter(v => v !== option))} />{finishLabels[option]}</label>)}</div>{form.finishes.includes("otro") && <input className={`${inputClass} mt-3 max-w-md`} value={form.otherFinish} onChange={e => set("otherFinish", e.target.value)} placeholder="Especifica otro acabado" />}</div></div>}
       {/* Configuración exclusiva para bobinas */}
       {form.productType === "bobina" && (
         <div className="space-y-5 border-t border-slate-200 pt-5">
@@ -1513,23 +1610,25 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
                     ? "Cantidad de rollos"
                     : "Cantidad de bolsas"
               }
-            />            <label className="block">
-              <span className={labelClass}>Unidad para calcular</span>
+            />
+          </label>
 
-              <select
-                className={inputClass}
-                value={quantityUnit}
-                onChange={(e) =>
-                  setQuantityUnit(e.target.value as typeof quantityUnit)
-                }
-              >
-                <option value="unidad">Unidades</option>
-                <option value="kg">Kg</option>
-                {form.productType === "bobina" && (
-                  <option value="rollos">Rollos</option>
-                )}
-              </select>
-            </label>
+          <label className="block">
+            <span className={labelClass}>Unidad para calcular</span>
+
+            <select
+              className={inputClass}
+              value={quantityUnit}
+              onChange={e =>
+                setQuantityUnit(e.target.value as typeof quantityUnit)
+              }
+            >
+              <option value="unidad">Unidades</option>
+              <option value="kg">Kg</option>
+              {form.productType === "bobina" && (
+                <option value="rollos">Rollos</option>
+              )}
+            </select>
           </label>
         </div>
 
@@ -1748,8 +1847,9 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
   // Estructura compartida del modal: encabezado, navegación, panel de viabilidad y acciones.
   return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/55 p-2 sm:p-4">
     <div className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-      <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4"><h2 className="text-base font-bold text-slate-800 sm:text-lg">Producto comercial nuevo · {steps[step]}</h2><button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button></header>
+      <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4"><h2 className="text-base font-bold text-slate-800 sm:text-lg">{producto ? `Editar producto · ${producto.codigo}` : "Producto comercial nuevo"} · {steps[step]}</h2><button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button></header>
       <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+        {producto && cargandoDetalle && <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-800" role="status">Cargando datos y relaciones actuales del producto…</div>}
         {error && (
           <div
             role="alert"
@@ -1784,7 +1884,23 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess 
           className={`shrink-0 rounded-full border px-3 py-2 text-[11px] font-bold ${i === step ? "border-blue-600 bg-blue-50 text-blue-700" : i < step ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-100 text-slate-500"}`}>{i < step && <Check className="mr-1 inline h-3 w-3" />}{i + 1}. {name}</button>)}</nav>
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_285px]"><div className="min-h-[330px] rounded-xl border border-slate-200 bg-white p-4 sm:p-5">{stepBody()}</div><aside className="rounded-xl border border-slate-200 bg-slate-50 p-3"><ViabilidadPreviaPanel resultado={evaluatedKey === payloadKey ? feasibility : null} cargando={checking || (isReadyForFeasibility && evaluatedKey !== payloadKey)} error={evaluatedKey === payloadKey ? feasibilityError : null} /></aside></div>
       </div>
-      <footer className="flex flex-col-reverse gap-2 border-t border-slate-200 px-4 py-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} disabled={create.isPending} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Cancelar</button>{step > 0 && <button type="button" onClick={() => { setStep(v => v - 1); setError(""); }} className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold"><ChevronLeft className="h-4 w-4" />Atrás</button>}{step < steps.length - 1 ? <button type="button" onClick={advance} className="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">Siguiente<ChevronRight className="h-4 w-4" /></button> : <button type="button" disabled={create.isPending} onClick={save} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">{create.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}{create.isPending ? "Guardando…" : "Guardar producto y añadir"}</button>}</footer>
+      <footer className="flex flex-col-reverse gap-2 border-t border-slate-200 px-4 py-3 sm:flex-row sm:justify-end">
+        <button type="button" onClick={onClose} disabled={create.isPending || update.isPending} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Cancelar</button>
+        {step > 0 && <button type="button" onClick={() => { setStep(v => v - 1); setError(""); }} className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold"><ChevronLeft className="h-4 w-4" />Atrás</button>}
+        {producto ? (
+          <button type="button" disabled={create.isPending || update.isPending || cargandoDetalle} onClick={save} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+            {update.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+            {update.isPending ? "Guardando…" : "Guardar cambios"}
+          </button>
+        ) : step < steps.length - 1 ? (
+          <button type="button" onClick={advance} className="inline-flex items-center justify-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">Siguiente<ChevronRight className="h-4 w-4" /></button>
+        ) : (
+          <button type="button" disabled={create.isPending} onClick={save} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+            {create.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+            {create.isPending ? "Guardando…" : "Guardar producto y añadir"}
+          </button>
+        )}
+      </footer>
     </div>
   </div>;
 }

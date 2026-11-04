@@ -27,7 +27,6 @@ import { LoadingState, EmptyState } from "@/components/ui/States";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { cn } from "@/utils";
 import type { ProductoBusquedaResultado } from "@/features/comercial/comercial.types";
-import NuevoProductoModal from "./NuevoProductoModal";
 import ProductoComercialWizardModal from "./ProductoComercialWizardModal";
 import type { Producto } from "./productos.types";
 
@@ -41,6 +40,7 @@ export default function ProductosPage() {
   const porPagina = 12;
 
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [mensajeGuardado, setMensajeGuardado] = useState("");
   const [productoEditando, setProductoEditando] = useState<Producto | null>(null);
   const [productoConsultado, setProductoConsultado] = useState<Producto | null>(null);
 
@@ -191,6 +191,8 @@ export default function ProductosPage() {
         title="Productos y fichas"
         subtitle={`${cantidad} productos encontrados`}
       />
+
+      {mensajeGuardado && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{mensajeGuardado}<button type="button" className="ml-3 underline" onClick={() => setMensajeGuardado("")}>Cerrar</button></div>}
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <SummaryCard label="Productos comerciales" value={productosComerciales.length} detail="Pendientes o rechazados" tone="warning" />
@@ -509,7 +511,15 @@ export default function ProductosPage() {
                       </td>
 
                       <td className="px-3 py-4">
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
+                          {p.estado_homologacion !== "homologado" && <button
+                            type="button"
+                            onClick={() => abrirEdicion(p)}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Editar
+                          </button>}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -574,22 +584,16 @@ export default function ProductosPage() {
         </div>
       )}
 
-      {modalAbierto && (productoEditando ? <NuevoProductoModal
+      {modalAbierto && <ProductoComercialWizardModal
         open={modalAbierto}
-        onClose={cerrarModalProducto}
         producto={productoEditando}
-        onSuccess={() => {
-          cerrarModalProducto();
-          void recargarProductos();
-        }}
-      /> : <ProductoComercialWizardModal
-        open={modalAbierto}
         onClose={cerrarModalProducto}
         onSuccess={() => {
+          setMensajeGuardado(productoEditando ? "Los cambios del producto se guardaron correctamente." : "El producto se creó correctamente.");
           cerrarModalProducto();
           void recargarProductos();
         }}
-      />)}
+      />}
       {productoPDF && (
         <FichaTecnicaPDF
           producto={productoPDF}

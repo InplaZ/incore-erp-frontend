@@ -77,6 +77,31 @@ export interface ProductoComercialCreate {
   };
 }
 
+export interface ProductoComercialDetalle extends Producto {
+  versiones: Array<{
+    id: number;
+    producto: number;
+    numero_version: number;
+    estado: "activa" | "inactiva";
+    material: string;
+    capas: string | null;
+    cara_impresion: string | null;
+    tratamiento_impresion: string;
+    diseno: number | null;
+    apto_alimento: boolean;
+    micraje: string | number | null;
+    color_bolsa: string;
+    impresion: boolean;
+    color_impresion: string[];
+    tipo_impresion: string;
+    metros: string | number | null;
+    observaciones: string;
+    especificacion_bolsa: NonNullable<ProductoComercialCreate["especificacion_bolsa"]> & { id: number } | null;
+    especificacion_bobina: NonNullable<ProductoComercialCreate["especificacion_bobina"]> & { id: number } | null;
+  }>;
+  presentacion: (NonNullable<ProductoComercialCreate["presentacion"]> & { id: number }) | null;
+}
+
 export interface Producto {
   id: number;
   categoria: number;
