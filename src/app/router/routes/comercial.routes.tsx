@@ -16,8 +16,8 @@ const RequerimientoListPage = lazy(
     () => import("@/features/comercial/pages/RequerimientoListPage")
 );
 
-const ProduccionPage = lazy(
-    () => import("@/features/comercial/pages/ProduccionPage")
+const PedidoPage = lazy(
+    () => import("@/features/comercial/pages/PedidoPage")
 );
 
 const DetalleCliente = lazy(
@@ -38,8 +38,8 @@ export const comercialRoutes: AppRoute[] = [
         element: <RequerimientoListPage />
     },
     {
-        path: "produccion",
-        element: <ProduccionPage />
+        path: "pedido",
+        element: <PedidoPage />
     },
     {
         path: "clientes/:id",
@@ -58,8 +58,5 @@ export const comercialRoutes: AppRoute[] = [
         path: "clientes",
         element: <ClientesPage />
     },
-    {
-        path: "produccion",
-        element: <ProduccionPage />
-    }
+    
 ];

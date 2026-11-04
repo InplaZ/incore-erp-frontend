@@ -1390,6 +1390,13 @@ export function usePedidos(
   });
 }
 
+export function useResumenPedidos(params?: ApiQueryParams) {
+  return useQuery({
+    queryKey: [...comercialQueryKeys.pedidos(), "resumen", params],
+    queryFn: () => pedidosApi.resumen(params),
+  });
+}
+
 export function usePedido(id: number) {
   return useQuery({
     queryKey:

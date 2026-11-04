@@ -1288,8 +1288,84 @@ export interface Pedido {
   referencia_comprobante: string;
   fecha_vencimiento_contrato: string | null;
   documento_cuenta: number | null;
+  cliente_nombre: string;
+  cliente_alias: string;
+  cotizacion_numero: string;
+  version_numero: number;
+  moneda: "BOB" | "USD";
+  subtotal: string;
+  productos_count: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface PedidoResumen {
+  pedidos_registrados: number;
+  por_moneda: Partial<Record<"BOB" | "USD", {
+    pedidos: number;
+    valor_comprometido: string;
+    anticipos_recibidos: string;
+    saldo_por_cobrar: string;
+  }>>;
+}
+
+export interface PedidoDetalleVista {
+  id: number;
+  producto_version: {
+    id: number;
+    numero_version: number;
+    codigo: string;
+    nombre: string;
+    descripcion: string;
+    unidad_medida: string;
+    estado_homologacion: string;
+    numero_homologacion: string | null;
+    categoria: string;
+    material: string;
+    capas: string | null;
+    micraje: string | null;
+    color_bolsa: string;
+    impresion: boolean;
+    color_impresion: string[];
+  } | null;
+  especificacion_producto_solicitado_version: {
+    id: number;
+    version: number;
+    categoria: string;
+    material: string;
+    capas: string;
+    micraje: string | null;
+    apto_alimento: boolean;
+    impresion: boolean;
+    color_impresion: string[];
+    tratamiento_impresion: string;
+    otras_caracteristicas: string;
+  } | null;
+  cantidad: number;
+  unidad_comercial: string;
+  peso_kg: number | null;
+  precio_unitario: number;
+  precio_total: number;
+  fecha_entrega_comprometida: string;
+  observaciones: string;
+}
+
+export interface PedidoConDetalles {
+  pedido: Pick<Pedido,
+    | "id"
+    | "numero"
+    | "fecha_pedido"
+    | "estado"
+    | "fecha_entrega_comprometida"
+    | "observaciones"
+    | "anticipo_recibido"
+  > & {
+    saldo_por_cobrar: string;
+    cuenta_comercial: { id: number; razon_social: string; nombre: string; alias: string };
+    cotizacion_version: { id: number; version: number; cotizacion_numero: string; moneda: "BOB" | "USD"; precio_total: string };
+  };
+  detalles: PedidoDetalleVista[];
+  cantidad_detalles: number;
 }
 
 export interface PedidoCreate {

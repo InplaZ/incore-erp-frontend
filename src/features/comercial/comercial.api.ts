@@ -36,11 +36,13 @@ import type {
   CrearVersionEspecificacionResponse,
   PaginatedResponse,
   Pedido,
+  PedidoConDetalles,
   PedidoCreate,
   PedidoDetalle,
   PedidoDetalleCreate,
   PedidoDetalleUpdate,
   PedidoUpdate,
+  PedidoResumen,
   SolicitudComercial,
   SolicitudComercialCreate,
   SolicitudComercialUpdate,
@@ -848,6 +850,9 @@ export const pedidosApi = {
     );
   },
 
+  resumen: async (params?: ApiQueryParams): Promise<PedidoResumen> =>
+    api.get<PedidoResumen>("/comercial/pedidos/resumen/", { params }),
+
   get: async (id: number): Promise<Pedido> => {
     return api.get<Pedido>(
       `/comercial/pedidos/${id}/`,
@@ -905,8 +910,8 @@ export const pedidosApi = {
     );
   },
 
-  conDetalles: async (pedidoId: number) => {
-    return api.get(
+  conDetalles: async (pedidoId: number): Promise<PedidoConDetalles> => {
+    return api.get<PedidoConDetalles>(
       `/comercial/pedidos/${pedidoId}/con_detalles/`,
     );
   },
