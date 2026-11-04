@@ -188,9 +188,8 @@ export default function ProductosPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Productos"
+        title="Productos y fichas"
         subtitle={`${cantidad} productos encontrados`}
-        breadcrumb={[{ label: "Productos" }]}
       />
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">

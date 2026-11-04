@@ -22,6 +22,7 @@ import {
   UserX,
   ArrowUpNarrowWide,
   User,
+  MapPin,
 } from "lucide-react";
 
 /**
@@ -365,8 +366,7 @@ export default function ClientesPage() {
           onClick={() => setShowNewClient(true)}
         >
           <Plus className="h-4 w-4" />
-
-          Nuevo contacto / empresa
+          Nuevo contacto
         </button>
       </div>
 
@@ -376,7 +376,7 @@ export default function ClientesPage() {
 
       <div className="grid gap-4 sm:grid-cols-4">
         <CrmStatCard icon={<ContactRound className="h-5 w-5" />} label="Contacto" value={summary.activos} detail="Cuentas en seguimiento inicial" tone="blue" />
-        <CrmStatCard icon={<BriefcaseBusiness className="h-5 w-5" />} label="Lead" value={summary.activos} detail="Relaciones comerciales activas" tone="green" />
+        <CrmStatCard icon={<BriefcaseBusiness className="h-5 w-5" />} label="Lead" value={summary.activos} detail="Relaciones comerciales activas" tone="blue" />
         <CrmStatCard icon={<ArrowUpNarrowWide className="h-5 w-5" />} label="Oportunidad" value={summary.inactivos} detail="Cuentas conservadas en el sistema" tone="slate" />
         <CrmStatCard icon={<User className="h-5 w-5" />} label="Cliente" value={summary.inactivos} detail="Cuentas conservadas en el sistema" tone="slate" />
       </div>
@@ -506,11 +506,12 @@ export default function ClientesPage() {
             <div className="min-w-[900px]">
               {/* CABECERA */}
 
-              <div className="grid grid-cols-[1.7fr_1.5fr_.65fr_.8fr_1fr] gap-4 border-b border-border bg-secondary/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <span>Empresa / persona</span>
+              <div className="grid grid-cols-[1.5fr_1fr_1.2fr_.55fr_.8fr_.8fr] gap-3 border-b border-border bg-secondary/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <span>Empresa / Alias</span>
+                <span>Documento</span>
                 <span>Interlocutor principal</span>
                 <span>Contactos</span>
-                <span>Documento</span>
+                <span>Ubicaciones</span>
                 <span>Etapa </span>
               </div>
 
@@ -604,63 +605,6 @@ export default function ClientesPage() {
         />
       )}
 
-      {/* ========================================================
-          MODAL PARA EDITAR CLIENTE
-          ======================================================== */}
-
-      {selectedCliente && (
-        <NuevoClienteModal
-          /**
-           * Como selectedCliente existe,
-           * el modal se muestra.
-           */
-          open={!!selectedCliente}
-          /**
-           * ======================================================
-           * ESTA ES LA PARTE CLAVE
-           * ======================================================
-           *
-           * Aquí enviamos el cliente seleccionado al mismo
-           * componente que usamos para crear clientes.
-           *
-           * Por ejemplo:
-           *
-           * client = {
-           *   id: 15,
-           *   nombres: "Juan",
-           *   apellido_paterno: "Perez",
-           *   ...
-           * }
-           *
-           * NuevoClienteModal utilizará esos datos
-           * para llenar el formulario.
-           */
-          client={selectedCliente}
-          /**
-           * Cuando se cierra:
-           *
-           * selectedCliente → null
-           *
-           * Como la condición:
-           *
-           * {selectedCliente && (...)}
-           *
-           * deja de cumplirse, React desmonta el modal.
-           */
-          onClose={() => setSelectedClient(null)}
-          /**
-           * Después de actualizar correctamente
-           * también limpiamos el cliente seleccionado
-           * y cerramos el modal.
-           */
-          onSuccess={() => setSelectedClient(null)}
-        />
-      )}
-
-      {/* ========================================================
-          CONFIRMAR DESACTIVACIÓN
-          ======================================================== */}
-
       <ConfirmDialog
         open={!!clientToDeactivate}
         title="¿Desactivar cliente?"
@@ -744,70 +688,94 @@ function ClientRow({
     ? `${ejecutivo.first_name} ${ejecutivo.last_name}`.trim()
     : "Sin asignar";
 
-  return (
-    <div className="grid w-full grid-cols-[1.7fr_1.5fr_.65fr_.8fr_1fr] items-center gap-4 border-b border-border px-5 py-4 transition-colors last:border-b-0 hover:bg-secondary/40">
-      <button
-        type="button"
-        onClick={() =>
-          navigate(`/comercial/clientes/${client.id}`)
-        }
-        className="group flex min-w-0 items-center gap-3 text-left"
-      >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">
-          {initials}
-        </div>
+ return (
+  <div className="grid w-full grid-cols-[1.5fr_1fr_1.2fr_.55fr_.8fr_.8fr] items-center gap-3 border-b border-border px-5 py-4 transition-colors last:border-b-0 hover:bg-secondary/40">
 
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary">
-            {displayName}
-          </p>
-
-          <p className="truncate text-xs text-muted-foreground">
-            {client.tipo_persona === "juridica" ? "Organización" : "Persona natural"} · Ejecutivo: {nombreEjecutivo}
-          </p>
-        </div>
-      </button>
+    {/* EMPRESA */}
+    <button
+      type="button"
+      onClick={() => navigate(`/comercial/clientes/${client.id}`)}
+      className="group flex min-w-0 items-center gap-3 text-left"
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">
+        {initials}
+      </div>
 
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-foreground">
-          {client.contacto_principal
-            ? [client.contacto_principal.nombres, client.contacto_principal.apellido_paterno, client.contacto_principal.apellido_materno]
+        <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary">
+          {displayName}
+        </p>
+
+        <p className="truncate text-xs text-muted-foreground">
+          {client.tipo_persona === "juridica"} Ejecutivo: {nombreEjecutivo}
+        </p>
+      </div>
+    </button>
+
+    {/* DOCUMENTO */}
+    <div className="min-w-0">
+      <p className="truncate text-sm font-medium text-foreground">
+        {client.documento_identidad?.toUpperCase() || "—"}{" "}
+        {client.numero_documento || "Sin documento"}
+      </p>
+    </div>
+
+    {/* INTERLOCUTOR PRINCIPAL */}
+    <div className="min-w-0">
+      <p className="truncate text-sm font-medium text-foreground">
+        {client.contacto_principal
+          ? [
+              client.contacto_principal.nombres,
+              client.contacto_principal.apellido_paterno,
+              client.contacto_principal.apellido_materno,
+            ]
                 .filter(Boolean)
                 .join(" ")
-            : "Sin interlocutor principal"}
-        </p>
+          : "Sin interlocutor principal"}
+      </p>
 
-        <p className="mt-1 truncate text-xs text-muted-foreground">
-          {client.contacto_principal?.cargo || client.contacto_principal?.correo || client.contacto_principal?.telefono || "Agrega personas desde la ficha"}
-        </p>
+      <p className="mt-1 truncate text-xs text-muted-foreground">
+        {client.contacto_principal?.cargo ||
+          client.contacto_principal?.correo ||
+          client.contacto_principal?.telefono ||
+          "Agrega personas desde la ficha"}
+      </p>
+    </div>
+
+    {/* CONTACTOS */}
+    <div className="flex items-center gap-2 text-sm text-foreground">
+      <UserX className="h-4 w-4 shrink-0 text-muted-foreground" />
+      {client.contactos_count ?? 0}
+    </div>
+
+    {/* UBICACIONES */}
+    <div className="min-w-0 truncate text-sm text-foreground" title={client.direccion || ""}>
+      <div className="flex items-center gap-2">
+        <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="truncate">{client.direccion || "Sin dirección"}</span>
       </div>
+    </div>
 
-      <div className="flex items-center gap-2 text-sm text-foreground">
-        <UserX className="h-4 w-4 text-muted-foreground" />
-        {client.contactos_count}
-      </div>
-
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-foreground">
-          {client.documento_identidad?.toUpperCase() || "—"} {client.numero_documento || "Sin documento"}
-        </p>
-      </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${client.estado === "prospecto"
+    {/* ETAPA */}
+    <div className="flex items-center justify-between gap-2">
+      <span
+        className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+          client.estado === "prospecto"
             ? "bg-primary/10 text-primary"
             : client.estado === "cliente"
               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
               : "bg-secondary text-muted-foreground"
-            }`}
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-current" />
-          {client.etapa_crm ? getEtapaLabel(client.etapa_crm) : getEstadoLabel(client.estado)}
-        </span>
-      </div>
+        }`}
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+        {client.etapa_crm
+          ? getEtapaLabel(client.etapa_crm)
+          : getEstadoLabel(client.estado)}
+      </span>
     </div>
-  );
+
+  </div>
+);
 }
 
 /* ================================================================
