@@ -151,16 +151,15 @@ export default function RegistrarComunicacionModal({
 
     const esAceptacion = Boolean(cotizacionVersionInicial && accionCotizacion === "aceptar");
     const esRechazo = Boolean(cotizacionVersionInicial && accionCotizacion === "rechazar");
-    const esCierreConMotivo = Boolean(
-      cotizacionVersionInicial &&
-      (accionCotizacion === "rechazar" || accionCotizacion === "cerrar")
-    );
+    const esCierreConMotivo = Boolean(cotizacionVersionInicial && esRechazo);
 
     const contenidoRegistro = esAceptacion
       ? [detalleAceptacion.trim(), observacionesAceptacion.trim() && `Observaciones de aceptación / pago: ${observacionesAceptacion.trim()}`].filter(Boolean).join("\n") || `Aceptación del cliente registrada. Evidencia: ${tipoEvidencia}.`
       : esCierreConMotivo
-        ? observacionRechazo.trim() || `${esRechazo ? "Motivo de rechazo" : "Motivo de cierre"}: ${motivoRechazo}`
-        : contenido.trim();
+        ? observacionRechazo.trim() || `Motivo de rechazo: ${motivoRechazo}`
+        : esCierre
+          ? observacionRechazo.trim() || "Oportunidad cerrada manualmente."
+          : contenido.trim();
 
     if (
       !solicitudComercial ||
@@ -183,7 +182,7 @@ export default function RegistrarComunicacionModal({
         asunto: asunto.trim() || null,
         contenido: contenidoRegistro,
         cotizacion_version_id: cotizacionVersionInicial ?? null,
-        ...(esRechazo || esCierre ? { motivo_rechazo: motivoRechazo } : {}),
+        ...(esRechazo ? { motivo_rechazo: motivoRechazo } : {}),
         actividad_comercial_id: actividadComercialInicial ?? null,
         evidencia: archivoEvidencia,
         ...(esAceptacion ? {
@@ -509,9 +508,9 @@ export default function RegistrarComunicacionModal({
 
           {cotizacionVersionInicial && muestraMotivoCierre && (
             <div className="space-y-4">
-              <div className="space-y-2">
+              {esRechazo && <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">
-                  {esRechazo || esCierre ? "Motivo de rechazo" : "Motivo de cierre"}
+                  Motivo de rechazo del cliente
                 </label>
                 <select
                   value={motivoRechazo}
@@ -523,11 +522,10 @@ export default function RegistrarComunicacionModal({
                   <option value="competencia">Competencia</option>
                   <option value="plazo">Plazo</option>
                   <option value="caracteristicas">No cumple características</option>
-                  {!(esRechazo || esCierre) && <option value="sin_respuesta">Sin respuesta</option>}
                   <option value="cancelacion_cliente">Cancelación del cliente</option>
                   <option value="otro">Otro</option>
                 </select>
-              </div>
+              </div>}
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">
@@ -650,7 +648,7 @@ export default function RegistrarComunicacionModal({
                 (accionCotizacion === "aceptar"
                   ? !codigoErp.trim() || !confirmarAceptacion
                   : muestraMotivoCierre
-                    ? !motivoRechazo
+                    ? esRechazo && !motivoRechazo
                     : !contenido.trim())
               }
               className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"

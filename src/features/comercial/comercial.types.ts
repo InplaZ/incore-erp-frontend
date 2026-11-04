@@ -20,6 +20,53 @@ export interface EjecutivoComercial{
   first_name: string;
   last_name: string;
 }
+
+export type EstadoDashboardComercial =
+  | "todos"
+  | "recibida"
+  | "abierta"
+  | "aceptada"
+  | "rechazada"
+  | "cerrada_sin_respuesta"
+  | "descartada_viabilidad";
+
+export interface DashboardComercialFiltros extends Record<string, string | number | undefined> {
+  desde?: string;
+  hasta?: string;
+  ejecutivo?: number | "";
+  estado?: EstadoDashboardComercial;
+  moneda?: "BOB" | "USD" | "";
+}
+
+export interface DashboardComercialData {
+  filtros: Required<Pick<DashboardComercialFiltros, "desde" | "hasta" | "estado" | "moneda">> & { ejecutivo: number | "" };
+  resumen: {
+    recibidas: number;
+    abiertas: number;
+    aceptadas: number;
+    rechazadas: number;
+    cerradas_sin_respuesta: number;
+    descartadas_viabilidad: number;
+    inconsistentes: number;
+    tasa_aceptacion: number;
+  };
+  importes_aceptados: Partial<Record<"BOB" | "USD", string>>;
+  ofertas_aceptadas: number;
+  importe_aceptado_por_periodo: Array<{ periodo: string; BOB: string; USD: string }>;
+  importes_por_ejecutivo: Array<{ ejecutivo: number | null; ejecutivo_nombre: string; BOB: string; USD: string }>;
+  evolucion: Array<{
+    periodo: string;
+    recibida: number;
+    abierta: number;
+    aceptada: number;
+    rechazada: number;
+    cerrada_sin_respuesta: number;
+  }>;
+  motivos_rechazo: Array<{ motivo: string; oportunidades: number }>;
+  dias_promedio_aceptacion: number | null;
+  versiones_promedio_hasta_aceptar: number | null;
+  calidad_datos: Record<string, number>;
+}
 //================================
 //Cuentas comerciales
 //================================
@@ -956,7 +1003,7 @@ export type DireccionComunicacion =
 export interface Comunicacion {
   id: number;
   solicitud_comercial: number;
-  usuario: number;
+  usuario: number | null;
   tipo: string;
   medio: string;
   direccion: DireccionComunicacion | null;

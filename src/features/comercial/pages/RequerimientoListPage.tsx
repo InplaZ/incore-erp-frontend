@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Eye,
@@ -13,6 +14,8 @@ import {
   useCuentasComerciales,
   useCotizaciones,
   useCotizacionesVersiones,
+  useDashboardComercial,
+  useEjecutivosComerciales,
   useSolicitudesComerciales,
 } from "../comercial.hooks";
 import { cotizacionesVersionesApi } from "../comercial.api";
@@ -21,28 +24,85 @@ import type {
   Cotizacion,
   CotizacionVersion,
   SolicitudComercial,
+  EstadoSolicitud,
 } from "../comercial.types";
+import type { ApiQueryParams } from "@/api/api.types";
 import { getSolicitudEstadoLabel } from "../utils/comercial.formatters";
 
 const COTIZACIONES_VACIAS: Cotizacion[] = [];
 const VERSIONES_VACIAS: CotizacionVersion[] = [];
+const ESTADOS_SOLICITUD: EstadoSolicitud[] = [
+  "recibida", "en_negociacion", "en_viabilidad", "aprobada",
+  "esperando_respuesta", "confirmada", "rechazada",
+  "cerrada_sin_respuesta", "vencida", "convertida", "cancelada",
+];
+const DEPARTAMENTOS = [
+  ["LP", "La Paz"], ["CB", "Cochabamba"], ["SC", "Santa Cruz"],
+  ["OR", "Oruro"], ["PT", "Potosí"], ["CH", "Chuquisaca"],
+  ["TJ", "Tarija"], ["BN", "Beni"], ["PD", "Pando"],
+] as const;
+const FILTROS_VACIOS = {
+  desde: "", hasta: "", estado: "", ejecutivo: "", departamento: "",
+  minimo_bs: "", maximo_bs: "",
+};
+
+type FiltrosRequerimientos = typeof FILTROS_VACIOS;
 
 export default function RequerimientosListPage() {
   const navigate = useNavigate();
+  const [filtros, setFiltros] = useState<FiltrosRequerimientos>(FILTROS_VACIOS);
+  const [filtrosAplicados, setFiltrosAplicados] = useState<ApiQueryParams | undefined>();
+  const [errorFiltros, setErrorFiltros] = useState("");
 
   const {
     data,
     isLoading,
     isError,
     error,
-  } = useSolicitudesComerciales();
+  } = useSolicitudesComerciales(filtrosAplicados);
 
   const { data: cuentas = [] } =
     useCuentasComerciales();
+  const { data: ejecutivos = [] } = useEjecutivosComerciales();
   const { data: cotizacionesData } = useCotizaciones();
   const { data: versionesData } = useCotizacionesVersiones();
   const cotizaciones = cotizacionesData?.results ?? COTIZACIONES_VACIAS;
   const versiones = versionesData?.results ?? VERSIONES_VACIAS;
+
+  const actualizarFiltro = (campo: keyof FiltrosRequerimientos, valor: string) => {
+    setFiltros(actuales => ({ ...actuales, [campo]: valor }));
+    setErrorFiltros("");
+  };
+
+  const aplicarFiltros = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const minimo = filtros.minimo_bs ? Number(filtros.minimo_bs) : undefined;
+    const maximo = filtros.maximo_bs ? Number(filtros.maximo_bs) : undefined;
+    if ((minimo !== undefined && (!Number.isFinite(minimo) || minimo < 0)) ||
+        (maximo !== undefined && (!Number.isFinite(maximo) || maximo < 0))) {
+      setErrorFiltros("Ingresa montos válidos iguales o mayores a cero.");
+      return;
+    }
+    if (minimo !== undefined && maximo !== undefined && minimo > maximo) {
+      setErrorFiltros("El máximo debe ser igual o mayor que el mínimo.");
+      return;
+    }
+    if (filtros.desde && filtros.hasta && filtros.desde > filtros.hasta) {
+      setErrorFiltros("La fecha inicial debe ser anterior o igual a la fecha final.");
+      return;
+    }
+    const params = Object.fromEntries(
+      Object.entries(filtros).filter(([, valor]) => valor !== ""),
+    ) as ApiQueryParams;
+    setErrorFiltros("");
+    setFiltrosAplicados(Object.keys(params).length ? params : undefined);
+  };
+
+  const limpiarFiltros = () => {
+    setFiltros(FILTROS_VACIOS);
+    setFiltrosAplicados(undefined);
+    setErrorFiltros("");
+  };
 
   // Más recientes primero
   const requerimientos = useMemo(() => {
@@ -52,6 +112,18 @@ export default function RequerimientosListPage() {
         new Date(a.created_at).getTime(),
     );
   }, [data]);
+
+  const solicitudesConfirmadasIds = useMemo(
+    () => requerimientos
+      .filter((solicitud) => solicitud.estado === "confirmada")
+      .map((solicitud) => solicitud.id)
+      .join(","),
+    [requerimientos],
+  );
+  const { data: resumenAceptadas, isLoading: cargandoImportesAceptados } = useDashboardComercial(
+    { estado: "aceptada", solicitud_ids: solicitudesConfirmadasIds },
+    Boolean(solicitudesConfirmadasIds),
+  );
 
   const ofertas = useMemo(() => requerimientos.map((requerimiento) => {
     const oferta = cotizaciones.find((item) => item.solicitud_comercial === requerimiento.id);
@@ -71,15 +143,28 @@ export default function RequerimientosListPage() {
         totales[moneda] = (totales[moneda] ?? 0) + monto;
         return totales;
       }, {});
+      const importesAceptados = estado.codigo === "confirmada"
+        ? Object.entries(resumenAceptadas?.importes_aceptados ?? {})
+          .filter(([, total]) => Number(total) !== 0)
+          .map(([moneda, total]) => {
+            const etiquetaMoneda = moneda === "BOB" ? "Bs" : moneda;
+            return `${etiquetaMoneda} ${Number(total).toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          })
+        : [];
+      const detalleImportes = estado.codigo === "confirmada"
+        ? cargandoImportesAceptados
+          ? "Cargando importes aceptados…"
+          : importesAceptados.join(" · ") || "Sin aceptación verificable"
+        : Object.entries(importesPorMoneda)
+          .map(([moneda, total]) => `${moneda} ${total.toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+          .join(" · ") || "Sin importe";
       return {
         ...estado,
         cantidad: coincidencias.length,
-        detalle: Object.entries(importesPorMoneda)
-          .map(([moneda, total]) => `${moneda} ${total.toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-          .join(" · ") || "Sin importe",
+        detalle: detalleImportes,
       };
     });
-  }, [ofertas]);
+  }, [ofertas, resumenAceptadas, cargandoImportesAceptados]);
 
   return (
     <div className="space-y-6">
@@ -113,6 +198,47 @@ export default function RequerimientosListPage() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
         {summary.map((item) => <SummaryItem key={item.codigo} label={item.label} value={item.cantidad} detail={item.detalle} />)}
       </div>
+      <p className="-mt-4 text-xs text-muted-foreground">
+        El importe de Confirmada suma las ofertas con aceptación registrada; cada fila muestra la versión vigente de una cotización.
+      </p>
+
+      <form onSubmit={aplicarFiltros} className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <FilterField label="Desde">
+          <input type="date" value={filtros.desde} onChange={e => actualizarFiltro("desde", e.target.value)} className={filterControlClass} />
+        </FilterField>
+        <FilterField label="Hasta">
+          <input type="date" value={filtros.hasta} onChange={e => actualizarFiltro("hasta", e.target.value)} className={filterControlClass} />
+        </FilterField>
+        <FilterField label="Estado">
+          <select value={filtros.estado} onChange={e => actualizarFiltro("estado", e.target.value)} className={filterControlClass}>
+            <option value="">Todos</option>
+            {ESTADOS_SOLICITUD.map(estado => <option key={estado} value={estado}>{getSolicitudEstadoLabel(estado)}</option>)}
+          </select>
+        </FilterField>
+        <FilterField label="Ejecutivo">
+          <select value={filtros.ejecutivo} onChange={e => actualizarFiltro("ejecutivo", e.target.value)} className={filterControlClass}>
+            <option value="">Todos</option>
+            {ejecutivos.map(ejecutivo => <option key={ejecutivo.id} value={ejecutivo.id}>{`${ejecutivo.first_name} ${ejecutivo.last_name}`.trim() || ejecutivo.username}</option>)}
+          </select>
+        </FilterField>
+        <FilterField label="Departamento">
+          <select value={filtros.departamento} onChange={e => actualizarFiltro("departamento", e.target.value)} className={filterControlClass}>
+            <option value="">Todos</option>
+            {DEPARTAMENTOS.map(([codigo, nombre]) => <option key={codigo} value={codigo}>{nombre}</option>)}
+          </select>
+        </FilterField>
+        <FilterField label="Mínimo Bs">
+          <input type="number" min="0" step="0.01" value={filtros.minimo_bs} onChange={e => actualizarFiltro("minimo_bs", e.target.value)} className={filterControlClass} />
+        </FilterField>
+        <FilterField label="Máximo Bs">
+          <input type="number" min="0" step="0.01" value={filtros.maximo_bs} onChange={e => actualizarFiltro("maximo_bs", e.target.value)} className={filterControlClass} />
+        </FilterField>
+        <div className="flex items-end gap-2">
+          <button type="submit" className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">Aplicar</button>
+          <button type="button" onClick={limpiarFiltros} className="h-10 rounded-md border border-border px-4 text-sm font-medium text-foreground hover:bg-secondary">Limpiar</button>
+        </div>
+        {errorFiltros && <p className="text-sm text-destructive lg:col-span-4" role="alert">{errorFiltros}</p>}
+      </form>
       {/* Tabla */}
 
       <section className="overflow-hidden rounded-lg border border-border bg-card">
@@ -143,7 +269,7 @@ export default function RequerimientosListPage() {
 
         {isError && (
           <div className="px-5 py-10 text-center text-sm text-destructive">
-            No se pudieron cargar los requerimientos.
+              No se pudieron cargar los requerimientos.
 
             {error instanceof Error && (
               <span className="mt-1 block">
@@ -194,6 +320,17 @@ export default function RequerimientosListPage() {
         )}
       </section>
     </div>
+  );
+}
+
+const filterControlClass = "h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary";
+
+function FilterField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block min-w-0">
+      <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{label}</span>
+      {children}
+    </label>
   );
 }
 

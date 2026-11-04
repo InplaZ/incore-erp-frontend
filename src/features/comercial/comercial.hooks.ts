@@ -63,6 +63,8 @@ import type {
   UbicacionCuentaComercialUpdate,
   CrearCuentaCRMRequest,
   DocumentoCuentaComercialCreate,
+  DashboardComercialFiltros,
+  MotivoRechazoCotizacion,
 } from "./comercial.types";
 
 import type { ApiQueryParams } from "@/api/api.types";
@@ -92,6 +94,9 @@ export const comercialQueryKeys = {
     [...comercialQueryKeys.all, "solicitudes"] as const,
   solicitud: (id: number) =>
     [...comercialQueryKeys.solicitudes(), id] as const,
+  dashboardAll: () => [...comercialQueryKeys.all, "dashboard"] as const,
+  dashboard: (params: DashboardComercialFiltros) =>
+    [...comercialQueryKeys.dashboardAll(), params] as const,
 
   especificacionesProducto: () =>
     [...comercialQueryKeys.all, "especificaciones-producto"] as const,
@@ -573,6 +578,14 @@ export function useSolicitudesComerciales(
   });
 }
 
+export function useDashboardComercial(params: DashboardComercialFiltros, enabled = true) {
+  return useQuery({
+    queryKey: comercialQueryKeys.dashboard(params),
+    queryFn: () => solicitudesComercialesApi.dashboard(params),
+    enabled,
+  });
+}
+
 export function useSolicitudComercial(id: number) {
   return useQuery({
     queryKey: comercialQueryKeys.solicitud(id),
@@ -593,6 +606,7 @@ export function useCreateSolicitudComercial() {
       queryClient.invalidateQueries({
         queryKey: comercialQueryKeys.solicitudes(),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -614,6 +628,7 @@ export function useUpdateSolicitudComercial() {
       queryClient.invalidateQueries({
         queryKey: comercialQueryKeys.solicitudes(),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
 
       queryClient.setQueryData(
         comercialQueryKeys.solicitud(data.id),
@@ -904,6 +919,7 @@ export function useCreateComunicacion() {
       });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.pedidos() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -931,6 +947,7 @@ export function useUpdateComunicacion() {
         comercialQueryKeys.comunicacion(data.id),
         data,
       );
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -951,6 +968,7 @@ export function useDeleteComunicacion() {
         queryKey:
           comercialQueryKeys.comunicacion(id),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -996,6 +1014,7 @@ export function useCreateCotizacion() {
         queryKey:
           comercialQueryKeys.cotizaciones(),
       });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -1023,6 +1042,7 @@ export function useUpdateCotizacion() {
         comercialQueryKeys.cotizacion(data.id),
         data,
       );
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -1080,6 +1100,7 @@ export function useCreateCotizacionVersion() {
           comercialQueryKeys.cotizacionesVersiones(),
       });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -1109,6 +1130,7 @@ export function useUpdateCotizacionVersion() {
         ),
         data,
       );
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -1190,6 +1212,7 @@ export function useCrearCotizacionDesdeSolicitud() {
         queryKey: comercialQueryKeys.cotizaciones(),
       });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -1204,6 +1227,7 @@ export function useFormalizarCotizacionDesdeWizard() {
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizaciones() });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesDetalles() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -1229,6 +1253,7 @@ export function useCrearCotizacionVersion() {
           comercialQueryKeys.cotizacionesVersiones(),
       });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -1283,6 +1308,7 @@ export function useEnviarCotizacion() {
           comercialQueryKeys.cotizacionesVersiones(),
       });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -1314,6 +1340,7 @@ export function useAceptarCotizacion() {
       });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.pedidos() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }
@@ -1324,13 +1351,15 @@ export function useRechazarCotizacion() {
     mutationFn: ({
       versionId,
       motivo,
+      motivoRechazo,
     }: {
       versionId: number;
       motivo?: string;
+      motivoRechazo: Exclude<MotivoRechazoCotizacion, "sin_respuesta">;
     }) =>
       cotizacionesVersionesApi.rechazar(
         versionId,
-        motivo,
+        { motivo, motivo_rechazo: motivoRechazo },
       ),
 
     onSuccess: () => {
@@ -1339,6 +1368,7 @@ export function useRechazarCotizacion() {
           comercialQueryKeys.cotizacionesVersiones(),
       });
       queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitudes() });
+      queryClient.invalidateQueries({ queryKey: comercialQueryKeys.dashboardAll() });
     },
   });
 }

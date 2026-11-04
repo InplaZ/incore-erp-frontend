@@ -1,4 +1,4 @@
-import { Home, LayoutDashboard, PanelsTopLeft, BriefcaseBusiness, Package, UserPlus2, } from "lucide-react";
+import { Home, PanelsTopLeft, BriefcaseBusiness, Package, UserPlus2, PhoneCallIcon, TruckIcon, } from "lucide-react";
 
 import type { SidebarItem } from "../../components/navigation";
 
@@ -41,15 +41,15 @@ export const navigationItems: NavigationItem[] = [
     icon: <Home className="size-5" />,
   },
   {
-    id: "dashboard",
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: <LayoutDashboard className="size-5" />,
+    id: "agenda",
+    label: "Seguimiento",
+    href: "/agenda",
+    icon: <PhoneCallIcon className="size-5" />,
   },
   {
     id: "comercial",
     label: "Ofertas comerciales",
-    href: "/comercial/requerimientoListPage",
+    href: "/requerimientoListPage",
     icon: <BriefcaseBusiness className="size-5" />,
   },
   {
@@ -57,6 +57,12 @@ export const navigationItems: NavigationItem[] = [
     label: "Contactos/CRM",
     href: "/clientes",
     icon: <UserPlus2 className="size-5" />,
+  },
+  {
+    id: "produccion",
+    label: "Pedidos",
+    href: "/produccion",
+    icon: <TruckIcon className="size-5" />,
   },
   {
     id: "productos",

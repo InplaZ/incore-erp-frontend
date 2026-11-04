@@ -1,10 +1,6 @@
 import { lazy } from "react";
 import type { AppRoute } from "../route.types";
 
-const ComercialLayout = lazy(
-    () => import("@/features/comercial/components/ComercialLayout")
-);
-
 const ComercialPage = lazy(
     () => import("@/features/comercial/pages/AgendaComercialPage")
 );
@@ -34,39 +30,36 @@ const RequerimientoDetallePage = lazy(
 
 export const comercialRoutes: AppRoute[] = [
     {
-        path: "/comercial",
-        element: <ComercialLayout />,
-        children: [
-            {
-                index: true,
-                element: <ComercialPage />
-            },
-            {
-                path: "requerimientoListPage",
-                element: <RequerimientoListPage />
-            },
-            {
-                path: "produccion",
-                element: <ProduccionPage />
-            },
-            {
-                path: "clientes/:id",
-                element: <DetalleCliente />,
-            },
-            {
-                path: "requerimientos/",
-                element: <RequerimientosPage />
-            },
-            {
-                path: "requerimientos/:id",
-                element: <RequerimientoDetallePage />
-            }
-
-        ]
+        path: "agenda",
+        element: <ComercialPage />
+    },
+    {
+        path: "requerimientoListPage",
+        element: <RequerimientoListPage />
+    },
+    {
+        path: "produccion",
+        element: <ProduccionPage />
+    },
+    {
+        path: "clientes/:id",
+        element: <DetalleCliente />,
+    },
+    {
+        path: "requerimientos/",
+        element: <RequerimientosPage />
+    },
+    {
+        path: "requerimientos/:id",
+        element: <RequerimientoDetallePage />
     },
 
     {
         path: "clientes",
         element: <ClientesPage />
     },
+    {
+        path: "produccion",
+        element: <ProduccionPage />
+    }
 ];

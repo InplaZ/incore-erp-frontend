@@ -1,9 +1,11 @@
 import {
   ArrowRight,
+  BoxesIcon,
   CalendarDays,
+  CircleAlert,
   ClipboardList,
   MoreHorizontal,
-  Package,
+  NotepadText,
   Phone,
   Sparkles,
   Truck,
@@ -267,7 +269,7 @@ export default function AgendaComercialPage() {
           onClick={() => navigate("/comercial/requerimientos")}
           className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
           <ClipboardList className="h-4 w-4" />
-          Nueva cotización
+          Nueva oferta
         </button>
       </div>
 
@@ -277,36 +279,24 @@ export default function AgendaComercialPage() {
           icon={CalendarDays}
           label="Actividades hoy"
           value={actividadesHoy.length.toString()}
-          detail={`${actividadesVencidas.length} vencidas`}
         />
 
         <MetricCard
-          icon={Phone}
-          label="Llamadas pendientes"
-          value={actividadesConCliente
-            .filter(
-              (a) =>
-                a.tipo === "llamada" &&
-                a.estado !== "completada" &&
-                a.estado !== "cancelada",
-            )
-            .length.toString()}
-          detail={`${actividadesVencidas.filter((a) => a.tipo === "llamada").length} vencidas`}
-          negative
+          icon={NotepadText}
+          label="Proximos"
+          value={actividadesProximas.length.toString()}
         />
 
         <MetricCard
-          icon={UsersRound}
-          label="Clientes por contactar"
-          value={clientesPorContactar.toString()}
-          detail="Pendientes"
+          icon={CircleAlert}
+          label="Atrasados"
+          value={actividadesVencidas.length.toString()}
         />
 
         <MetricCard
-          icon={Package}
-          label="En producción"
-          value="7"
-          detail="2 listos para envío"
+          icon={BoxesIcon}
+          label="Total"
+          value={actividades.length.toString()}
         />
       </div>
 
@@ -486,7 +476,7 @@ export default function AgendaComercialPage() {
           <div className="grid grid-cols-2 gap-3 p-5">
             <QuickAction
               icon={ClipboardList}
-              label="Nueva cotización"
+              label="Nueva oferta"
               onClick={() => navigate("/comercial/requerimientos")}
             />
             <QuickAction
@@ -513,95 +503,6 @@ export default function AgendaComercialPage() {
         </section>
       </div>
 
-      {/* Parte inferior */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Clientes por contactar */}
-        <section className="rounded-lg border border-border bg-card">
-          <div className="flex items-start justify-between p-5">
-            <div>
-              <h2 className="font-semibold text-foreground">
-                Clientes por contactar
-              </h2>
-
-              <p className="mt-1 text-sm text-muted-foreground">
-                Oportunidades que requieren tu atención
-              </p>
-            </div>
-
-            <button className="hidden items-center gap-1 text-sm font-medium text-primary sm:flex">
-              Ver clientes
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="divide-y divide-border border-t border-border">
-            <ContactRow
-              initials="PA"
-              name="Plásticos Andinos"
-              note="Sin contacto hace 12 días"
-              priority="Alta"
-            />
-
-            <ContactRow
-              initials="MP"
-              name="Manufacturas del Pacífico"
-              note="Cotización por confirmar"
-              priority="Media"
-            />
-
-            <ContactRow
-              initials="IC"
-              name="Industrias Carvajal"
-              note="Nuevo prospecto"
-              priority="Baja"
-            />
-          </div>
-        </section>
-
-        {/* Requerimientos */}
-        <section className="rounded-lg border border-border bg-card p-5">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="font-semibold text-foreground">
-                Requerimientos activos
-              </h2>
-
-              <p className="mt-1 text-sm text-muted-foreground">
-                Estado de tus solicitudes
-              </p>
-            </div>
-
-            <button className="flex items-center gap-1 text-sm font-medium text-primary">
-              Ver todos
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="mt-6 flex items-center justify-between">
-            <div>
-              <span className="text-4xl font-semibold text-foreground">
-                12
-              </span>
-
-              <span className="ml-2 text-sm text-muted-foreground">
-                totales
-              </span>
-            </div>
-
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border-8 border-primary/20">
-              <span className="text-lg font-semibold text-foreground">
-                58%
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-3 text-sm">
-            <StatusRow label="En revisión" value="3" />
-            <StatusRow label="En producción" value="7" />
-            <StatusRow label="Listos" value="2" />
-          </div>
-        </section>
-      </div>
       <NuevaActividadModal
         open={showNuevaActividad}
         onClose={() => setShowNuevaActividad(false)}

@@ -67,6 +67,9 @@ import type {
   DocumentoCuentaComercialCreate,
   HistorialCuentaComercial,
   OfertaSeguimientoEvent,
+  DashboardComercialData,
+  DashboardComercialFiltros,
+  MotivoRechazoCotizacion,
 } from "./comercial.types";
 
 // ============================================================
@@ -279,6 +282,10 @@ export const actividadesComercialesApi = {
 // ============================================================
 
 export const solicitudesComercialesApi = {
+  dashboard: async (params: DashboardComercialFiltros): Promise<DashboardComercialData> => {
+    return api.get<DashboardComercialData>("/comercial/solicitudes/dashboard/", { params });
+  },
+
   list: async (
     params?: ApiQueryParams,
   ): Promise<SolicitudComercial[]> => {
@@ -748,11 +755,11 @@ export const cotizacionesVersionesApi = {
 
   rechazar: async (
     versionId: number,
-    motivo?: string,
+    data: { motivo?: string; motivo_rechazo: Exclude<MotivoRechazoCotizacion, "sin_respuesta"> },
   ) => {
     return api.post(
       `/comercial/cotizaciones-versiones/${versionId}/rechazar/`,
-      { motivo },
+      data,
     );
   },
 
