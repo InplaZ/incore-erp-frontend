@@ -3,9 +3,21 @@ import type {
     LoginRequest,
     LoginResponse, 
 } from "@/features/auth/auth.types";
-import type { User } from "@/features/admin/usuarios/users.types";
 import type { Role } from "@/features/admin/roles/roles.types";
 import type { Permission } from "@/features/admin/permisos/permissions.types";
+
+export interface AuthenticatedProfile {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_active: boolean;
+  last_login: string | null;
+  date_joined: string;
+  groups: Role[];
+  permissions: Permission[];
+}
 
 export const authApi = {
   // Inicar sesión
@@ -16,23 +28,6 @@ export const authApi = {
     logout: (refresh: string) => 
         api.post("/auth/logout/", {refresh}),
 
-  // Obtener usuario
-    getUser: async (username: string): Promise<User> => {
-      const response = await api.get<{
-        count: number;
-        results: User[];
-      }>("/usuarios/", {
-        params: { search: username },
-      });
-      return response.results[0];
-    },
-
-    // Obtener roles del usuario
-    getRoles: (userId: number) =>
-      api.get<Role[]>(`/usuarios/${userId}/roles/`),
-
-    // Obtener permisos del usuario
-    getPermissions: (userId: number) =>
-      api.get<Permission[]>(
-        `/usuarios/${userId}/permisos-efectivos/`),
+  // Obtener perfil, grupos y permisos del usuario autenticado
+    me: () => api.get<AuthenticatedProfile>("/usuarios/me/"),
 };

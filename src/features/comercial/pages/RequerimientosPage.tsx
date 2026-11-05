@@ -596,7 +596,7 @@ const iniciarPreparacionOferta = () => {
       setVersionActivaId(resultado.cotizacion_version);
       setOfertaPersistida((actual) => actual ? { ...actual, version: resultado.version, estado: resultado.estado, cotizacion: resultado.cotizacion } : actual);
       setPestañaOferta("productos");
-      navigate(`/comercial/requerimientos/${solicitudIdDestino}?version=${resultado.cotizacion_version}`);
+      navigate(`/requerimientos/${solicitudIdDestino}?version=${resultado.cotizacion_version}`);
     } catch (error: unknown) {
       const response = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
       mostrarToast("No se pudo crear la versión", response?.mensaje || response?.detail || "La cotización no está disponible para versionado.");
@@ -1010,7 +1010,7 @@ const iniciarPreparacionOferta = () => {
         : "";
       mostrarToast(archivoPendiente ? "Cotización creada; PDF pendiente" : envio ? "Envío comercial registrado" : "Borrador guardado", archivoPendiente ? `Cotización ${resultado.numero} creada, pero no se pudo adjuntar uno o más PDF. Edítala para cargarlos.` : envio ? `Cotización ${resultado.numero} V${resultado.version} registrada con estado ${resultado.estado}.${recordatorioRegistrado}` : `Cotización ${resultado.numero} V${resultado.version} quedó en estado ${resultado.estado}.`);
       if (resultado.solicitud_comercial && resultado.cotizacion_version) {
-        navigate(`/comercial/requerimientos/${resultado.solicitud_comercial}?version=${resultado.cotizacion_version}`);
+        navigate(`/requerimientos/${resultado.solicitud_comercial}?version=${resultado.cotizacion_version}`);
       }
     } catch (error: unknown) {
       const response = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
@@ -1333,7 +1333,7 @@ const iniciarPreparacionOferta = () => {
 
   return (
     <div className="space-y-6">
-      {vistaOferta === "seleccion_cliente" && <NuevaOfertaModal open cuentas={cuentas ?? []} cuentaId={cuentaComercialId} onSelect={setCuentaComercialId} onContinue={iniciarPreparacionOferta} onCancel={() => navigate("/comercial/requerimientoListPage")} />}
+      {vistaOferta === "seleccion_cliente" && <NuevaOfertaModal open cuentas={cuentas ?? []} cuentaId={cuentaComercialId} onSelect={setCuentaComercialId} onContinue={iniciarPreparacionOferta} onCancel={() => navigate("/requerimientoListPage")} />}
       {vistaOferta === "detalle_oferta" && <OfertaComercialDetalle
         cliente={cuentaSeleccionada ? nombreVisibleCliente(cuentaSeleccionada) : "Cliente seleccionado"}
         numero={cotizacionEnEdicion?.numero ?? ofertaPersistida?.numero ?? (solicitudEnEdicion ? numeroOfertaDesdeSolicitud(solicitudEnEdicion.solicitud.id) : null)}
@@ -1368,7 +1368,7 @@ const iniciarPreparacionOferta = () => {
           onSave={() => void guardarCondiciones()}
         />}
         aviso={!lineasCotizacion.length ? "Antes de enviar: Agrega al menos un producto" : undefined}
-        onBack={() => navigate("/comercial/requerimientoListPage")}
+        onBack={() => navigate("/requerimientoListPage")}
         onAddProduct={() => setMostrarCatalogo(true)}
         onSend={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }}
         onSaveDraft={lineasCotizacion.some((linea) => !linea.persistida) ? () => void guardarCotizacion() : undefined}

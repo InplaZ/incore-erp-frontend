@@ -56,17 +56,13 @@ export const useAuthStore = create<AuthState>()(
           response.refresh,
         );
 
-        // Obtener usuario
-        const user = await authApi.getUser(username);
-        // Obtener roles
-        const roles = await authApi.getRoles(user.id);
-        // Obtener permisos efectivos
-        const permissions = await authApi.getPermissions(user.id);
+        // Obtener únicamente el perfil del usuario autenticado
+        const profile = await authApi.me();
         // Guardar información de sesión
         set({
-          user,
-          roles,
-          permissions,
+          user: profile,
+          roles: profile.groups,
+          permissions: profile.permissions,
           isAuthenticated: true,
         });
 

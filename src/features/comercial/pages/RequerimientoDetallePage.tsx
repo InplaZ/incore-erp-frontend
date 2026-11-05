@@ -277,7 +277,7 @@ export default function RequerimientoDetallePage() {
         return (
             <div className="mx-auto mt-10 max-w-lg rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
                 No se pudo cargar la versión seleccionada. Vuelve al historial y selecciona una versión disponible.
-                <button type="button" onClick={() => navigate(`/comercial/requerimientos/${solicitudId}`)} className="mt-3 block font-semibold underline">
+                <button type="button" onClick={() => navigate(`/requerimientos/${solicitudId}`)} className="mt-3 block font-semibold underline">
                     Volver a la oferta
                 </button>
             </div>
@@ -702,7 +702,7 @@ export default function RequerimientoDetallePage() {
                 seguimiento={<OfertaSeguimientoTimeline versionId={versionSeleccionada.id} solicitudId={solicitudId} />}
                 acciones={acciones}
                 evidenciaRegistrada={evidenciaActual}
-                onBack={() => navigate("/comercial/requerimientoListPage")}
+                onBack={() => navigate("/requerimientoListPage")}
                 onAddProduct={() => { setErrorAgregarProducto(""); setMostrarCatalogo(true); }}
                 onSend={() => setAccionOferta("enviar")}
             >{productos}</OfertaComercialDetalle>

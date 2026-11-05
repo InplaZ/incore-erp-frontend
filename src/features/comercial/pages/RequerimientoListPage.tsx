@@ -184,7 +184,7 @@ export default function RequerimientosListPage() {
         <button
           type="button"
           onClick={() =>
-            navigate("/comercial/requerimientos/")
+            navigate("/requerimientos/")
           }
           className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
@@ -294,9 +294,9 @@ export default function RequerimientosListPage() {
                   oferta={oferta}
                   version={version}
                   estadoOferta={estado}
-                  onView={() => navigate(`/comercial/requerimientos/${requerimiento.id}`)}
-                  onFollowup={() => navigate(`/comercial/requerimientos/${requerimiento.id}${version ? `?tab=seguimiento&version=${version.id}&actividad=true` : "?actividad=true"}`)}
-                  onVersions={() => navigate(`/comercial/requerimientos/${requerimiento.id}${version ? `?tab=versiones&version=${version.id}` : ""}`)}
+                  onView={() => navigate(`/requerimientos/${requerimiento.id}`)}
+                  onFollowup={() => navigate(`/requerimientos/${requerimiento.id}${version ? `?tab=seguimiento&version=${version.id}&actividad=true` : "?actividad=true"}`)}
+                  onVersions={() => navigate(`/requerimientos/${requerimiento.id}${version ? `?tab=versiones&version=${version.id}` : ""}`)}
                 />;
               })}
 

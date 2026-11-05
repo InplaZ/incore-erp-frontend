@@ -1434,7 +1434,7 @@ function SolicitudRow({
 
       {/* Información de la solicitud */}
       <Link
-        to={`/comercial/requerimientos/${solicitud.id}`}
+        to={`/requerimientos/${solicitud.id}`}
         className="min-w-0 flex-1"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
