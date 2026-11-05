@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { LoadingState } from "@/components/ui/States";
 import type { EspecificacionTecnicaSnapshot, RevisionTecnicaOferta, SnapshotValor } from "@/features/comercial/comercial.types";
 import { useEvaluarProductoRevision, useRevisionTecnica, useRevisionesTecnicas } from "./revision-tecnica.hooks";
+import { useAuthStore } from "@/app/store/auth.store";
 
 type EstadoFiltro = "todas" | "pendiente" | "observada" | "aprobada";
 
@@ -42,6 +43,10 @@ export default function RevisionTecnicaPage() {
   const [observaciones, setObservaciones] = useState<Record<number, string>>({});
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const evaluate = useEvaluarProductoRevision();
+  const canEvaluate = useAuthStore(state =>
+    state.roles.some(role => role.name === "Jefe de Producción") &&
+    state.hasPermission("evaluate_revisiontecnicaoferta")
+  );
 
   useEffect(() => {
     if (!requestedRevisionId || !revisiones.some((revision) => revision.id === requestedRevisionId)) return;
@@ -131,6 +136,7 @@ export default function RevisionTecnicaPage() {
         feedback={feedback}
         isSaving={evaluate.isPending}
         readOnly={!selected.version_aceptada.vigente}
+        canEvaluate={canEvaluate}
         onEvaluate={submitEvaluation}
       />}
     </div>}
@@ -142,7 +148,7 @@ function SummaryCard({ label, value }: { label: string; value: number }) {
 }
 
 function ReviewDetail({
-  revision, observaciones, setObservaciones, feedback, isSaving, readOnly, onEvaluate,
+  revision, observaciones, setObservaciones, feedback, isSaving, readOnly, canEvaluate, onEvaluate,
 }: {
   revision: RevisionTecnicaOferta;
   observaciones: Record<number, string>;
@@ -150,6 +156,7 @@ function ReviewDetail({
   feedback: { kind: "success" | "error"; text: string } | null;
   isSaving: boolean;
   readOnly: boolean;
+  canEvaluate: boolean;
   onEvaluate: (productoId: number, resultado: "aprobar" | "observar") => void;
 }) {
   return <section aria-label="Detalle de revisión" className="min-w-0 space-y-4">
@@ -180,7 +187,7 @@ function ReviewDetail({
           <TechnicalSnapshot snapshot={product.producto} />
           <div className="space-y-3">
             {product.estado === "observado" && product.observacion_tecnica && <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900"><p className="mb-1 flex items-center gap-1.5 font-semibold"><MessageSquare className="h-4 w-4" />Observación técnica</p><p className="whitespace-pre-wrap">{product.observacion_tecnica}</p></div>}
-            {product.estado === "pendiente" && !readOnly && <>
+            {product.estado === "pendiente" && !readOnly && canEvaluate && <>
               <label className="block text-xs font-medium text-muted-foreground">Observación técnica requerida para observar
                 <textarea value={observaciones[product.id] ?? ""} onChange={event => setObservaciones(current => ({ ...current, [product.id]: event.target.value }))} rows={3} placeholder="Describe el inconveniente técnico…" className="mt-1.5 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
               </label>
@@ -189,6 +196,7 @@ function ReviewDetail({
                 <Button variant="outline" onClick={() => onEvaluate(product.id, "observar")} disabled={isSaving}><AlertCircle className="h-4 w-4" />Observar</Button>
               </div>
             </>}
+            {product.estado === "pendiente" && !readOnly && !canEvaluate && <p className="text-xs text-muted-foreground">Solo el Jefe de Producción puede evaluar este producto.</p>}
             {product.estado !== "pendiente" && <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4" />Evaluado {dateTime(product.fecha_evaluacion)}</p>}
           </div>
         </div>

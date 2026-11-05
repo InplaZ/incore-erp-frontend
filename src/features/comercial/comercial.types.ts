@@ -1054,6 +1054,7 @@ export interface OfertaSeguimientoEvent {
   fecha_proxima?: string | null;
   version_id: number;
   version_numero: number;
+  estado_revision_tecnica?: EstadoRevisionTecnica | null;
   evidencias: Array<{ id: number; nombre: string }>;
 }
 
@@ -1303,6 +1304,14 @@ export interface Pedido {
   productos_count: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface ConfirmarPedidoResponse {
+  exito: boolean;
+  mensaje: string;
+  pedido: number;
+  estado: EstadoPedido;
+  notificacion_almacenes_enviada: boolean;
 }
 
 export interface PedidoResumen {

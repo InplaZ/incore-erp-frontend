@@ -36,6 +36,7 @@ import type {
   CrearVersionEspecificacionResponse,
   PaginatedResponse,
   Pedido,
+  ConfirmarPedidoResponse,
   PedidoConDetalles,
   PedidoCreate,
   PedidoDetalle,
@@ -903,8 +904,8 @@ export const pedidosApi = {
   confirmar: async (
     pedidoId: number,
     observaciones?: string,
-  ) => {
-    return api.post(
+  ): Promise<ConfirmarPedidoResponse> => {
+    return api.post<ConfirmarPedidoResponse>(
       `/comercial/pedidos/${pedidoId}/confirmar/`,
       { observaciones },
     );

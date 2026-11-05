@@ -33,6 +33,7 @@ import ActividadMenu from "@/features/comercial/components/actividades/Actividad
 import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
 
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/app/store/auth.store";
 
 
 //FUNCINES
@@ -107,6 +108,7 @@ type AgendaTab = "hoy" | "proximos" | "vencidas" | "completadas";
 export default function AgendaComercialPage() {
 
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   //Contenido
   const [showNuevaActividad, setShowNuevaActividad] = useState(false);
   //EDITAR
@@ -261,7 +263,7 @@ export default function AgendaComercialPage() {
           </p>
 
           <h1 className="mt-1 text-2xl font-semibold text-foreground">
-            Buenos días
+            Buenos días, {user?.first_name || user?.username || "Usuario"}
           </h1>
         </div>
 

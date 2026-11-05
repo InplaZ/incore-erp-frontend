@@ -1,22 +1,26 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import { BadgeCheck, ChevronLeft, ChevronRight, CircleDollarSign, Eye, PackageCheck, RotateCcw, Search, Wallet, type LucideIcon } from "lucide-react";
+import { BadgeCheck, ChevronLeft, ChevronRight, CircleDollarSign, Eye, LoaderCircle, PackageCheck, RotateCcw, Search, Wallet, type LucideIcon } from "lucide-react";
 
 import { Card } from "@/components/ui";
 import type { ApiQueryParams } from "@/api/api.types";
-import { usePedidoConDetalles, usePedidos, useResumenPedidos } from "../comercial.hooks";
+import { useConfirmarPedido, usePedidoConDetalles, usePedidos, useResumenPedidos } from "../comercial.hooks";
 import type { EstadoPedido, Pedido, PedidoConDetalles, PedidoResumen } from "../comercial.types";
+import { useAuthStore } from "@/app/store/auth.store";
 
 const PAGE_SIZE = 10;
-const EMPTY_FILTERS = { search: "", estado: "confirmados", desde: "", hasta: "" };
+const EMPTY_FILTERS = { search: "", estado: "comercial", desde: "", hasta: "" };
 type PedidoFilters = typeof EMPTY_FILTERS;
-type EstadoFiltro = "confirmados" | EstadoPedido;
+type EstadoFiltro = "comercial" | "confirmados" | EstadoPedido;
 
-const ESTADOS_CONFIRMADOS: Array<[EstadoFiltro, string]> = [
-  ["confirmados", "Todos los pedidos confirmados"],
+const ESTADOS_PEDIDO: Array<[EstadoFiltro, string]> = [
+  ["comercial", "Borrador y confirmados"],
+  ["borrador", "Borrador"],
   ["confirmado", "Confirmado"],
+  ["confirmados", "Confirmados y posteriores"],
   ["en_produccion", "En producción"],
   ["finalizado", "Finalizado"],
+  ["cancelado", "Cancelado"],
 ];
 
 function money(value: string | number | undefined, currency: "BOB" | "USD") {
@@ -54,6 +58,10 @@ export default function PedidoPage() {
   const [page, setPage] = useState(1);
   const [selectedPedidoId, setSelectedPedidoId] = useState<number | null>(null);
   const [filterError, setFilterError] = useState("");
+  const [confirmationFeedback, setConfirmationFeedback] = useState<{ kind: "success" | "warning" | "error"; message: string } | null>(null);
+  // /usuarios/me/ serializa el codename Django sin el prefijo de aplicación.
+  const canApproveCommercially = useAuthStore(state => state.hasPermission("approve_pedido_comercial"));
+  const confirmOrder = useConfirmarPedido();
 
   useEffect(() => {
     if (requestedPedidoId > 0) setSelectedPedidoId(requestedPedidoId);
@@ -71,6 +79,19 @@ export default function PedidoPage() {
   const { data: summary, isLoading: isSummaryLoading, isError: isSummaryError } = useResumenPedidos(activeParams);
   const orders = data?.results ?? [];
   const pageCount = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE));
+
+  const handleConfirmOrder = async (pedido: Pedido) => {
+    setConfirmationFeedback(null);
+    try {
+      const result = await confirmOrder.mutateAsync({ pedidoId: pedido.id });
+      setConfirmationFeedback(result.notificacion_almacenes_enviada
+        ? { kind: "success", message: `${pedido.numero} fue confirmado comercialmente y se notificó a Almacenes.` }
+        : { kind: "warning", message: `${pedido.numero} fue confirmado, pero no se notificó a Almacenes porque el grupo aún no está configurado con usuarios activos.` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo confirmar el pedido.";
+      setConfirmationFeedback({ kind: "error", message });
+    }
+  };
 
   const applyFilters = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -93,8 +114,8 @@ export default function PedidoPage() {
   return <main className="mx-auto w-full max-w-[1500px] space-y-5 text-foreground">
     <header>
       <p className="text-xs font-medium uppercase tracking-wider text-primary">Comercial</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight">Pedidos confirmados</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Control comercial y financiero de los pedidos confirmados.</p>
+      <h1 className="mt-1 text-2xl font-semibold tracking-tight">Pedidos comerciales</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Ofertas aceptadas, revisiones técnicas y pedidos confirmados comercialmente.</p>
     </header>
 
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen financiero de pedidos">
@@ -105,6 +126,7 @@ export default function PedidoPage() {
     </section>
 
     {isSummaryError && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">No se pudo cargar el resumen financiero.</p>}
+    {confirmationFeedback && <p role={confirmationFeedback.kind === "error" ? "alert" : "status"} className={`rounded-lg border p-3 text-sm ${confirmationFeedback.kind === "error" ? "border-destructive/30 bg-destructive/5 text-destructive" : confirmationFeedback.kind === "warning" ? "border-amber-300 bg-amber-50 text-amber-950" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{confirmationFeedback.message}</p>}
 
     <Card className="overflow-hidden">
       <form onSubmit={applyFilters} className="grid gap-3 border-b border-border p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.5fr)_minmax(190px,1fr)_minmax(145px,1fr)_minmax(145px,1fr)_auto] lg:items-end">
@@ -115,7 +137,7 @@ export default function PedidoPage() {
             <input value={filters.search} onChange={event => setFilters(current => ({ ...current, search: event.target.value }))} placeholder="N.º pedido, nombre o alias" className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground" />
           </span>
         </label>
-        <label className="space-y-1 text-xs font-medium text-muted-foreground">Estado<select value={filters.estado} onChange={event => setFilters(current => ({ ...current, estado: event.target.value }))} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground">{ESTADOS_CONFIRMADOS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="space-y-1 text-xs font-medium text-muted-foreground">Estado<select value={filters.estado} onChange={event => setFilters(current => ({ ...current, estado: event.target.value }))} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground">{ESTADOS_PEDIDO.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label className="space-y-1 text-xs font-medium text-muted-foreground">Desde · fecha de pedido<input type="date" value={filters.desde} onChange={event => setFilters(current => ({ ...current, desde: event.target.value }))} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground" /></label>
         <label className="space-y-1 text-xs font-medium text-muted-foreground">Hasta · fecha de pedido<input type="date" value={filters.hasta} onChange={event => setFilters(current => ({ ...current, hasta: event.target.value }))} className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground" /></label>
         <div className="flex gap-2">
@@ -128,13 +150,13 @@ export default function PedidoPage() {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1250px] text-left text-sm">
           <thead className="bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
-            <tr>{["N.º pedido", "Cliente / alias", "Oferta / versión", "Fecha del pedido", "Fecha de entrega", "Subtotal", "Anticipo", "Saldo", "Estado", "Productos", "Detalle"].map(label => <th key={label} className="px-3 py-3 font-semibold">{label}</th>)}</tr>
+            <tr>{["N.º pedido", "Cliente / alias", "Oferta / versión", "Fecha del pedido", "Fecha de entrega", "Subtotal", "Anticipo", "Saldo", "Estado comercial", "Revisión técnica", "Productos", "Acciones"].map(label => <th key={label} className="px-3 py-3 font-semibold">{label}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {isLoading ? <tr><td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">Cargando pedidos…</td></tr>
-              : isError ? <tr><td colSpan={11} role="alert" className="px-4 py-12 text-center text-destructive">No se pudieron cargar los pedidos. {(error as Error)?.message}</td></tr>
-                : orders.length === 0 ? <tr><td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">No hay pedidos confirmados para estos filtros.</td></tr>
-                  : orders.map(order => <PedidoRow key={order.id} pedido={order} onDetail={() => setSelectedPedidoId(order.id)} />)}
+            {isLoading ? <tr><td colSpan={12} className="px-4 py-12 text-center text-muted-foreground">Cargando pedidos…</td></tr>
+              : isError ? <tr><td colSpan={12} role="alert" className="px-4 py-12 text-center text-destructive">No se pudieron cargar los pedidos. {(error as Error)?.message}</td></tr>
+                : orders.length === 0 ? <tr><td colSpan={12} className="px-4 py-12 text-center text-muted-foreground">No hay pedidos comerciales para estos filtros.</td></tr>
+                  : orders.map(order => <PedidoRow key={order.id} pedido={order} canApprove={canApproveCommercially} isConfirming={confirmOrder.isPending} onConfirm={() => void handleConfirmOrder(order)} onDetail={() => setSelectedPedidoId(order.id)} />)}
           </tbody>
         </table>
       </div>
@@ -159,7 +181,7 @@ function SummaryCard({ icon: Icon, title, children, loading }: { icon: LucideIco
   </Card>;
 }
 
-function PedidoRow({ pedido, onDetail }: { pedido: Pedido; onDetail: () => void }) {
+function PedidoRow({ pedido, canApprove, isConfirming, onConfirm, onDetail }: { pedido: Pedido; canApprove: boolean; isConfirming: boolean; onConfirm: () => void; onDetail: () => void }) {
   return <tr className="hover:bg-muted/30">
     <td className="whitespace-nowrap px-3 py-3 font-semibold text-primary">{pedido.numero}</td>
     <td className="px-3 py-3"><span className="block font-medium">{pedido.cliente_nombre}</span>{pedido.cliente_alias && <span className="text-xs text-muted-foreground">{pedido.cliente_alias}</span>}</td>
@@ -170,9 +192,19 @@ function PedidoRow({ pedido, onDetail }: { pedido: Pedido; onDetail: () => void 
     <td className="whitespace-nowrap px-3 py-3">{money(pedido.anticipo_recibido, pedido.moneda)}</td>
     <td className="whitespace-nowrap px-3 py-3">{money(Math.max(0, Number(pedido.subtotal) - Number(pedido.anticipo_recibido)), pedido.moneda)}</td>
     <td className="px-3 py-3"><PedidoStatus status={pedido.estado} /></td>
+    <td className="px-3 py-3"><RevisionStatus status={pedido.estado_revision_tecnica ?? null} /></td>
     <td className="px-3 py-3 text-center">{pedido.productos_count}</td>
-    <td className="px-3 py-3"><button type="button" onClick={onDetail} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs font-medium hover:bg-muted"><Eye className="h-3.5 w-3.5" />Ver</button></td>
+    <td className="px-3 py-3"><div className="flex flex-wrap gap-2">
+      <button type="button" onClick={onDetail} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs font-medium hover:bg-muted"><Eye className="h-3.5 w-3.5" />Ver</button>
+      {canApprove && pedido.estado === "borrador" && <button type="button" onClick={onConfirm} disabled={isConfirming || pedido.estado_revision_tecnica !== "aprobada"} title={pedido.estado_revision_tecnica !== "aprobada" ? "La revisión técnica vigente debe estar aprobada." : "Confirmar comercialmente"} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-2 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{isConfirming && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}Confirmar</button>}
+    </div></td>
   </tr>;
+}
+
+function RevisionStatus({ status }: { status: Pedido["estado_revision_tecnica"] }) {
+  const labels = { pendiente: "Pendiente", observada: "Observada", aprobada: "Aprobada" } as const;
+  const classes = { pendiente: "bg-amber-100 text-amber-800", observada: "bg-orange-100 text-orange-800", aprobada: "bg-emerald-100 text-emerald-800" } as const;
+  return <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${status ? classes[status] : "bg-muted text-muted-foreground"}`}>{status ? labels[status] : "Sin revisión"}</span>;
 }
 
 function PedidoStatus({ status }: { status: EstadoPedido }) {
