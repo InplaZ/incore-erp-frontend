@@ -36,6 +36,7 @@ const ProductosPage = lazy(
 );
 
 const WipPage = lazy(() => import("../../features/produccion/WipPage"));
+const RevisionTecnicaPage = lazy(() => import("../../features/produccion/RevisionTecnicaPage"));
 
 // Error
 const NotFoundPage = lazy(
@@ -88,6 +89,10 @@ export const appRoutes: AppRoute[] = [
       {
         path: "/wip",
         element: <WipPage />,
+      },
+      {
+        path: "/produccion/revisiones-tecnicas",
+        element: <RevisionTecnicaPage />,
       },
       ...comercialRoutes,
     ],

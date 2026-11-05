@@ -27,6 +27,8 @@ export interface HeaderNotification {
   message?: string;
   read?: boolean;
   createdAt?: string;
+  entityType?: string;
+  entityId?: number | null;
 }
 
 export interface HeaderUserAction {
@@ -52,6 +54,7 @@ export interface HeaderProps {
   onLogout?: () => void;
 
   notifications?: HeaderNotification[];
+  unreadNotificationsCount?: number;
   onNotificationClick?: (notification: HeaderNotification) => void;
   onMarkAllRead?: () => void;
 
@@ -76,6 +79,7 @@ export function Header({
   onLogout,
 
   notifications = [],
+  unreadNotificationsCount,
   onNotificationClick,
   onMarkAllRead,
 
@@ -93,7 +97,7 @@ export function Header({
 
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const unreadCount = notifications.filter(
+  const unreadCount = unreadNotificationsCount ?? notifications.filter(
     (notification) => !notification.read,
   ).length;
 

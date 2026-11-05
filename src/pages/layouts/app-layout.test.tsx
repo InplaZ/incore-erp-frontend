@@ -1,23 +1,38 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ThemeProvider } from "../../theme";
 import { AppLayout } from "./app-layout";
 
+vi.mock("@/features/notificaciones/notificaciones.api", () => ({
+  notificacionesApi: {
+    list: async () => [],
+    countUnread: async () => ({ count: 0 }),
+    markRead: async () => ({}),
+    markAllRead: async () => ({ actualizadas: 0 }),
+  },
+}));
+
 function renderAppLayout(initialEntry = "/") {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
     <ThemeProvider>
-      <MemoryRouter initialEntries={[initialEntry]}>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<div>Contenido principal</div>} />
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<div>Contenido principal</div>} />
 
-            <Route path="/otra-ruta" element={<div>Otra página</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
+              <Route path="/otra-ruta" element={<div>Otra página</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
     </ThemeProvider>,
   );
 }
@@ -26,7 +41,7 @@ describe("AppLayout", () => {
   it("renderiza el layout principal", () => {
     renderAppLayout();
 
-    expect(screen.getAllByText("Frontend Template")).toHaveLength(2);
+    expect(screen.getAllByText("INPLAZ")).toHaveLength(2);
 
     expect(screen.getByText("Contenido principal")).toBeInTheDocument();
   });
@@ -36,7 +51,7 @@ describe("AppLayout", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "Frontend Template",
+        name: "INPLAZ",
       }),
     ).toBeInTheDocument();
 

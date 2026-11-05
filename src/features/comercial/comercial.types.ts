@@ -1294,6 +1294,12 @@ export interface Pedido {
   version_numero: number;
   moneda: "BOB" | "USD";
   subtotal: string;
+  excedente_anticipo?: string;
+  alerta_excedente_anticipo?: boolean;
+  aprobado_comercialmente_por?: number | null;
+  fecha_aprobacion_comercial?: string | null;
+  habilitado_produccion_por?: number | null;
+  fecha_habilitacion_produccion?: string | null;
   productos_count: number;
   created_at: string;
   updated_at: string;
@@ -1306,11 +1312,77 @@ export interface PedidoResumen {
     valor_comprometido: string;
     anticipos_recibidos: string;
     saldo_por_cobrar: string;
+    excedente_anticipo?: string;
+    alerta_excedente_anticipo?: boolean;
   }>>;
+}
+
+export type SnapshotValor = string | number | boolean | null | SnapshotValor[] | { [key: string]: SnapshotValor };
+
+export interface EspecificacionTecnicaSnapshot {
+  tipo: "catalogo" | "solicitado" | "sin_referencia";
+  codigo?: string | null;
+  nombre?: string;
+  descripcion?: string;
+  unidad_medida?: string;
+  estado_homologacion?: string;
+  numero_homologacion?: string | null;
+  version?: Record<string, SnapshotValor> | null;
+  especificacion_bolsa?: Record<string, SnapshotValor> | null;
+  especificacion_bobina?: Record<string, SnapshotValor> | null;
+}
+
+export type EstadoRevisionTecnica = "pendiente" | "observada" | "aprobada";
+export type EstadoEvaluacionTecnica = "pendiente" | "aprobado" | "observado";
+
+export interface RevisionTecnicaProducto {
+  id: number;
+  revision: number;
+  pedido_detalle: number;
+  producto: EspecificacionTecnicaSnapshot;
+  estado: EstadoEvaluacionTecnica;
+  observacion_tecnica: string;
+  evaluador: number | null;
+  fecha_evaluacion: string | null;
+  created_at: string;
+}
+
+export interface RevisionTecnicaOferta {
+  id: number;
+  pedido_version_aceptada: number;
+  pedido: {
+    id: number;
+    numero: string;
+    estado: EstadoPedido;
+    cliente: string;
+  };
+  version_aceptada: {
+    id: number;
+    cotizacion: string;
+    numero: number;
+    fecha_aceptacion: string | null;
+    moneda: "BOB" | "USD";
+    precio_total: string;
+    vigente: boolean;
+  };
+  estado: EstadoRevisionTecnica;
+  responsable_produccion: number | null;
+  observacion_general: string;
+  fecha_inicio: string | null;
+  fecha_finalizacion: string | null;
+  created_at: string;
+  updated_at: string;
+  productos: RevisionTecnicaProducto[];
 }
 
 export interface PedidoDetalleVista {
   id: number;
+  version_aceptada_id: number | null;
+  es_historico: boolean;
+  especificacion_snapshot: EspecificacionTecnicaSnapshot | null;
+  estado_revision_tecnica: EstadoEvaluacionTecnica | null;
+  observacion_tecnica: string;
+  produccion_asociada: boolean;
   producto_version: {
     id: number;
     numero_version: number;
@@ -1363,9 +1435,41 @@ export interface PedidoConDetalles {
     saldo_por_cobrar: string;
     cuenta_comercial: { id: number; razon_social: string; nombre: string; alias: string };
     cotizacion_version: { id: number; version: number; cotizacion_numero: string; moneda: "BOB" | "USD"; precio_total: string };
+    version_cotizacion_vigente: { id: number; numero: number; moneda: "BOB" | "USD"; precio_total: string } | null;
+    excedente_anticipo: string;
+    alerta_excedente_anticipo: boolean;
+    aprobado_comercialmente_por: number | null;
+    fecha_aprobacion_comercial: string | null;
+    habilitado_produccion_por: number | null;
+    fecha_habilitacion_produccion: string | null;
   };
   detalles: PedidoDetalleVista[];
   cantidad_detalles: number;
+  historial_versiones: Array<{
+    id: number;
+    cotizacion_version_id: number;
+    numero: number;
+    moneda: "BOB" | "USD";
+    precio_total: string;
+    condiciones_comerciales: Record<string, SnapshotValor>;
+    vigente: boolean;
+    fecha_aceptacion: string | null;
+    revision_tecnica: {
+      id: number;
+      estado: EstadoRevisionTecnica;
+      fecha_inicio: string | null;
+      fecha_finalizacion: string | null;
+      productos: Array<{
+        id: number;
+        pedido_detalle_id: number;
+        estado: EstadoEvaluacionTecnica;
+        observacion_tecnica: string;
+        evaluador: string | null;
+        fecha_evaluacion: string | null;
+      }>;
+    } | null;
+    detalles: PedidoDetalleVista[];
+  }>;
 }
 
 export interface PedidoCreate {

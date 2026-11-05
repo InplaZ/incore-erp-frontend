@@ -1,4 +1,4 @@
-import { Home, PanelsTopLeft, BriefcaseBusiness, Package, UserPlus2, PhoneCallIcon,  ShoppingCart, } from "lucide-react";
+import { Home, PanelsTopLeft, BriefcaseBusiness, Package, UserPlus2, PhoneCallIcon, ShoppingCart, Workflow, Factory } from "lucide-react";
 
 import type { SidebarItem } from "../../components/navigation";
 
@@ -65,6 +65,12 @@ export const navigationItems: NavigationItem[] = [
     icon: <ShoppingCart className="size-5" />,
   },
   {
+    id: "revision-tecnica",
+    label: "Revisión técnica",
+    href: "/produccion/revisiones-tecnicas",
+    icon: <Factory className="size-5" />,
+  },
+  {
     id: "productos",
     label: "Productos",
     href: "/productos",
@@ -72,9 +78,9 @@ export const navigationItems: NavigationItem[] = [
   },
   {
     id: "ui-playground",
-    label: "UI Playground",
+    label: "Máquinas y límites",
     href: "/ui-playground",
-    icon: <PanelsTopLeft className="size-5" />,
+    icon: <Workflow className="size-5" />,
   },
   {
     id: "admin",

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronLeft, X } from "lucide-react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 
 import { Header } from "../../components/navigation/Header";
 
@@ -11,9 +11,34 @@ import { SidebarNavigationLink } from "../../components/navigation/SidebarNaviga
 import { navigationItems } from "../../app/config/navigation";
 
 import { useAuthStore } from "@/app/store/auth.store";
+import { useMarcarNotificacionLeida, useMarcarTodasNotificacionesLeidas, useNotificaciones, useNotificacionesNoLeidasCount } from "@/features/notificaciones/notificaciones.hooks";
+import type { HeaderNotification } from "../../components/navigation/Header";
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, roles, logout } = useAuthStore();
+  const navigate = useNavigate();
+  const { data: notificationData = [] } = useNotificaciones();
+  const { data: unreadData } = useNotificacionesNoLeidasCount();
+  const markRead = useMarcarNotificacionLeida();
+  const markAllRead = useMarcarTodasNotificacionesLeidas();
+  const notifications: HeaderNotification[] = notificationData.map((notification) => ({
+    id: String(notification.id),
+    title: notification.titulo,
+    message: notification.mensaje,
+    read: notification.leida,
+    createdAt: notification.fecha_creacion,
+    entityType: notification.entidad_tipo,
+    entityId: notification.entidad_id,
+  }));
+
+  const openNotification = (notification: HeaderNotification) => {
+    if (!notification.read) markRead.mutate(Number(notification.id));
+    if (notification.entityType === "revision_tecnica" && notification.entityId) {
+      navigate(`/produccion/revisiones-tecnicas?revision=${notification.entityId}`);
+    } else if (notification.entityType === "pedido" && notification.entityId) {
+      navigate(`/pedido?pedido=${notification.entityId}`);
+    }
+  };
 
   //Crear usuario para Header
   const headerUser = user
@@ -75,6 +100,10 @@ export function AppLayout() {
           onMenuClick={() => setMobileOpen(true)}
           user={headerUser}
           onLogout={logout}
+          notifications={notifications}
+          unreadNotificationsCount={unreadData?.count}
+          onNotificationClick={openNotification}
+          onMarkAllRead={() => markAllRead.mutate()}
         />
 
         <main className="min-w-0 flex-1 overflow-x-hidden bg-background p-4 md:p-6">

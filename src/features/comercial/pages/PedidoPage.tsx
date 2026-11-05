@@ -1,4 +1,5 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { BadgeCheck, ChevronLeft, ChevronRight, CircleDollarSign, Eye, PackageCheck, RotateCcw, Search, Wallet, type LucideIcon } from "lucide-react";
 
 import { Card } from "@/components/ui";
@@ -46,11 +47,17 @@ function statusLabel(status: EstadoPedido) {
 }
 
 export default function PedidoPage() {
+  const [searchParams] = useSearchParams();
+  const requestedPedidoId = Number(searchParams.get("pedido"));
   const [filters, setFilters] = useState<PedidoFilters>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<PedidoFilters>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const [selectedPedidoId, setSelectedPedidoId] = useState<number | null>(null);
   const [filterError, setFilterError] = useState("");
+
+  useEffect(() => {
+    if (requestedPedidoId > 0) setSelectedPedidoId(requestedPedidoId);
+  }, [requestedPedidoId]);
 
   const activeParams = useMemo(() => {
     const params: ApiQueryParams = {};
@@ -182,7 +189,8 @@ function PedidoStatus({ status }: { status: EstadoPedido }) {
 function PedidoDetailModal({ pedidoId, onClose }: { pedidoId: number; onClose: () => void }) {
   const { data, isLoading, isError } = usePedidoConDetalles(pedidoId);
   const order = data?.pedido;
-  const currency = order?.cotizacion_version.moneda ?? "BOB";
+  const currentVersion = order?.version_cotizacion_vigente ?? order?.cotizacion_version;
+  const currency = currentVersion?.moneda ?? "BOB";
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
     <section role="dialog" aria-modal="true" aria-labelledby="pedido-detail-title" className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl border border-border bg-background shadow-xl">
@@ -195,19 +203,22 @@ function PedidoDetailModal({ pedidoId, onClose }: { pedidoId: number; onClose: (
           : <div className="space-y-5 p-5">
             <div className="grid gap-3 rounded-lg bg-muted/40 p-4 sm:grid-cols-2 lg:grid-cols-4">
               <DetailValue label="Cliente" value={order?.cuenta_comercial.nombre || "—"} />
-              <DetailValue label="Oferta / versión" value={`${order?.cotizacion_version.cotizacion_numero} / V${String(order?.cotizacion_version.version).padStart(2, "0")}`} />
+              <DetailValue label="Oferta / versión vigente" value={`${order?.cotizacion_version.cotizacion_numero} / V${String(order?.version_cotizacion_vigente?.numero ?? order?.cotizacion_version.version ?? "—").padStart(2, "0")}`} />
               <DetailValue label="Fecha del pedido" value={formatDate(order?.fecha_pedido)} />
               <DetailValue label="Entrega comprometida" value={formatDate(order?.fecha_entrega_comprometida)} />
-              <DetailValue label="Valor comprometido" value={money(order?.cotizacion_version.precio_total, currency)} />
+              <DetailValue label="Valor comprometido vigente" value={money(currentVersion?.precio_total, currency)} />
               <DetailValue label="Anticipo registrado" value={money(order?.anticipo_recibido, currency)} />
               <DetailValue label="Saldo por cobrar" value={money(order?.saldo_por_cobrar, currency)} />
               <DetailValue label="Estado" value={order ? statusLabel(order.estado) : "—"} />
             </div>
+            {order?.alerta_excedente_anticipo && <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+              El anticipo registrado supera el importe de la versión vigente por {money(order.excedente_anticipo, currency)}. Requiere gestión manual.
+            </div>}
             <div><div className="mb-3 flex items-center gap-2"><PackageCheck className="h-4 w-4 text-primary" /><h3 className="font-semibold">Productos ({data.cantidad_detalles})</h3></div>
               {data.detalles.length ? <div className="space-y-3">{data.detalles.map(line => <article key={line.id} className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div><p className="font-medium">{line.producto_version?.nombre || line.especificacion_producto_solicitado_version?.categoria || "Producto solicitado"}</p><p className="mt-1 text-xs text-muted-foreground">{line.producto_version?.codigo ? `${line.producto_version.codigo} · ` : ""}{line.producto_version ? `Versión de producto V${line.producto_version.numero_version}` : line.especificacion_producto_solicitado_version ? `Especificación solicitada V${line.especificacion_producto_solicitado_version.version}` : "Sin código de catálogo"}</p></div>
-                  {line.producto_version?.estado_homologacion && <span className="rounded-full bg-muted px-2.5 py-1 text-xs">Homologación: {line.producto_version.estado_homologacion}</span>}
+                  <div><p className="font-medium">{line.especificacion_snapshot?.nombre || line.especificacion_snapshot?.descripcion || line.producto_version?.nombre || line.especificacion_producto_solicitado_version?.categoria || "Producto solicitado"}</p><p className="mt-1 text-xs text-muted-foreground">{line.especificacion_snapshot?.codigo ? `${line.especificacion_snapshot.codigo} · ` : line.producto_version?.codigo ? `${line.producto_version.codigo} · ` : ""}{line.especificacion_snapshot?.tipo === "solicitado" ? "Especificación solicitada" : line.especificacion_snapshot?.tipo === "catalogo" ? "Producto de catálogo" : line.producto_version ? `Versión de producto V${line.producto_version.numero_version}` : line.especificacion_producto_solicitado_version ? `Especificación solicitada V${line.especificacion_producto_solicitado_version.version}` : "Sin código de catálogo"}</p></div>
+                  {line.especificacion_snapshot?.estado_homologacion && <span className="rounded-full bg-muted px-2.5 py-1 text-xs">Homologación: {line.especificacion_snapshot.estado_homologacion}</span>}
                 </div>
                 <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
                   <DetailValue label="Cantidad" value={`${line.cantidad} ${line.unidad_comercial || line.producto_version?.unidad_medida || ""}`} />
@@ -215,11 +226,17 @@ function PedidoDetailModal({ pedidoId, onClose }: { pedidoId: number; onClose: (
                   <DetailValue label="Subtotal" value={money(line.precio_total, currency)} />
                   <DetailValue label="Entrega" value={formatDate(line.fecha_entrega_comprometida)} />
                 </div>
-                {(line.producto_version || line.especificacion_producto_solicitado_version) && <div className="mt-3 rounded-md bg-muted/30 p-3 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Especificaciones: </span>{specificationSummary(line)}
-                </div>}
+                <div className="mt-3 rounded-md bg-muted/30 p-3 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Especificaciones aceptadas: </span>{specificationSummary(line)}
+                </div>
+                <div className="mt-3 flex flex-wrap items-start justify-between gap-2 border-t border-border pt-3 text-sm">
+                  <span>Revisión técnica: <TechnicalStatus status={line.estado_revision_tecnica} /></span>
+                  {line.observacion_tecnica && <p className="max-w-xl whitespace-pre-wrap text-orange-800">{line.observacion_tecnica}</p>}
+                  {line.produccion_asociada && <span className="text-xs text-muted-foreground">Tiene producción asociada</span>}
+                </div>
               </article>)}</div> : <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">El pedido no tiene productos asociados.</p>}
             </div>
+            <OrderVersionHistory versions={data.historial_versiones} currency={currency} />
             {order?.observaciones && <div><p className="text-xs font-medium text-muted-foreground">Observaciones</p><p className="mt-1 whitespace-pre-wrap text-sm">{order.observaciones}</p></div>}
           </div>}
     </section>
@@ -227,6 +244,19 @@ function PedidoDetailModal({ pedidoId, onClose }: { pedidoId: number; onClose: (
 }
 
 function specificationSummary(line: PedidoConDetalles["detalles"][number]) {
+  const snapshot = line.especificacion_snapshot;
+  if (snapshot) {
+    const values = [
+      snapshot.codigo && `Código ${snapshot.codigo}`,
+      snapshot.nombre,
+      snapshot.descripcion,
+      snapshot.unidad_medida && `Unidad ${snapshot.unidad_medida}`,
+      ...Object.entries(snapshot.version ?? {}).map(([key, value]) => snapshotField(key, value)),
+      ...Object.entries(snapshot.especificacion_bolsa ?? {}).map(([key, value]) => snapshotField(key, value)),
+      ...Object.entries(snapshot.especificacion_bobina ?? {}).map(([key, value]) => snapshotField(key, value)),
+    ];
+    return values.filter(Boolean).join(" · ") || "Sin especificaciones adicionales";
+  }
   const product = line.producto_version;
   const requested = line.especificacion_producto_solicitado_version;
   const fields = product ? [
@@ -246,6 +276,35 @@ function specificationSummary(line: PedidoConDetalles["detalles"][number]) {
     requested.otras_caracteristicas,
   ] : [];
   return fields.filter(Boolean).join(" · ") || "Sin especificaciones adicionales";
+}
+
+function snapshotField(key: string, value: unknown) {
+  if (value === null || value === undefined || value === "" || value === false || key.endsWith("_id")) return "";
+  const label = key.replaceAll("_", " ");
+  const formatted = typeof value === "boolean" ? (value ? "Sí" : "No") : Array.isArray(value) ? value.join(", ") : typeof value === "object" ? JSON.stringify(value) : String(value);
+  return `${label}: ${formatted}`;
+}
+
+function TechnicalStatus({ status }: { status: PedidoConDetalles["detalles"][number]["estado_revision_tecnica"] }) {
+  const labels = { pendiente: "Pendiente", aprobado: "Aprobado", observado: "Observado" } as const;
+  return <span className={`ml-1 rounded-full px-2 py-0.5 text-xs ${status === "aprobado" ? "bg-emerald-100 text-emerald-800" : status === "observado" ? "bg-orange-100 text-orange-800" : status === "pendiente" ? "bg-amber-100 text-amber-800" : "bg-muted text-muted-foreground"}`}>{status ? labels[status] : "Sin revisión"}</span>;
+}
+
+function OrderVersionHistory({ versions, currency }: { versions: PedidoConDetalles["historial_versiones"]; currency: "BOB" | "USD" }) {
+  if (!versions.length) return null;
+  return <section className="space-y-3">
+    <h3 className="font-semibold">Historial de versiones aceptadas</h3>
+    <div className="space-y-3">{versions.map(version => <article key={version.id} className={`rounded-lg border p-4 ${version.vigente ? "border-primary/40 bg-primary/5" : "border-border bg-muted/20"}`}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div><p className="font-medium">R{String(version.numero).padStart(2, "0")} {version.vigente && <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">Vigente</span>}</p><p className="mt-1 text-xs text-muted-foreground">Aceptada: {formatDate(version.fecha_aceptacion)}</p></div>
+        <div className="text-right text-sm"><p>{money(version.precio_total, version.moneda ?? currency)}</p><p className="text-xs text-muted-foreground">Revisión: {version.revision_tecnica?.estado ?? "Pendiente de creación"}</p></div>
+      </div>
+      {version.detalles.length > 0 && <ul className="mt-3 space-y-2 border-t border-border pt-3">{version.detalles.map(detail => <li key={detail.id} className="text-xs">
+        <p className="font-medium">{detail.especificacion_snapshot?.nombre || detail.especificacion_snapshot?.descripcion || detail.producto_version?.nombre || detail.especificacion_producto_solicitado_version?.categoria || "Producto"} · {detail.cantidad} {detail.unidad_comercial}</p>
+        <p className="mt-0.5 text-muted-foreground">{specificationSummary(detail)} · Evaluación: {detail.estado_revision_tecnica ?? "Sin evaluación"}{detail.observacion_tecnica ? ` · ${detail.observacion_tecnica}` : ""}</p>
+      </li>)}</ul>}
+    </article>)}</div>
+  </section>;
 }
 
 function DetailValue({ label, value }: { label: string; value: string }) {
