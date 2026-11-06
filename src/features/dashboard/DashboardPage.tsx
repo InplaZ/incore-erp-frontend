@@ -5,11 +5,10 @@ import {
   Truck, Clock, ArrowRight, Activity as ActivityIcon,
 } from 'lucide-react';
 import { pedidosApi, actividadApi, tareasApi } from '@/api';
-import { KpiCard } from '@/components/ui/ProgressBar';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { LoadingState } from '@/components/ui/States';
 import { Avatar } from '@/components/ui/Avatar';
-import { Badge, PriorityBadge } from '@/components/ui/Badge';
+import  Badge  from '@/components/ui/Badge';
 import { PageHeader } from '@/components/ui/PageHeader';
 import {
   PEDIDO_ESTADO_LABELS, PEDIDO_ESTADO_COLORS, PRIORIDAD_LABELS,

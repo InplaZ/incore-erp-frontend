@@ -69,7 +69,7 @@ function DetallesCliente() {
    * El id viene de la URL como string.
    *
    * Ejemplo:
-   * /comercial/clientes/15
+   * /clientes/15
    *
    * useParams() devuelve:
    * { id: "15" }

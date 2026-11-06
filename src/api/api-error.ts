@@ -71,7 +71,9 @@ export const normalizeApiError = (
   const code = getApiErrorCode(originalError, status);
 
   const message =
-    getContextMessage(context?.message) ??
+    (code === "FORBIDDEN"
+      ? "No tienes permisos suficientes para realizar esta acción. Solicita acceso al administrador del sistema."
+      : getContextMessage(context?.message)) ??
     getErrorMessage(originalError) ??
     "Ocurrió un error inesperado.";
 

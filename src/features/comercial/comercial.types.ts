@@ -1312,6 +1312,7 @@ export interface Pedido {
   version_numero: number;
   moneda: "BOB" | "USD";
   subtotal: string;
+  estado_revision_tecnica?: EstadoRevisionTecnica | null;
   excedente_anticipo?: string;
   alerta_excedente_anticipo?: boolean;
   aprobado_comercialmente_por?: number | null;

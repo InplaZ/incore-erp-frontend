@@ -34,6 +34,9 @@ describe("normalizeApiError", () => {
     });
 
     expect(error.code).toBe("FORBIDDEN");
+    expect(error.message).toBe(
+      "No tienes permisos suficientes para realizar esta acción. Solicita acceso al administrador del sistema.",
+    );
   });
 
   it("convierte HTTP 404 en NOT_FOUND", () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Building2, CalendarDays, Check, LoaderCircle, Save } from "lucide-react";
 import { useUpdateCuentaComercial } from "../comercial.hooks";
+import { useEjecutivosComerciales } from "../comercial.hooks";
 import type { CuentaComercial, CuentaComercialUpdate } from "../comercial.types";
 
 const control = "mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
@@ -20,6 +21,7 @@ function datosIniciales(cuenta: CuentaComercial): CuentaComercialUpdate {
     telefono: cuenta.telefono,
     correo: cuenta.correo,
     direccion: cuenta.direccion,
+    ejecutivo_asignado: cuenta.ejecutivo_asignado ?? null,
   };
 }
 
@@ -28,6 +30,8 @@ export default function FichaGeneralEditable({ cuenta }: { cuenta: CuentaComerci
   const [form, setForm] = useState<CuentaComercialUpdate>(() => datosIniciales(cuenta));
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState("");
+  const { data: ejecutivos = [], isLoading: cargandoEjecutivos } =
+    useEjecutivosComerciales();
 
   useEffect(() => {
     setForm(datosIniciales(cuenta));
@@ -81,6 +85,30 @@ export default function FichaGeneralEditable({ cuenta }: { cuenta: CuentaComerci
           <label className={label}>Teléfono general<input className={control} maxLength={30} type="tel" value={form.telefono ?? ""} onChange={e => set("telefono", e.target.value)} /></label>
           <label className={label}>Correo general<input className={control} type="email" value={form.correo ?? ""} onChange={e => set("correo", e.target.value)} /></label>
           <label className={`${label} lg:col-span-2`}>Dirección general<input className={control} maxLength={300} value={form.direccion ?? ""} onChange={e => set("direccion", e.target.value)} /></label>
+          <label className={label}>
+            Ejecutivo comercial
+            <select
+              className={control}
+              value={form.ejecutivo_asignado ?? ""}
+              onChange={e =>
+                set(
+                  "ejecutivo_asignado",
+                  e.target.value ? Number(e.target.value) : null
+                )
+              }
+              disabled={cargandoEjecutivos}
+            >
+              <option value="">
+                Sin ejecutivo asignado
+              </option>
+
+              {ejecutivos.map(ejecutivo => (
+                <option key={ejecutivo.id} value={ejecutivo.id}>
+                  {ejecutivo.username}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="flex items-end text-xs text-muted-foreground"><CalendarDays className="mr-2 mb-3 h-4 w-4 shrink-0" />Alta registrada: {new Date(cuenta.fecha_alta).toLocaleDateString("es-BO")}</div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6">

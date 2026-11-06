@@ -5,7 +5,7 @@ import { BadgeCheck, ChevronLeft, ChevronRight, CircleDollarSign, Eye, LoaderCir
 import { Card } from "@/components/ui";
 import type { ApiQueryParams } from "@/api/api.types";
 import { useConfirmarPedido, usePedidoConDetalles, usePedidos, useResumenPedidos } from "../comercial.hooks";
-import type { EstadoPedido, Pedido, PedidoConDetalles, PedidoResumen } from "../comercial.types";
+import type { EstadoPedido, Pedido, PedidoConDetalles, PedidoResumen, SnapshotValor } from "../comercial.types";
 import { useAuthStore } from "@/app/store/auth.store";
 
 const PAGE_SIZE = 10;
@@ -222,12 +222,13 @@ function PedidoDetailModal({ pedidoId, onClose }: { pedidoId: number; onClose: (
   const { data, isLoading, isError } = usePedidoConDetalles(pedidoId);
   const order = data?.pedido;
   const currentVersion = order?.version_cotizacion_vigente ?? order?.cotizacion_version;
+  const currentAcceptedVersion = data?.historial_versiones.find(version => version.vigente);
   const currency = currentVersion?.moneda ?? "BOB";
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
     <section role="dialog" aria-modal="true" aria-labelledby="pedido-detail-title" className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl border border-border bg-background shadow-xl">
       <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-background px-5 py-4">
-        <div><h2 id="pedido-detail-title" className="text-lg font-semibold">{order ? `Pedido ${order.numero}` : "Detalle del pedido"}</h2><p className="mt-1 text-sm text-muted-foreground">Productos y condiciones del pedido confirmado.</p></div>
+        <div><h2 id="pedido-detail-title" className="text-lg font-semibold">{order ? `Pedido ${order.numero}` : "Detalle del pedido"}</h2><p className="mt-1 text-sm text-muted-foreground">Productos y condiciones de la versión aceptada vigente.</p></div>
         <button type="button" onClick={onClose} className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted">Cerrar</button>
       </header>
       {isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">Cargando detalle…</p>
@@ -243,6 +244,7 @@ function PedidoDetailModal({ pedidoId, onClose }: { pedidoId: number; onClose: (
               <DetailValue label="Saldo por cobrar" value={money(order?.saldo_por_cobrar, currency)} />
               <DetailValue label="Estado" value={order ? statusLabel(order.estado) : "—"} />
             </div>
+            {currentAcceptedVersion && <CommercialConditions conditions={currentAcceptedVersion.condiciones_comerciales} />}
             {order?.alerta_excedente_anticipo && <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
               El anticipo registrado supera el importe de la versión vigente por {money(order.excedente_anticipo, currency)}. Requiere gestión manual.
             </div>}
@@ -258,9 +260,7 @@ function PedidoDetailModal({ pedidoId, onClose }: { pedidoId: number; onClose: (
                   <DetailValue label="Subtotal" value={money(line.precio_total, currency)} />
                   <DetailValue label="Entrega" value={formatDate(line.fecha_entrega_comprometida)} />
                 </div>
-                <div className="mt-3 rounded-md bg-muted/30 p-3 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Especificaciones aceptadas: </span>{specificationSummary(line)}
-                </div>
+                <AcceptedSpecification line={line} />
                 <div className="mt-3 flex flex-wrap items-start justify-between gap-2 border-t border-border pt-3 text-sm">
                   <span>Revisión técnica: <TechnicalStatus status={line.estado_revision_tecnica} /></span>
                   {line.observacion_tecnica && <p className="max-w-xl whitespace-pre-wrap text-orange-800">{line.observacion_tecnica}</p>}
@@ -275,46 +275,138 @@ function PedidoDetailModal({ pedidoId, onClose }: { pedidoId: number; onClose: (
   </div>;
 }
 
-function specificationSummary(line: PedidoConDetalles["detalles"][number]) {
-  const snapshot = line.especificacion_snapshot;
-  if (snapshot) {
-    const values = [
-      snapshot.codigo && `Código ${snapshot.codigo}`,
-      snapshot.nombre,
-      snapshot.descripcion,
-      snapshot.unidad_medida && `Unidad ${snapshot.unidad_medida}`,
-      ...Object.entries(snapshot.version ?? {}).map(([key, value]) => snapshotField(key, value)),
-      ...Object.entries(snapshot.especificacion_bolsa ?? {}).map(([key, value]) => snapshotField(key, value)),
-      ...Object.entries(snapshot.especificacion_bobina ?? {}).map(([key, value]) => snapshotField(key, value)),
-    ];
-    return values.filter(Boolean).join(" · ") || "Sin especificaciones adicionales";
-  }
-  const product = line.producto_version;
-  const requested = line.especificacion_producto_solicitado_version;
-  const fields = product ? [
-    product.categoria && `Categoría ${product.categoria}`,
-    product.material && `Material ${product.material}`,
-    product.capas && `${product.capas}`,
-    product.micraje && `${product.micraje} micras`,
-    product.impresion && `Impresión ${product.color_impresion.join(", ")}`,
-  ] : requested ? [
-    requested.categoria && `Categoría ${requested.categoria}`,
-    requested.material && `Material ${requested.material}`,
-    requested.capas && `${requested.capas}`,
-    requested.micraje && `${requested.micraje} micras`,
-    requested.apto_alimento && "Apto para alimentos",
-    requested.impresion && `Impresión ${requested.color_impresion.join(", ")}`,
-    requested.tratamiento_impresion && `Tratamiento ${requested.tratamiento_impresion}`,
-    requested.otras_caracteristicas,
-  ] : [];
-  return fields.filter(Boolean).join(" · ") || "Sin especificaciones adicionales";
+const TECHNICAL_LABELS: Record<string, string> = {
+  material: "Material", capas: "Capas", cara_impresion: "Cara de impresión", tratamiento_impresion: "Tratamiento de impresión",
+  tipo_impresion: "Tipo de impresión", apto_alimento: "Apto para alimentos", micraje: "Micraje", color_bolsa: "Color",
+  impresion: "Impresión", color_impresion: "Colores de impresión", metros: "Metros", refilado: "Refilado", laminado: "Laminado",
+  medio: "Medio", numero_version: "Versión técnica", estado: "Estado técnico", observaciones: "Otras observaciones",
+  ancho_doblado: "Ancho doblado", ancho_desdoblado: "Ancho desarrollado", largo_doblado: "Largo doblado",
+  largo_desdoblado: "Largo desarrollado", fuelle: "Fuelle", fuelle_izquierdo: "Fuelle izquierdo", fuelle_derecho: "Fuelle derecho",
+  fuelle_inferior: "Fuelle inferior", fuelle_superior: "Fuelle superior", tipo_troquel: "Tipo de troquel", tipo_sello: "Tipo de sello",
+  pestana: "Pestaña", acabado_especial: "Acabado especial", otras_caracteristicas: "Otras características", ancho: "Ancho",
+  configuracion_pelicula: "Configuración de película", diametro: "Diámetro", diametro_nucleo: "Diámetro del núcleo",
+  tipo_nucleo: "Tipo de núcleo", peso: "Peso", longitud: "Longitud",
+};
+
+const TECHNICAL_METADATA = new Set(["id", "created_at", "updated_at"]);
+
+function readableSnapshotValue(value: SnapshotValor, key?: string): string {
+  if (Array.isArray(value)) return value.map(item => readableSnapshotValue(item)).filter(Boolean).join(", ");
+  if (value && typeof value === "object") return Object.entries(value)
+    .filter(([childKey, childValue]) => !isTechnicalMetadata(childKey) && hasDisplayValue(childValue))
+    .map(([childKey, childValue]) => `${TECHNICAL_LABELS[childKey] ?? humanizeKey(childKey)}: ${readableSnapshotValue(childValue, childKey)}`)
+    .join(" · ");
+  if (typeof value === "boolean") return value ? "Sí" : "No";
+  if (value === null || value === "") return "";
+  const unit = key === "micraje" ? " micras" : ["ancho", "ancho_doblado", "ancho_desdoblado", "largo_doblado", "largo_desdoblado", "fuelle_izquierdo", "fuelle_derecho", "fuelle_inferior", "fuelle_superior", "diametro", "diametro_nucleo"].includes(key ?? "") ? " cm" : key === "peso" ? " kg" : key === "longitud" || key === "metros" ? " m" : "";
+  return `${String(value)}${unit}`;
 }
 
-function snapshotField(key: string, value: unknown) {
-  if (value === null || value === undefined || value === "" || value === false || key.endsWith("_id")) return "";
-  const label = key.replaceAll("_", " ");
-  const formatted = typeof value === "boolean" ? (value ? "Sí" : "No") : Array.isArray(value) ? value.join(", ") : typeof value === "object" ? JSON.stringify(value) : String(value);
-  return `${label}: ${formatted}`;
+function isTechnicalMetadata(key: string) {
+  return TECHNICAL_METADATA.has(key) || key.endsWith("_id");
+}
+
+function hasDisplayValue(value: SnapshotValor) {
+  return value !== null && value !== "" && (!Array.isArray(value) || value.length > 0);
+}
+
+function humanizeKey(key: string) {
+  return key.replaceAll("_", " ").replace(/^./, first => first.toUpperCase());
+}
+
+function AcceptedSpecification({ line, compact = false }: { line: PedidoConDetalles["detalles"][number]; compact?: boolean }) {
+  const snapshot = line.especificacion_snapshot;
+  const version = snapshot?.version ?? {};
+  const bag = snapshot?.especificacion_bolsa ?? {};
+  const bobbin = snapshot?.especificacion_bobina ?? {};
+  const requested = line.especificacion_producto_solicitado_version;
+  const category = line.producto_version?.categoria ?? requested?.categoria ?? (snapshot?.tipo === "solicitado" ? snapshot.nombre : "");
+  const value = (source: Record<string, SnapshotValor>, key: string) => source[key];
+  const firstValue = (...values: Array<SnapshotValor | undefined>) => values.find(candidate => candidate !== undefined && candidate !== null && candidate !== "");
+  const bagDimensions = Object.entries(bag).filter(([key, item]) => ["ancho_doblado", "ancho_desdoblado", "largo_doblado", "largo_desdoblado"].includes(key) && hasDisplayValue(item));
+  const bobbinDimensions = Object.entries(bobbin).filter(([key, item]) => ["ancho", "ancho_doblado", "ancho_desdoblado", "diametro", "diametro_nucleo", "longitud"].includes(key) && hasDisplayValue(item));
+  const fuelles = Object.entries(bag).filter(([key, item]) => key.startsWith("fuelle_") && hasDisplayValue(item));
+  const quickFields: Array<[string, SnapshotValor | undefined]> = [
+    ["Tipo de producto", category || undefined],
+    ["Material", firstValue(value(version, "material"), line.producto_version?.material, requested?.material)],
+    ["Color", firstValue(value(version, "color_bolsa"), line.producto_version?.color_bolsa)],
+    ["Micraje", firstValue(value(version, "micraje"), line.producto_version?.micraje, requested?.micraje)],
+    ["Capas", firstValue(value(version, "capas"), line.producto_version?.capas, requested?.capas)],
+    ["Impresión", value(version, "impresion") === true || line.producto_version?.impresion || requested?.impresion
+      ? firstValue(value(version, "color_impresion"), line.producto_version?.color_impresion, requested?.color_impresion) ?? "Sí"
+      : undefined],
+    ["Sello", value(bag, "tipo_sello")],
+    ["Troquel", value(bag, "tipo_troquel")],
+    ["Otras características", firstValue(value(bag, "otras_caracteristicas"), value(bobbin, "otras_caracteristicas"), requested?.otras_caracteristicas)],
+  ];
+  const renderedFields = quickFields.filter(([, item]) => item !== undefined && item !== null && item !== "" && item !== false);
+  const allSections: Array<[string, Record<string, SnapshotValor> | null | undefined]> = [
+    ["Versión técnica", snapshot ? snapshot.version : legacyVersion(line)],
+    ["Especificación de bolsa", snapshot ? snapshot.especificacion_bolsa : undefined],
+    ["Especificación de bobina", snapshot ? snapshot.especificacion_bobina : undefined],
+  ];
+  const hasCompleteSpecs = allSections.some(([, fields]) => fields && Object.entries(fields).some(([key, item]) => !isTechnicalMetadata(key) && hasDisplayValue(item)));
+
+  return <section className={`mt-3 rounded-lg border border-border ${compact ? "p-3" : "p-4"}`}>
+    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Características aceptadas</h4>
+    {(bagDimensions.length > 0 || bobbinDimensions.length > 0) && <p className="mt-2 text-sm"><span className="font-medium">Medidas: </span>{[...bagDimensions, ...bobbinDimensions].map(([key, item]) => `${TECHNICAL_LABELS[key]} ${readableSnapshotValue(item, key)}`).join(" · ")}</p>}
+    {fuelles.length > 0 && value(bag, "fuelle") !== false && <p className="mt-1 text-sm"><span className="font-medium">Fuelle: </span>{fuelles.map(([key, item]) => `${TECHNICAL_LABELS[key]} ${readableSnapshotValue(item, key)}`).join(" · ")}</p>}
+    <dl className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{renderedFields.map(([label, item]) => <div key={label} className="min-w-0"><dt className="text-[11px] text-muted-foreground">{label}</dt><dd className="break-words text-sm font-medium">{readableSnapshotValue(item!)}</dd></div>)}</dl>
+    {hasCompleteSpecs && <details className="mt-3 border-t border-border pt-2">
+      <summary className="cursor-pointer text-xs font-medium text-primary">Ver especificaciones técnicas completas</summary>
+      <div className="mt-3 space-y-3">{allSections.map(([title, fields]) => fields && <SnapshotSection key={title} title={title} fields={fields} />)}</div>
+    </details>}
+  </section>;
+}
+
+function legacyVersion(line: PedidoConDetalles["detalles"][number]): Record<string, SnapshotValor> | undefined {
+  const product = line.producto_version;
+  const requested = line.especificacion_producto_solicitado_version;
+  if (product) return {
+    material: product.material, capas: product.capas, micraje: product.micraje, color_bolsa: product.color_bolsa,
+    impresion: product.impresion, color_impresion: product.color_impresion,
+  };
+  if (requested) return {
+    material: requested.material, capas: requested.capas, micraje: requested.micraje, impresion: requested.impresion,
+    color_impresion: requested.color_impresion, tratamiento_impresion: requested.tratamiento_impresion,
+    apto_alimento: requested.apto_alimento, otras_caracteristicas: requested.otras_caracteristicas,
+  };
+  return undefined;
+}
+
+function SnapshotSection({ title, fields }: { title: string; fields: Record<string, SnapshotValor> }) {
+  const entries = Object.entries(fields).filter(([key, item]) => !isTechnicalMetadata(key) && hasDisplayValue(item));
+  if (!entries.length) return null;
+  return <div className="rounded-md bg-muted/30 p-3"><h5 className="mb-2 text-xs font-semibold">{title}</h5><dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2">{entries.map(([key, item]) => <div key={key} className="min-w-0"><dt className="text-[11px] text-muted-foreground">{TECHNICAL_LABELS[key] ?? humanizeKey(key)}</dt><dd className="break-words text-xs font-medium">{readableSnapshotValue(item, key)}</dd></div>)}</dl></div>;
+}
+
+const DELIVERY_LABELS: Record<string, string> = {
+  casa_matriz: "INPLAZ · Casa Matriz", cliente: "Ubicación del cliente", envio_interior: "Envío al interior", sucursal: "Recojo en sucursal",
+  calendario: "Días calendario", habiles: "Días hábiles", confirmacion: "Desde confirmación", anticipo: "Desde anticipo", emision: "Desde emisión",
+  bolsa: "Bolsa", kilo: "Kilo", bobina: "Bobina",
+};
+
+const COMMERCIAL_CONDITION_LABELS: Record<string, string> = {
+  forma_pago: "Forma de pago", validez_dias: "Validez", plazo_entrega_dias: "Plazo de entrega", tipo_dias: "Tipo de días",
+  inicio_plazo: "Inicio del plazo", fecha_entrega_comprometida: "Fecha comprometida", tipo_lugar_entrega: "Lugar de entrega",
+  departamento_destino: "Departamento", ciudad_destino: "Ciudad", sucursal_inplaz: "Sucursal INPLAZ",
+  observaciones_comerciales: "Observaciones comerciales", venta_por: "Venta por",
+};
+
+function CommercialConditions({ conditions }: { conditions: Record<string, SnapshotValor> }) {
+  const entries = Object.entries(conditions).filter(([key, item]) => !isTechnicalMetadata(key) && !key.endsWith("_id") && hasDisplayValue(item));
+  if (!entries.length) return null;
+  return <section className="rounded-lg border border-border p-4">
+    <h3 className="mb-3 font-semibold">Condiciones de la versión aceptada</h3>
+    <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{entries.map(([key, item]) => {
+      let value = readableSnapshotValue(item, key);
+      if (key === "tipo_lugar_entrega" || key === "tipo_dias" || key === "inicio_plazo" || key === "venta_por") value = DELIVERY_LABELS[String(item)] ?? value;
+      if (key === "fecha_entrega_comprometida") value = formatDate(String(item));
+      if (key === "validez_dias") value = `${value} días`;
+      if (key === "plazo_entrega_dias") value = `${value} días`;
+      return <div key={key} className="min-w-0"><dt className="text-[11px] font-medium text-muted-foreground">{COMMERCIAL_CONDITION_LABELS[key] ?? humanizeKey(key)}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{value}</dd></div>;
+    })}</dl>
+  </section>;
 }
 
 function TechnicalStatus({ status }: { status: PedidoConDetalles["detalles"][number]["estado_revision_tecnica"] }) {
@@ -333,7 +425,8 @@ function OrderVersionHistory({ versions, currency }: { versions: PedidoConDetall
       </div>
       {version.detalles.length > 0 && <ul className="mt-3 space-y-2 border-t border-border pt-3">{version.detalles.map(detail => <li key={detail.id} className="text-xs">
         <p className="font-medium">{detail.especificacion_snapshot?.nombre || detail.especificacion_snapshot?.descripcion || detail.producto_version?.nombre || detail.especificacion_producto_solicitado_version?.categoria || "Producto"} · {detail.cantidad} {detail.unidad_comercial}</p>
-        <p className="mt-0.5 text-muted-foreground">{specificationSummary(detail)} · Evaluación: {detail.estado_revision_tecnica ?? "Sin evaluación"}{detail.observacion_tecnica ? ` · ${detail.observacion_tecnica}` : ""}</p>
+        <AcceptedSpecification line={detail} compact />
+        <p className="mt-2 text-muted-foreground">Evaluación: {detail.estado_revision_tecnica ?? "Sin evaluación"}{detail.observacion_tecnica ? ` · ${detail.observacion_tecnica}` : ""}</p>
       </li>)}</ul>}
     </article>)}</div>
   </section>;

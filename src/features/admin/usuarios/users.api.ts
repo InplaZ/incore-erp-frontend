@@ -18,3 +18,9 @@ export const usersApi = createCrudOperations<
 >(api, "usuarios", {
   trailingSlash: true,
 });
+
+export const userAdminApi = {
+  roles: (userId: number) => api.get<import("@/features/admin/roles/roles.types").Role[]>(`/usuarios/${userId}/roles/`),
+  setRoles: (userId: number, roleIds: number[]) => api.put(`/usuarios/${userId}/roles/`, { role_ids: roleIds }),
+  setActive: (userId: number, is_active: boolean) => api.patch(`/usuarios/${userId}/cambiar-estado/`, { is_active }),
+};

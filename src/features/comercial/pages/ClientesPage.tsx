@@ -591,7 +591,7 @@ export default function ClientesPage() {
            */
           onSuccess={(accountId) => {
             setShowNewClient(false);
-            navigate(`/comercial/clientes/${accountId}`);
+            navigate(`/clientes/${accountId}`);
           }}
         /**
          * IMPORTANTE:
@@ -694,7 +694,7 @@ function ClientRow({
     {/* EMPRESA */}
     <button
       type="button"
-      onClick={() => navigate(`/comercial/clientes/${client.id}`)}
+      onClick={() => navigate(`/clientes/${client.id}`)}
       className="group flex min-w-0 items-center gap-3 text-left"
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">
