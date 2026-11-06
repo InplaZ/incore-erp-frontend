@@ -63,6 +63,23 @@ export interface DashboardComercialData {
     cerrada_sin_respuesta: number;
   }>;
   motivos_rechazo: Array<{ motivo: string; oportunidades: number }>;
+  rendimiento_economico: {
+    bs_ofertados: string;
+    bs_aceptados: string;
+    bs_en_negociacion: string;
+    bs_cerrados_sin_respuesta: string;
+    bs_rechazados: string;
+  };
+  tasas_aceptacion: {
+    por_importe: number;
+    por_numero: number;
+  };
+  oportunidades_no_concretadas: Array<{
+    motivo: string;
+    cantidad: number;
+    importe_bob: string;
+    porcentaje: number;
+  }>;
   dias_promedio_aceptacion: number | null;
   versiones_promedio_hasta_aceptar: number | null;
   calidad_datos: Record<string, number>;

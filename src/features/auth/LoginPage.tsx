@@ -61,7 +61,7 @@ export default function LoginPage() {
             </p>
 
             <p className="text-sm text-sidebar-foreground/70">
-              IN-SYSTEM
+              INCORE
             </p>
           </div>
         </div>
@@ -74,14 +74,9 @@ export default function LoginPage() {
             <br />
             para la gestión industrial
           </h1>
-
-          <p className="text-sidebar-foreground/80 mt-4 text-lg">
-            Pedidos, producción, viabilidad, máquinas, despachos y comercial
-            — todo conectado en un solo flujo.
-          </p>
-
+          {/**
           <div className="mt-8 space-y-3">
-
+          
             {[
               'Flujo integrado de cotización a entrega',
               'Kanban de pedidos y producción',
@@ -98,11 +93,12 @@ export default function LoginPage() {
             ))}
 
           </div>
+           **/}
         </div>
 
         {/* Footer */}
         <p className="relative text-xs text-sidebar-foreground/60">
-          © 2026 INPLAZ · IN-SYSTEM
+          © 2026 INPLAZ · INCORE
         </p>
       </div>
 
@@ -126,7 +122,7 @@ export default function LoginPage() {
               </p>
 
               <p className="text-xs text-muted-foreground">
-                IN-SYSTEM
+                INCORE
               </p>
             </div>
 

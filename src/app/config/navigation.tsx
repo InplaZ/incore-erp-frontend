@@ -40,11 +40,11 @@ export const navigationItems: NavigationItem[] = [
     href: "/",
     icon: <Home className="size-5" />,
   },
-  {
-    id: "agenda",
-    label: "Seguimiento",
-    href: "/agenda",
-    icon: <PhoneCallIcon className="size-5" />,
+   {
+    id: "clientes",
+    label: "Contactos/CRM",
+    href: "/clientes",
+    icon: <UserPlus2 className="size-5" />,
   },
   {
     id: "comercial",
@@ -53,10 +53,10 @@ export const navigationItems: NavigationItem[] = [
     icon: <BriefcaseBusiness className="size-5" />,
   },
   {
-    id: "clientes",
-    label: "Contactos/CRM",
-    href: "/clientes",
-    icon: <UserPlus2 className="size-5" />,
+    id: "agenda",
+    label: "Seguimiento",
+    href: "/agenda",
+    icon: <PhoneCallIcon className="size-5" />,
   },
   {
     id: "pedido",
