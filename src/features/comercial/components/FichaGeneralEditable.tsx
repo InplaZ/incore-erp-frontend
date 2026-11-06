@@ -3,7 +3,7 @@ import { Building2, CalendarDays, Check, LoaderCircle, Save } from "lucide-react
 import { useUpdateCuentaComercial } from "../comercial.hooks";
 import { useEjecutivosComerciales } from "../comercial.hooks";
 import type { CuentaComercial, CuentaComercialUpdate } from "../comercial.types";
-
+import Toast from "@/components/ui/Toast";
 const control = "mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
 const label = "block text-xs font-semibold text-muted-foreground";
 
@@ -15,6 +15,7 @@ function datosIniciales(cuenta: CuentaComercial): CuentaComercialUpdate {
     razon_social: cuenta.razon_social,
     alias: cuenta.alias,
     estado: cuenta.estado,
+    etapa_crm: cuenta.etapa_crm,
     nombres: cuenta.nombres,
     apellido_paterno: cuenta.apellido_paterno,
     apellido_materno: cuenta.apellido_materno,
@@ -26,6 +27,11 @@ function datosIniciales(cuenta: CuentaComercial): CuentaComercialUpdate {
 }
 
 export default function FichaGeneralEditable({ cuenta }: { cuenta: CuentaComercial }) {
+  const [toast, setToast] = useState({
+    open: false,
+    title: "",
+    description: "",
+  })
   const update = useUpdateCuentaComercial();
   const [form, setForm] = useState<CuentaComercialUpdate>(() => datosIniciales(cuenta));
   const [guardado, setGuardado] = useState(false);
@@ -46,13 +52,21 @@ export default function FichaGeneralEditable({ cuenta }: { cuenta: CuentaComerci
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
-    setGuardado(false);
+
     try {
       await update.mutateAsync({ id: cuenta.id, data: form });
-      setGuardado(true);
+
+      setToast({
+        open: true,
+        title: "Ficha general actualizada",
+        description: "Los cambios se guardaron correctamente.",
+      });
     } catch {
-      setError("No se pudo guardar la ficha. Revisa los datos e inténtalo nuevamente.");
+      setToast({
+        open: true,
+        title: "Error al guardar",
+        description: "No se pudo actualizar la ficha general.",
+      });
     }
   };
 
@@ -75,13 +89,24 @@ export default function FichaGeneralEditable({ cuenta }: { cuenta: CuentaComerci
           <label className={label}>Nombre comercial<input className={control} maxLength={200} value={form.nombre_comercial ?? ""} onChange={e => set("nombre_comercial", e.target.value)} /></label>
           <label className={label}>Razón social<input className={control} maxLength={200} value={form.razon_social ?? ""} onChange={e => set("razon_social", e.target.value)} /></label>
           <label className={label}>Alias<input className={control} maxLength={100} value={form.alias ?? ""} onChange={e => set("alias", e.target.value)} /></label>
-          <label className={label}>Estado del registro<select className={control} value={form.estado ?? "prospecto"} onChange={e => set("estado", e.target.value as CuentaComercialUpdate["estado"])}><option value="prospecto">Prospecto</option><option value="cliente">Cliente</option><option value="inactivo">Inactivo</option></select></label>
-          <label className={label}>Etapa CRM<input className={`${control} cursor-not-allowed`} value={etapaLabel(cuenta.etapa_crm)} readOnly /><span className="mt-1 block text-[11px] font-normal">La conversión a cliente sigue las reglas comerciales de INCORE.</span></label>
-          {cuenta.tipo_persona === "natural" && <>
-            <label className={label}>Nombres<input className={control} maxLength={150} value={form.nombres ?? ""} onChange={e => set("nombres", e.target.value)} /></label>
-            <label className={label}>Apellido paterno<input className={control} maxLength={100} value={form.apellido_paterno ?? ""} onChange={e => set("apellido_paterno", e.target.value)} /></label>
-            <label className={label}>Apellido materno<input className={control} maxLength={100} value={form.apellido_materno ?? ""} onChange={e => set("apellido_materno", e.target.value)} /></label>
-          </>}
+          <label className={label}>
+            Etapa
+            <select
+              className={control}
+              value={form.etapa_crm ?? ""}
+              onChange={e =>
+                set("etapa_crm", e.target.value as CuentaComercialUpdate["etapa_crm"])
+              }
+            >
+              <option value="contacto">Contacto</option>
+              <option value="lead">Lead</option>
+              <option value="oportunidad">Oportunidad</option>
+              <option value="cliente">Cliente</option>
+            </select>
+            <span className="mt-1 block text-[11px] font-normal">
+              Clasificación comercial de la cuenta.
+            </span>
+          </label>
           <label className={label}>Teléfono general<input className={control} maxLength={30} type="tel" value={form.telefono ?? ""} onChange={e => set("telefono", e.target.value)} /></label>
           <label className={label}>Correo general<input className={control} type="email" value={form.correo ?? ""} onChange={e => set("correo", e.target.value)} /></label>
           <label className={`${label} lg:col-span-2`}>Dirección general<input className={control} maxLength={300} value={form.direccion ?? ""} onChange={e => set("direccion", e.target.value)} /></label>
@@ -122,17 +147,14 @@ export default function FichaGeneralEditable({ cuenta }: { cuenta: CuentaComerci
             </button>
           </div>
         </div>
+        <Toast
+          open={toast.open}
+          title={toast.title}
+          description={toast.description}
+          onClose={() => setToast(prev => ({ ...prev, open: false }))}
+        />
       </form>
     </section>
   );
 }
 
-function etapaLabel(etapa: CuentaComercial["etapa_crm"]): string {
-  switch (etapa) {
-    case "contacto": return "Contacto";
-    case "lead": return "Lead";
-    case "oportunidad": return "Oportunidad";
-    case "cliente": return "Cliente";
-    default: return "Sin clasificar";
-  }
-}

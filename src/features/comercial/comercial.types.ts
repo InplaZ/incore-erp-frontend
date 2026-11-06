@@ -1027,7 +1027,7 @@ export interface Comunicacion {
   asunto: string | null;
   contenido: string;
   cotizacion_version: number | null;
-  evento_oferta: "" | "envio" | "seguimiento" | "aceptacion" | "rechazo" | "cierre";
+  evento_oferta: "" | "envio" | "seguimiento" | "negociacion" | "aceptacion" | "rechazo" | "cierre";
   created_at: string;
   updated_at: string;
   motivo_rechazo: MotivoRechazoCotizacion | "";
@@ -1042,7 +1042,7 @@ export interface ComunicacionCreate {
   asunto?: string | null;
   contenido: string;
   cotizacion_version_id?: number | null;
-  accion_cotizacion?: "ninguna" | "enviar" | "aceptar" | "rechazar" | "cerrar";
+  accion_cotizacion?: "ninguna" | "negociar" | "enviar" | "aceptar" | "rechazar" | "cerrar";
   recordatorio?: boolean;
   fecha_recordatorio?: string | null;
   motivo_rechazo?: MotivoRechazoCotizacion;

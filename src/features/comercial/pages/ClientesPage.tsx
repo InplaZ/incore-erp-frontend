@@ -53,6 +53,7 @@ import {
 import type {
   CuentaComercial,
   EstadoCuenta,
+  EtapaCRM,
   EjecutivoComercial,
 } from "../comercial.types";
 
@@ -73,17 +74,10 @@ export default function ClientesPage() {
   const [search, setSearch] = useState("");
 
   /**
-   * Guarda el filtro de estado seleccionado.
-   *
-   * Puede ser:
-   *
-   * - "todos"
-   * - "cliente"
-   * - "prospecto"
-   * - "inactivo"
+   * Guarda la etapa CRM seleccionada para filtrar las cuentas.
    */
-  const [estado, setEstado] =
-    useState<EstadoCuenta | "todos">("todos");
+  const [etapaCRM, setEtapaCRM] =
+    useState<EtapaCRM | "todos">("todos");
 
   /**
    * OBTENER CLIENTES
@@ -122,13 +116,10 @@ export default function ClientesPage() {
     search: search || undefined,
 
     /**
-     * Si el usuario seleccionó "todos",
-     * no enviamos filtro de estado.
-     *
-     * Si seleccionó otro estado,
-     * lo enviamos al backend.
+     * Si el usuario seleccionó "todos", no enviamos el filtro.
+     * En caso contrario, filtramos por etapa CRM.
      */
-    estado: estado !== "todos" ? estado : undefined,
+    etapa_crm: etapaCRM !== "todos" ? etapaCRM : undefined,
   });
 
   /**
@@ -170,27 +161,24 @@ export default function ClientesPage() {
    * si la lista de clientes no cambió.
    */
   const summary = useMemo(() => {
-    /**
-     * Cuenta cuántos registros tienen estado "cliente".
-     */
-    const activos = clients.filter(
-      (client) => client.estado === "cliente",
-    ).length;
-
-    /**
-     * Cuenta cuántos registros son prospectos.
-     */
-    const prospectos = clients.filter(
-      (client) => client.estado === "prospecto",
-    ).length;
-
     return {
-      activos,
-      prospectos,
-      inactivos: clients.filter((client) => client.estado === "inactivo").length,
+      contactos: clients.filter(
+        (client) => client.etapa_crm === "contacto"
+      ).length,
+
+      leads: clients.filter(
+        (client) => client.etapa_crm === "lead"
+      ).length,
+
+      oportunidades: clients.filter(
+        (client) => client.etapa_crm === "oportunidad"
+      ).length,
+
+      clientes: clients.filter(
+        (client) => client.etapa_crm === "cliente"
+      ).length,
     };
   }, [clients]);
-
   /**
    * OBTENER EJECUTIVOS COMERCIALES
    *
@@ -338,9 +326,9 @@ export default function ClientesPage() {
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="mt-1 text-2xl font-semibold text-foreground">
-            Contactos y CRM
-          </h1>
+          <h2 className="mt-1 text-2xl font-bold text-foreground">
+            CONTACTOS & CRM
+          </h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
             Organizaciones, interlocutores y estado de la relación comercial.
@@ -375,10 +363,37 @@ export default function ClientesPage() {
           ======================================================== */}
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <CrmStatCard icon={<ContactRound className="h-5 w-5" />} label="Contacto" value={summary.activos} detail="Cuentas en seguimiento inicial" tone="blue" />
-        <CrmStatCard icon={<BriefcaseBusiness className="h-5 w-5" />} label="Lead" value={summary.activos} detail="Relaciones comerciales activas" tone="blue" />
-        <CrmStatCard icon={<ArrowUpNarrowWide className="h-5 w-5" />} label="Oportunidad" value={summary.inactivos} detail="Cuentas conservadas en el sistema" tone="slate" />
-        <CrmStatCard icon={<User className="h-5 w-5" />} label="Cliente" value={summary.inactivos} detail="Cuentas conservadas en el sistema" tone="slate" />
+        <CrmStatCard
+          icon={<ContactRound className="h-5 w-5" />}
+          label="Contacto"
+          value={summary.contactos}
+          detail="Registros en etapa de contacto"
+          tone="blue"
+        />
+
+        <CrmStatCard
+          icon={<BriefcaseBusiness className="h-5 w-5" />}
+          label="Lead"
+          value={summary.leads}
+          detail="Contactos con interés comercial"
+          tone="blue"
+        />
+
+        <CrmStatCard
+          icon={<ArrowUpNarrowWide className="h-5 w-5" />}
+          label="Oportunidad"
+          value={summary.oportunidades}
+          detail="Negociaciones comerciales"
+          tone="slate"
+        />
+
+        <CrmStatCard
+          icon={<User className="h-5 w-5" />}
+          label="Cliente"
+          value={summary.clientes}
+          detail="Clientes concretados"
+          tone="green"
+        />
       </div>
 
       {/* ========================================================
@@ -437,33 +452,23 @@ export default function ClientesPage() {
           </div>
 
           <div className="flex gap-2">
-            {/* FILTRO POR ESTADO */}
+            {/* FILTRO POR ETAPA CRM */}
 
             <div className="relative">
               <select
-                value={estado}
+                value={etapaCRM}
                 onChange={(event) =>
-                  setEstado(
-                    event.target.value as EstadoCuenta | "todos",
+                  setEtapaCRM(
+                    event.target.value as EtapaCRM | "todos",
                   )
                 }
                 className="appearance-none rounded-md border border-border bg-background py-2 pl-3 pr-9 text-sm font-medium text-foreground outline-none"
               >
-                <option value="todos">
-                  Todos los clientes
-                </option>
-
-                <option value="cliente">
-                  Clientes activos
-                </option>
-
-                <option value="prospecto">
-                  Prospectos
-                </option>
-
-                <option value="inactivo">
-                  Inactivos
-                </option>
+                <option value="todos">Todas las etapas</option>
+                <option value="contacto">Contacto</option>
+                <option value="lead">Lead</option>
+                <option value="oportunidad">Oportunidad</option>
+                <option value="cliente">Cliente</option>
               </select>
 
               <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -688,94 +693,93 @@ function ClientRow({
     ? `${ejecutivo.first_name} ${ejecutivo.last_name}`.trim()
     : "Sin asignar";
 
- return (
-  <div className="grid w-full grid-cols-[1.5fr_1fr_1.2fr_.55fr_.8fr_.8fr] items-center gap-3 border-b border-border px-5 py-4 transition-colors last:border-b-0 hover:bg-secondary/40">
+  return (
+    <div className="grid w-full grid-cols-[1.5fr_1fr_1.2fr_.55fr_.8fr_.8fr] items-center gap-3 border-b border-border px-5 py-4 transition-colors last:border-b-0 hover:bg-secondary/40">
 
-    {/* EMPRESA */}
-    <button
-      type="button"
-      onClick={() => navigate(`/clientes/${client.id}`)}
-      className="group flex min-w-0 items-center gap-3 text-left"
-    >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">
-        {initials}
-      </div>
+      {/* EMPRESA */}
+      <button
+        type="button"
+        onClick={() => navigate(`/clientes/${client.id}`)}
+        className="group flex min-w-0 items-center gap-3 text-left"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">
+          {initials}
+        </div>
 
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary">
+            {displayName}
+          </p>
+
+          <p className="truncate text-xs text-muted-foreground">
+            {client.tipo_persona === "juridica"} Ejecutivo: {nombreEjecutivo}
+          </p>
+        </div>
+      </button>
+
+      {/* DOCUMENTO */}
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary">
-          {displayName}
-        </p>
-
-        <p className="truncate text-xs text-muted-foreground">
-          {client.tipo_persona === "juridica"} Ejecutivo: {nombreEjecutivo}
+        <p className="truncate text-sm font-medium text-foreground">
+          {client.numero_documento
+            ? `${client.documento_identidad?.toUpperCase() || ""} ${client.numero_documento}`: "-" }
         </p>
       </div>
-    </button>
 
-    {/* DOCUMENTO */}
-    <div className="min-w-0">
-      <p className="truncate text-sm font-medium text-foreground">
-        {client.documento_identidad?.toUpperCase() || "—"}{" "}
-        {client.numero_documento || "Sin documento"}
-      </p>
-    </div>
-
-    {/* INTERLOCUTOR PRINCIPAL */}
-    <div className="min-w-0">
-      <p className="truncate text-sm font-medium text-foreground">
-        {client.contacto_principal
-          ? [
+      {/* INTERLOCUTOR PRINCIPAL */}
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-foreground">
+          {client.contacto_principal
+            ? [
               client.contacto_principal.nombres,
               client.contacto_principal.apellido_paterno,
               client.contacto_principal.apellido_materno,
             ]
-                .filter(Boolean)
-                .join(" ")
-          : "Sin interlocutor principal"}
-      </p>
+              .filter(Boolean)
+              .join(" ")
+            : "Sin interlocutor principal"}
+        </p>
 
-      <p className="mt-1 truncate text-xs text-muted-foreground">
-        {client.contacto_principal?.cargo ||
-          client.contacto_principal?.correo ||
-          client.contacto_principal?.telefono ||
-          "Agrega personas desde la ficha"}
-      </p>
-    </div>
-
-    {/* CONTACTOS */}
-    <div className="flex items-center gap-2 text-sm text-foreground">
-      <UserX className="h-4 w-4 shrink-0 text-muted-foreground" />
-      {client.contactos_count ?? 0}
-    </div>
-
-    {/* UBICACIONES */}
-    <div className="min-w-0 truncate text-sm text-foreground" title={client.direccion || ""}>
-      <div className="flex items-center gap-2">
-        <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="truncate">{client.direccion || "Sin dirección"}</span>
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {client.contacto_principal?.cargo ||
+            client.contacto_principal?.correo ||
+            client.contacto_principal?.telefono ||
+            "Agrega personas desde la ficha"}
+        </p>
       </div>
-    </div>
 
-    {/* ETAPA */}
-    <div className="flex items-center justify-between gap-2">
-      <span
-        className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
-          client.estado === "prospecto"
-            ? "bg-primary/10 text-primary"
-            : client.estado === "cliente"
-              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              : "bg-secondary text-muted-foreground"
-        }`}
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-        {client.etapa_crm
-          ? getEtapaLabel(client.etapa_crm)
-          : getEstadoLabel(client.estado)}
-      </span>
-    </div>
+      {/* CONTACTOS */}
+      <div className="flex items-center gap-2 text-sm text-foreground">
+        <UserX className="h-4 w-4 shrink-0 text-muted-foreground" />
+        {client.contactos_count ?? 0}
+      </div>
 
-  </div>
-);
+      {/* UBICACIONES */}
+      <div className="min-w-0 truncate text-sm text-foreground" title={client.direccion || ""}>
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">{client.direccion || "Sin dirección"}</span>
+        </div>
+      </div>
+
+      {/* ETAPA */}
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${client.etapa_crm === "cliente"
+            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            : client.etapa_crm === "oportunidad"
+              ? "bg-slate-500/10 text-slate-600 dark:text-slate-400"
+              : "bg-primary/10 text-primary"
+            }`}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+          {client.etapa_crm
+            ? getEtapaLabel(client.etapa_crm)
+            : getEstadoLabel(client.estado)}
+        </span>
+      </div>
+
+    </div>
+  );
 }
 
 /* ================================================================

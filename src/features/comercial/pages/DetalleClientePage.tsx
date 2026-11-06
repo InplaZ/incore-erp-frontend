@@ -56,7 +56,6 @@ type DetailTab =
   | "solicitudes"
   | "pedidos";
 
-import NuevaActividadModal from "@/features/comercial/components/actividades/NuevaActividadModal";
 import ActividadMenu from "@/features/comercial/components/actividades/ActividadMenu";
 import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
 import ConfirmDialog from "../../../components/feedback/ConfirmDialog";
@@ -254,64 +253,6 @@ function DetallesCliente() {
       </div>
     );
   }
-
-  /*
-   * ============================================================
-   * DATOS DERIVADOS
-   * ============================================================
-   */
-
-  const nombreCliente = getClientName(cliente);
-  const iniciales = getInitials(nombreCliente);
-
-  const tipoPersonaLabel =
-    cliente.tipo_persona === "natural"
-      ? "Persona natural"
-      : "Persona jurídica";
-
-  const tipoDocumentoLabel =
-    cliente.documento_identidad?.toUpperCase() || "-";
-
-  const tipoRelacionLabel = getTipoRelacionLabel(
-    cliente.tipo_relacion,
-  );
-
-  /*
-   * ============================================================
-   * ACTIVIDAD RECIENTE
-   * ============================================================
-   */
-
-  const actividadesRecientes = [...actividades]
-    .sort(
-      (a, b) =>
-        new Date(b.fecha_programada).getTime() -
-        new Date(a.fecha_programada).getTime(),
-    )
-    .slice(0, 5);
-
-  /*
-   * ============================================================
-   * SOLICITUDES RECIENTES
-   * ============================================================
-   */
-
-  const solicitudesRecientes = [...solicitudes]
-    .sort(
-      (a, b) =>
-        new Date(b.fecha).getTime() -
-        new Date(a.fecha).getTime(),
-    )
-    .slice(0, 5);
-
-  /*
-   * ============================================================
-   * PRÓXIMA ACTIVIDAD
-   * ============================================================
-   *
-   * Buscamos la primera actividad pendiente/en proceso
-   * sin importar si la fecha ya pasó.
-   */
 
   const proximaActividad = [...actividades]
     .filter(
@@ -638,17 +579,6 @@ function DetallesCliente() {
           </div>
         )}
       </section>
-
-      {/* ======================================================
-          MODAL PARA EDITAR CLIENTE
-      ======================================================= */}
-
-      {/* MODAL EDITAR ACTIVIDAD */}
-      <NuevaActividadModal
-        open={actividadEditar !== null}
-        actividad={actividadEditar}
-        onClose={() => setActividadEditar(null)}
-      />
 
       {/* CONFIRMAR ELIMINACIÓN */}
       <ConfirmDialog
@@ -1025,70 +955,70 @@ function ContactosComercialesSection({
 
             <form onSubmit={guardarContacto} className="space-y-5 p-6">
               <div className="rounded-xl border border-border bg-secondary/20 p-4">
-              <p className="mb-4 text-sm font-semibold text-foreground">Información de la persona</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <CampoContacto
-                  label="Nombres *"
-                  value={formulario.nombres}
-                  onChange={(value) => cambiarCampo("nombres", value)}
-                  required
-                />
-                <CampoContacto
-                  label="Apellido paterno"
-                  value={formulario.apellido_paterno}
-                  onChange={(value) => cambiarCampo("apellido_paterno", value)}
-                />
-                <CampoContacto
-                  label="Apellido materno"
-                  value={formulario.apellido_materno}
-                  onChange={(value) => cambiarCampo("apellido_materno", value)}
-                />
-                <CampoContacto
-                  label="Cargo"
-                  value={formulario.cargo}
-                  onChange={(value) => cambiarCampo("cargo", value)}
-                />
-                <CampoContacto
-                  label="Área"
-                  value={formulario.area}
-                  onChange={(value) => cambiarCampo("area", value)}
-                />
-                <CampoContacto
-                  label="Teléfono"
-                  value={formulario.telefono}
-                  onChange={(value) => cambiarCampo("telefono", value)}
-                  inputType="tel"
-                />
-                <CampoContacto
-                  label="Correo electrónico"
-                  value={formulario.correo}
-                  onChange={(value) => cambiarCampo("correo", value)}
-                  inputType="email"
-                />
-                <CampoContacto
-                  label="Dirección"
-                  value={formulario.direccion}
-                  onChange={(value) => cambiarCampo("direccion", value)}
-                />
-              </div>
+                <p className="mb-4 text-sm font-semibold text-foreground">Información de la persona</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <CampoContacto
+                    label="Nombres *"
+                    value={formulario.nombres}
+                    onChange={(value) => cambiarCampo("nombres", value)}
+                    required
+                  />
+                  <CampoContacto
+                    label="Apellido paterno"
+                    value={formulario.apellido_paterno}
+                    onChange={(value) => cambiarCampo("apellido_paterno", value)}
+                  />
+                  <CampoContacto
+                    label="Apellido materno"
+                    value={formulario.apellido_materno}
+                    onChange={(value) => cambiarCampo("apellido_materno", value)}
+                  />
+                  <CampoContacto
+                    label="Cargo"
+                    value={formulario.cargo}
+                    onChange={(value) => cambiarCampo("cargo", value)}
+                  />
+                  <CampoContacto
+                    label="Área"
+                    value={formulario.area}
+                    onChange={(value) => cambiarCampo("area", value)}
+                  />
+                  <CampoContacto
+                    label="Teléfono"
+                    value={formulario.telefono}
+                    onChange={(value) => cambiarCampo("telefono", value)}
+                    inputType="tel"
+                  />
+                  <CampoContacto
+                    label="Correo electrónico"
+                    value={formulario.correo}
+                    onChange={(value) => cambiarCampo("correo", value)}
+                    inputType="email"
+                  />
+                  <CampoContacto
+                    label="Dirección"
+                    value={formulario.direccion}
+                    onChange={(value) => cambiarCampo("direccion", value)}
+                  />
+                </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 text-sm text-foreground">
-                <input
-                  type="checkbox"
-                  checked={formulario.es_principal}
-                  onChange={(event) =>
-                    cambiarCampo("es_principal", event.target.checked)
-                  }
-                  className="h-4 w-4 rounded border-border accent-primary"
-                />
-                Interlocutor principal
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 text-sm text-foreground">
-                <input type="checkbox" checked={formulario.activo} onChange={(event) => cambiarCampo("activo", event.target.checked)} className="h-4 w-4 rounded border-border accent-primary" />
-                Persona activa
-              </label>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={formulario.es_principal}
+                    onChange={(event) =>
+                      cambiarCampo("es_principal", event.target.checked)
+                    }
+                    className="h-4 w-4 rounded border-border accent-primary"
+                  />
+                  Interlocutor principal
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 text-sm text-foreground">
+                  <input type="checkbox" checked={formulario.activo} onChange={(event) => cambiarCampo("activo", event.target.checked)} className="h-4 w-4 rounded border-border accent-primary" />
+                  Persona activa
+                </label>
               </div>
 
               {errorFormulario && (
@@ -1236,7 +1166,6 @@ function EstadoBadge({
     </span>
   );
 }
-
 function TabButton({
   active,
   onClick,
@@ -1578,7 +1507,7 @@ function EstadoSolicitudBadge({
       ? "bg-red-500/10 text-red-600 dark:text-red-400"
       : estado === "en_negociacion"
         ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-      : estado === "aprobada" || estado === "confirmada"
+        : estado === "aprobada" || estado === "confirmada"
           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
           : "bg-primary/10 text-primary";
 
@@ -1731,15 +1660,6 @@ function getActividadIcon(
     case "reunion":
       return <CalendarDays className="h-4 w-4" />;
 
-    case "cotizacion":
-      return <FileText className="h-4 w-4" />;
-
-    case "seguimiento":
-      return <CalendarClock className="h-4 w-4" />;
-
-    case "confirmacion":
-      return <CheckCircle2 className="h-4 w-4" />;
-
     default:
       return <CalendarClock className="h-4 w-4" />;
   }
@@ -1754,15 +1674,6 @@ function getActividadTipoLabel(
 
     case "reunion":
       return "Reunión";
-
-    case "cotizacion":
-      return "Cotización";
-
-    case "seguimiento":
-      return "Seguimiento";
-
-    case "confirmacion":
-      return "Confirmación";
 
     default:
       return tipo;

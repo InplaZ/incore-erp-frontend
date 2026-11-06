@@ -17,7 +17,7 @@ import type {
   MotivoRechazoCotizacion,
 } from "../comercial.types";
 
-type AccionCotizacion = "ninguna" | "enviar" | "aceptar" | "rechazar" | "cerrar";
+type AccionCotizacion = "ninguna" | "negociar" | "enviar" | "aceptar" | "rechazar" | "cerrar";
 
 interface RegistrarComunicacionModalProps {
   open: boolean;
@@ -102,6 +102,7 @@ export default function RegistrarComunicacionModal({
   const esPanelCierreInicial = accionInicial === "cerrar" || accionInicial === "rechazar";
   const esCierre = accionCotizacion === "cerrar";
   const esRechazo = accionCotizacion === "rechazar";
+  const esNegociacion = accionCotizacion === "negociar";
   const muestraMotivoCierre = esCierre || esRechazo;
 
   // ============================================================
@@ -194,9 +195,11 @@ export default function RegistrarComunicacionModal({
           fecha_vencimiento_contrato: vencimientoContrato || null,
           documento_cuenta: contratoExistente ? Number(contratoExistente) : null,
         } : {}),
-        accion_cotizacion: cotizacionVersionInicial
-          ? accionCotizacion
-          : "ninguna",
+        accion_cotizacion: esNegociacion
+          ? "negociar"
+          : cotizacionVersionInicial
+            ? accionCotizacion
+            : "ninguna",
       });
 
       // ========================================================
@@ -453,6 +456,7 @@ export default function RegistrarComunicacionModal({
                   e.target.value as DireccionComunicacion,
                 )
               }
+              disabled={esNegociacion}
               className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20"
             >
               <option value="saliente">
@@ -469,7 +473,20 @@ export default function RegistrarComunicacionModal({
             </p>
           </div>}
 
-          {cotizacionVersionInicial && accionCotizacion !== "aceptar" && !esPanelCierreInicial && (
+          {accionCotizacion !== "aceptar" && !muestraMotivoCierre && <label className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50/60 px-4 py-3 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={esNegociacion}
+              onChange={(event) => {
+                setAccionCotizacion(event.target.checked ? "negociar" : "ninguna");
+                if (event.target.checked) setDireccion("entrante");
+              }}
+              className="mt-1"
+            />
+            <span><strong className="block">Respuesta del cliente relacionada con la negociación</strong><span className="mt-1 block text-xs text-slate-600">Márcala solo cuando el cliente responda sobre la oferta o solicite negociar. Las comunicaciones informativas no cambian el estado de la oportunidad.</span></span>
+          </label>}
+
+          {cotizacionVersionInicial && accionCotizacion !== "aceptar" && !esPanelCierreInicial && !esNegociacion && (
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">
                 Acción sobre la cotización
@@ -661,6 +678,8 @@ export default function RegistrarComunicacionModal({
                     ? "Registrar rechazo"
                     : esCierre
                       ? "Cerrar oportunidad"
+                      : esNegociacion
+                        ? "Registrar respuesta de negociación"
                       : "Registrar comunicación"}
             </button>
 

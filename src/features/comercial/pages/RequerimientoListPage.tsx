@@ -49,6 +49,7 @@ const FILTROS_VACIOS = {
 type FiltrosRequerimientos = typeof FILTROS_VACIOS;
 
 export default function RequerimientosListPage() {
+  const [busqueda, setBusqueda] = useState("");
   const navigate = useNavigate();
   const [filtros, setFiltros] = useState<FiltrosRequerimientos>(FILTROS_VACIOS);
   const [filtrosAplicados, setFiltrosAplicados] = useState<ApiQueryParams | undefined>();
@@ -79,7 +80,7 @@ export default function RequerimientosListPage() {
     const minimo = filtros.minimo_bs ? Number(filtros.minimo_bs) : undefined;
     const maximo = filtros.maximo_bs ? Number(filtros.maximo_bs) : undefined;
     if ((minimo !== undefined && (!Number.isFinite(minimo) || minimo < 0)) ||
-        (maximo !== undefined && (!Number.isFinite(maximo) || maximo < 0))) {
+      (maximo !== undefined && (!Number.isFinite(maximo) || maximo < 0))) {
       setErrorFiltros("Ingresa montos válidos iguales o mayores a cero.");
       return;
     }
@@ -130,8 +131,50 @@ export default function RequerimientosListPage() {
     const version = versiones
       .filter((item) => item.cotizacion === oferta?.id)
       .sort((a, b) => b.version - a.version)[0];
-    return { requerimiento, oferta, version, estado: obtenerEstadoOferta(requerimiento) };
+    const versionAceptada = versiones?.find(
+      (item) => item.estado === "aceptada"
+    );
+    return { requerimiento, oferta, version, versionAceptada, estado: obtenerEstadoOferta(requerimiento) };
   }), [requerimientos, cotizaciones, versiones]);
+
+  const ofertasFiltradas = useMemo(() => {
+    const termino = busqueda.trim().toLowerCase();
+
+    if (!termino) return ofertas;
+
+    return ofertas.filter(({ requerimiento }) => {
+      const cuenta = cuentas.find(
+        (item) => item.id === requerimiento.cuenta_comercial
+      );
+
+      if (!cuenta) return false;
+
+      const nombreEmpresa = [
+        cuenta.nombre_comercial,
+        cuenta.razon_social,
+        cuenta.alias,
+        cuenta.nombres,
+        cuenta.apellido_paterno,
+        cuenta.apellido_materno,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const numeroDocumento = cuenta.numero_documento?.toLowerCase() ?? "";
+
+      const numeroOferta = cotizaciones.find(
+        (item) => item.solicitud_comercial === requerimiento.id
+      )?.numero?.toLowerCase() ?? "";
+
+      return (
+        nombreEmpresa.includes(termino) ||
+        numeroDocumento.includes(termino) ||
+        numeroOferta.includes(termino) ||
+        String(requerimiento.id).includes(termino)
+      );
+    });
+  }, [ofertas, busqueda, cuentas, cotizaciones]);
 
   const summary = useMemo(() => {
     const items = ofertas.filter((item) => item.estado.codigo !== null);
@@ -166,14 +209,15 @@ export default function RequerimientosListPage() {
     });
   }, [ofertas, resumenAceptadas, cargandoImportesAceptados]);
 
+  
   return (
     <div className="space-y-6">
       {/* Encabezado */}
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="mt-1 text-2xl font-semibold text-foreground">
-            Ofertas comerciales
+          <h1 className="mt-1 text-2xl font-bold text-foreground">
+            OFERTAS COMERCIALES
           </h1>
 
           <p className="mt-1 text-sm text-muted-foreground">
@@ -250,9 +294,10 @@ export default function RequerimientosListPage() {
 
             <input
               type="search"
-              placeholder="Buscar requerimiento..."
-              disabled
-              className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar empresa, NIT, CI o número de oferta..."
+              className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
             />
           </div>
         </div>
@@ -269,7 +314,7 @@ export default function RequerimientosListPage() {
 
         {isError && (
           <div className="px-5 py-10 text-center text-sm text-destructive">
-              No se pudieron cargar los requerimientos.
+            No se pudieron cargar los requerimientos.
 
             {error instanceof Error && (
               <span className="mt-1 block">
@@ -286,13 +331,14 @@ export default function RequerimientosListPage() {
             <div className="min-w-[1350px]">
               <TableHeader />
 
-              {ofertas.map(({ requerimiento, oferta, version, estado }) => {
+              {ofertasFiltradas.map(({ requerimiento, oferta, version, versionAceptada, estado }) => {
                 return <RequerimientoRow
                   key={requerimiento.id}
                   requerimiento={requerimiento}
                   cuentas={cuentas}
                   oferta={oferta}
                   version={version}
+                  versionAceptada={versionAceptada}
                   estadoOferta={estado}
                   onView={() => navigate(`/requerimientos/${requerimiento.id}`)}
                   onFollowup={() => navigate(`/requerimientos/${requerimiento.id}${version ? `?tab=seguimiento&version=${version.id}&actividad=true` : "?actividad=true"}`)}
@@ -300,9 +346,9 @@ export default function RequerimientosListPage() {
                 />;
               })}
 
-              {requerimientos.length === 0 && (
+              {ofertasFiltradas.length === 0 && (
                 <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-                  No hay requerimientos registrados.
+                  No se encontraron ofertas.
                 </div>
               )}
             </div>
@@ -314,7 +360,7 @@ export default function RequerimientosListPage() {
         {!isLoading && !isError && (
           <div className="border-t border-border px-5 py-3">
             <span className="text-xs text-muted-foreground">
-              Mostrando {requerimientos.length} requerimientos
+              Mostrando {ofertasFiltradas.length} de {ofertas.length} ofertas
             </span>
           </div>
         )}
@@ -367,6 +413,7 @@ function RequerimientoRow({
   cuentas,
   oferta,
   version,
+  versionAceptada,
   estadoOferta,
   onView,
   onFollowup,
@@ -378,6 +425,7 @@ function RequerimientoRow({
   : never;
   oferta?: Cotizacion;
   version?: CotizacionVersion;
+  versionAceptada: CotizacionVersion;
   estadoOferta: EstadoOfertaCalculado;
   onView: () => void;
   onFollowup: () => void;
@@ -454,20 +502,37 @@ function RequerimientoRow({
 
       <button
         type="button"
-        disabled={!version}
+        disabled={!versionAceptada}
         onClick={() => {
-          if (!version) return;
-          void cotizacionesVersionesApi.pdf(version.id).then((blob) => {
-            const url = URL.createObjectURL(blob);
-            window.open(url, "_blank", "noopener,noreferrer");
-            window.setTimeout(() => URL.revokeObjectURL(url), 60000);
-          }).catch((error) => console.error("No se pudo abrir el PDF de la oferta", error));
+          if (!versionAceptada) return;
+
+          void cotizacionesVersionesApi
+            .pdf(versionAceptada.id)
+            .then((blob) => {
+              const url = URL.createObjectURL(blob);
+              window.open(url, "_blank", "noopener,noreferrer");
+
+              window.setTimeout(
+                () => URL.revokeObjectURL(url),
+                60000
+              );
+            })
+            .catch((error) =>
+              console.error(
+                "No se pudo abrir el PDF de la versión aceptada",
+                error
+              )
+            );
         }}
         className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
-        title={version ? "Abrir PDF de la versión vigente" : "La solicitud todavía no tiene una oferta"}
+        title={
+          versionAceptada
+            ? "Abrir PDF de la versión aceptada"
+            : "No existe una versión aceptada"
+        }
       >
         <Eye className="h-3.5 w-3.5" />
-        PDF
+        PDF versión aceptada
       </button>
 
       {/* Historial: abre el detalle de la solicitud */}
