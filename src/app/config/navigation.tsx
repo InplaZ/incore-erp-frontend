@@ -77,9 +77,9 @@ export const navigationItems: NavigationItem[] = [
     icon: <Package className="size-5" />,
   },
   {
-    id: "ui-playground",
+    id: "maquinas",
     label: "Máquinas y límites",
-    href: "/ui-playground",
+    href: "/maquinas",
     icon: <Workflow className="size-5" />,
   },
   {

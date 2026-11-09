@@ -1,10 +1,10 @@
-import { viabilidadApi } from "@/features/viabilidad/viabilidad.api";
+import { viabilidadApi } from "@/features/viabilidad/viabilidad.api"; //Se comunica con el backend para evaluar la viabilidad
 import type {
-    EvaluarViabilidadPayload,
-    EvaluarViabilidadResponse,
+    EvaluarViabilidadPayload, //Define estructura de los datos que se envian
+    EvaluarViabilidadResponse, //Define la estructura de la respuesta del backend
 } from "@/features/viabilidad/viabilidad.types";
-import ViabilidadPreviaPanel from "@/features/viabilidad/requerimientos/ViabilidadPreviaPanel";
-import { useProductosCategorias } from "@/features/productos/productos.hooks";
+import ViabilidadPreviaPanel from "@/features/viabilidad/requerimientos/ViabilidadPreviaPanel"; //Muestra los resultados de la evaluación
+import { useProductosCategorias } from "@/features/productos/productos.hooks"; //Obtiene las categorias de productos
 import { useEffect, useMemo, useState } from "react";
 // ======================================================
 // 1. TIPOS DEL FORMULARIO

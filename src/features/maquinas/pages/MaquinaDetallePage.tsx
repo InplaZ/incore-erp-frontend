@@ -1,3 +1,7 @@
+
+///////////////////////////////////////////////////////
+// Consultar información técnica e historial
+///////////////////////////////////////////////////////
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Cpu, CheckCircle2, XCircle, AlertTriangle, Wrench, Settings } from 'lucide-react';

@@ -32,6 +32,10 @@ const Simulador = lazy(
     () => import("@/features/comercial/components/ofertas/Simulador")
 )
 
+const Maquinas = lazy(
+    () => import("@/features/maquinas/pages/MaquinasPage")
+)
+
 export const comercialRoutes: AppRoute[] = [
     {
         path: "agenda",
@@ -65,5 +69,10 @@ export const comercialRoutes: AppRoute[] = [
     {
         path: "simulador",
         element: <Simulador />
+    },
+    {
+        path: "maquinas",
+        element: <Maquinas />
     }
+
 ];
