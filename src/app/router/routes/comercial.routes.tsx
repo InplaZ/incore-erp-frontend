@@ -28,6 +28,10 @@ const RequerimientoDetallePage = lazy(
     () => import("@/features/comercial/pages/RequerimientoDetallePage")
 )
 
+const Simulador = lazy(
+    () => import("@/features/comercial/components/ofertas/Simulador")
+)
+
 export const comercialRoutes: AppRoute[] = [
     {
         path: "agenda",
@@ -58,5 +62,8 @@ export const comercialRoutes: AppRoute[] = [
         path: "clientes",
         element: <ClientesPage />
     },
-    
+    {
+        path: "simulador",
+        element: <Simulador />
+    }
 ];

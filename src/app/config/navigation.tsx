@@ -1,4 +1,4 @@
-import { Home, PanelsTopLeft, BriefcaseBusiness, Package, UserPlus2, PhoneCallIcon, ShoppingCart, Workflow, Factory } from "lucide-react";
+import { Home, PanelsTopLeft, BriefcaseBusiness, Package, UserPlus2, PhoneCallIcon, ShoppingCart, Workflow, Factory, CalculatorIcon } from "lucide-react";
 
 import type { SidebarItem } from "../../components/navigation";
 
@@ -81,6 +81,12 @@ export const navigationItems: NavigationItem[] = [
     label: "Máquinas y límites",
     href: "/ui-playground",
     icon: <Workflow className="size-5" />,
+  },
+  {
+    id: "simulador",
+    label: "Simulador",
+    href: "/simulador",
+    icon: <CalculatorIcon className="size-5" />,
   },
   {
     id: "admin",
