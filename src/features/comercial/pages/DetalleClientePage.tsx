@@ -91,6 +91,7 @@ function DetallesCliente() {
     error,
   } = useCuentaComercial(clienteId);
 
+
   /*
    * ============================================================
    * HISTORIAL COMERCIAL

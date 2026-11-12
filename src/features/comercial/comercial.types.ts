@@ -123,7 +123,7 @@ export interface CuentaComercial {
     alias: string;
     etapa_crm: EtapaCRM;
 
-    codigo_cliente: number;
+    codigo_cliente: number | null;
     documento_identidad: DocumentoIdentidad | null;
     numero_documento: string;
 
@@ -141,6 +141,7 @@ export interface CuentaComercial {
     contacto_principal: ContactoComercial | null;
     contactos: ContactoComercial[];
     contactos_count: number;
+
 }
 
 export interface CuentaComercialCreate {
@@ -168,6 +169,7 @@ export interface CuentaComercialCreate {
     tipo_relacion?: TipoRelacion | null;
 
     fecha_alta: string;
+    codigo_cliente?: number | null;
 
 }
 
@@ -497,6 +499,9 @@ export interface SolicitudComercial {
 
   cuenta_comercial: number;
   usuario: number;
+
+  codigo_cliente: number | null;
+  requiere_codigo_cliente: boolean;
 
   fecha: string;
   descripcion: string;

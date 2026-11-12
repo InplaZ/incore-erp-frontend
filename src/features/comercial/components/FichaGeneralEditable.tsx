@@ -23,6 +23,7 @@ function datosIniciales(cuenta: CuentaComercial): CuentaComercialUpdate {
     correo: cuenta.correo,
     direccion: cuenta.direccion,
     ejecutivo_asignado: cuenta.ejecutivo_asignado ?? null,
+    codigo_cliente: cuenta.codigo_cliente ?? null,
   };
 }
 
@@ -89,6 +90,26 @@ export default function FichaGeneralEditable({ cuenta }: { cuenta: CuentaComerci
           <label className={label}>Nombre comercial<input className={control} maxLength={200} value={form.nombre_comercial ?? ""} onChange={e => set("nombre_comercial", e.target.value)} /></label>
           <label className={label}>Razón social<input className={control} maxLength={200} value={form.razon_social ?? ""} onChange={e => set("razon_social", e.target.value)} /></label>
           <label className={label}>Alias<input className={control} maxLength={100} value={form.alias ?? ""} onChange={e => set("alias", e.target.value)} /></label>
+          <label className={label}>
+            Código de cliente
+            <input
+              className={control}
+              type="number"
+              min="1"
+              step="1"
+              value={form.codigo_cliente ?? ""}
+              onChange={e =>
+                set(
+                  "codigo_cliente",
+                  e.target.value === "" ? null : Number(e.target.value)
+                )
+              }
+              placeholder="Ej. 1010"
+            />
+            <span className="mt-1 block text-[11px] font-normal">
+              Código asignado por el sistema de ventas de INPLAZ.
+            </span>
+          </label>
           <label className={label}>
             Etapa
             <select

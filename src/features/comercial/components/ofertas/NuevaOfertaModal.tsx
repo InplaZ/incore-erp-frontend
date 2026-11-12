@@ -146,21 +146,20 @@ export default function NuevaOfertaModal({
     if (!query) return cuentasActivas;
 
     return cuentasActivas.filter((cuenta) => {
-      const esEmpresa = cuenta.tipo_persona === "juridica";
+      const datosCuenta = [
+        // Datos comerciales
+        cuenta.nombre_comercial,
+        cuenta.razon_social,
+        cuenta.alias,
 
-      const datosCuenta = esEmpresa
-        ? [
-          cuenta.nombre_comercial,
-          cuenta.razon_social,
-          cuenta.alias,
-          String(cuenta.codigo_cliente),
-        ]
-        : [
-          cuenta.nombres,
-          cuenta.apellido_paterno,
-          cuenta.apellido_materno,
-          String(cuenta.codigo_cliente),
-        ];
+        // Datos personales
+        cuenta.nombres,
+        cuenta.apellido_paterno,
+        cuenta.apellido_materno,
+
+        // Identificador
+        String(cuenta.codigo_cliente),
+      ];
 
       const coincideCuenta = datosCuenta.some(
         (valor) => normalize(valor || "").includes(query)

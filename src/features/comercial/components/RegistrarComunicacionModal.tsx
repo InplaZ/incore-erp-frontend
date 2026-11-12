@@ -53,6 +53,7 @@ export default function RegistrarComunicacionModal({
   const solicitudSeleccionada = solicitudes.find(
     (solicitud) => solicitud.id === solicitudInicial,
   );
+
   const cuentaComercialId = solicitudSeleccionada?.cuenta_comercial ?? 0;
   const { data: cuentaCliente } = useCuentaComercial(cuentaComercialId);
   const { data: documentosCuenta = [] } = useDocumentosCuentaComercial(cuentaComercialId, false);
@@ -569,10 +570,15 @@ export default function RegistrarComunicacionModal({
                 <div className="rounded-xl border border-border p-4"><p className="text-xs font-semibold text-muted-foreground">Total</p><p className="mt-2 text-xl font-bold">{cotizacionVersion?.moneda ?? "Bs"} {Number(cotizacionVersion?.precio_total ?? 0).toLocaleString("es-BO", { minimumFractionDigits: 2 })}</p></div>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="space-y-1 text-xs font-semibold text-muted-foreground">Tipo de documento<input readOnly value={cuentaCliente?.documento_identidad?.toUpperCase() ?? ""} placeholder="Sin documento registrado en la cuenta" className="w-full rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm font-normal text-foreground" /></label>
+                <input
+                  readOnly
+                  value={cuentaCliente?.documento_identidad?.toUpperCase() ?? ""}
+                  placeholder="Sin documento registrado"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm font-normal text-slate-500 cursor-default outline-none"
+                />
                 <label className="space-y-1 text-xs font-semibold text-muted-foreground">N.º documento cliente<input readOnly value={cuentaCliente?.numero_documento ?? ""} placeholder="Sin documento registrado en la cuenta" className="w-full rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm font-normal text-foreground" /></label>
                 <label className="space-y-1 text-xs font-semibold text-muted-foreground">Código ERP (obligatorio)<input required value={codigoErp} onChange={e => setCodigoErp(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm font-normal text-foreground" /></label>
-                <label className="space-y-1 text-xs font-semibold text-muted-foreground">Evidencia de aceptación<select value={tipoEvidencia} onChange={e => setTipoEvidencia(e.target.value as TipoEvidenciaAceptacion)} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm font-normal text-foreground">{[["deposito","Depósito"],["contrato","Contrato"],["licitacion","Licitación"],["orden_compra","Orden de compra"],["email","Correo"],["whatsapp","WhatsApp"],["otro","Otro"]].map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+                <label className="space-y-1 text-xs font-semibold text-muted-foreground">Evidencia de aceptación<select value={tipoEvidencia} onChange={e => setTipoEvidencia(e.target.value as TipoEvidenciaAceptacion)} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm font-normal text-foreground">{[["deposito", "Depósito"], ["contrato", "Contrato"], ["licitacion", "Licitación"], ["orden_compra", "Orden de compra"], ["email", "Correo"], ["whatsapp", "WhatsApp"], ["otro", "Otro"]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
                 <label className="space-y-1 text-xs font-semibold text-muted-foreground">Anticipo recibido ({cotizacionVersion?.moneda === "BOB" ? "Bs" : cotizacionVersion?.moneda ?? "Bs"})<input type="number" min="0" step="0.01" value={anticipo} onChange={e => setAnticipo(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm font-normal text-foreground" /></label>
                 <label className="space-y-1 text-xs font-semibold text-muted-foreground">Días de crédito<input type="number" min="0" value={diasCredito} onChange={e => setDiasCredito(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm font-normal text-foreground" /></label>
                 <label className="space-y-1 text-xs font-semibold text-muted-foreground">Referencia de comprobante / contrato<input value={referenciaPago} onChange={e => setReferenciaPago(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm font-normal text-foreground" /></label>
@@ -680,7 +686,7 @@ export default function RegistrarComunicacionModal({
                       ? "Cerrar oportunidad"
                       : esNegociacion
                         ? "Registrar respuesta de negociación"
-                      : "Registrar comunicación"}
+                        : "Registrar comunicación"}
             </button>
 
           </div>
