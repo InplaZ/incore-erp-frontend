@@ -139,6 +139,7 @@ export interface CuentaComercial {
     created_at: string;
     updated_at: string;
     contacto_principal: ContactoComercial | null;
+    contactos: ContactoComercial[];
     contactos_count: number;
 }
 
