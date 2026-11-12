@@ -193,7 +193,7 @@ export default function RequerimientoDetallePage() {
     const { data: versionConsultada, isLoading: cargandoVersionConsultada } = useCotizacionVersion(versionSeleccionadaId ?? 0);
     const versionSeleccionadaActual = versionSeleccionadaId
         ? versionesDisponibles.find((version) => version.id === versionSeleccionadaId)
-            ?? (versionConsultada?.cotizacion === cotizacionDeSolicitud?.id ? versionConsultada : null)
+        ?? (versionConsultada?.cotizacion === cotizacionDeSolicitud?.id ? versionConsultada : null)
         : versionesDisponibles[0] ?? null;
     const { data: eventosSeguimiento = [] } = useOfertaSeguimiento(versionSeleccionadaActual?.id ?? 0);
 
@@ -316,31 +316,31 @@ export default function RequerimientoDetallePage() {
         ? ("ancho" in bobinaMostrar ? bobinaMostrar.ancho : bobinaMostrar.ancho_desdoblado || bobinaMostrar.ancho_doblado)
         : null;
     const datosTecnicos = especificacionVersionada ?? (productoVersion
-            ? {
-                material: productoVersion.material,
-                apto_alimento: productoVersion.apto_alimento,
-                micraje: productoVersion.micraje,
-                color_bolsa: productoVersion.color_bolsa,
-                opacidad: "",
-                capas: productoVersion.capas ?? "",
-                cara_impresion: productoVersion.cara_impresion ?? "",
-                impresion: productoVersion.impresion,
-                color_impresion: productoVersion.color_impresion,
-                tipo_impresion: productoVersion.tipo_impresion,
-                tratamiento_impresion: productoVersion.tratamiento_impresion ?? "",
-                posicion_impresion: "",
-                distancia_impresion_superior: null,
-                distancia_impresion_inferior: null,
-                distancia_impresion_izquierda: null,
-                distancia_impresion_derecha: null,
-                variantes_color: [],
-                tratamientos_acabados_especiales: [],
-                otras_caracteristicas:
-                    productoCotizado?.especificacionBolsa?.otras_caracteristicas ??
-                    productoCotizado?.especificacionBobina?.otras_caracteristicas ??
-                    "",
-            }
-            : productoCotizado ? null : especificacionProducto);
+        ? {
+            material: productoVersion.material,
+            apto_alimento: productoVersion.apto_alimento,
+            micraje: productoVersion.micraje,
+            color_bolsa: productoVersion.color_bolsa,
+            opacidad: "",
+            capas: productoVersion.capas ?? "",
+            cara_impresion: productoVersion.cara_impresion ?? "",
+            impresion: productoVersion.impresion,
+            color_impresion: productoVersion.color_impresion,
+            tipo_impresion: productoVersion.tipo_impresion,
+            tratamiento_impresion: productoVersion.tratamiento_impresion ?? "",
+            posicion_impresion: "",
+            distancia_impresion_superior: null,
+            distancia_impresion_inferior: null,
+            distancia_impresion_izquierda: null,
+            distancia_impresion_derecha: null,
+            variantes_color: [],
+            tratamientos_acabados_especiales: [],
+            otras_caracteristicas:
+                productoCotizado?.especificacionBolsa?.otras_caracteristicas ??
+                productoCotizado?.especificacionBobina?.otras_caracteristicas ??
+                "",
+        }
+        : productoCotizado ? null : especificacionProducto);
     const categoriaProducto = productoCotizado?.categoria?.nombre ??
         categorias?.find(
             (categoria) => categoria.id === (especificacionVersionada?.categoria_producto ?? especificacionProducto?.categoria_producto),
@@ -649,11 +649,41 @@ export default function RequerimientoDetallePage() {
             {errorAgregarProducto && !productoPendiente && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{errorAgregarProducto}</p>}
             {!lineasVersionSeleccionada.length ? <p className="py-12 text-center text-sm text-slate-500">Esta versión no tiene productos registrados.</p> : lineasVersionSeleccionada.map((linea) => {
                 const detalle = linea.cotizacionDetalle;
+                const detalleVersion = versionSeleccionada?.detalles?.find(
+                    (item) => item.id === detalle.id
+                );
                 const nombreProducto = linea.producto?.nombre || `Producto solicitado · especificación #${linea.especificacionProductoSolicitadoVersion?.id ?? "—"}`;
                 const especificacion = linea.especificacionProductoSolicitadoVersion;
                 const editing = lineaEditandoId === detalle.id && formLinea;
+
                 return <article key={detalle.id} className="min-w-0 rounded-lg border border-slate-200 p-3 sm:p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words font-semibold text-slate-900">{nombreProducto}</h3><p className="text-xs text-slate-500">{linea.producto?.codigo || "Sin código"} · {linea.categoria?.nombre || "Categoría no disponible"}</p></div>{linea.productoVersion?.estado && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">Estado: {linea.productoVersion.estado}</span>}</div>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <h3 className="break-words font-semibold text-slate-900">
+                                {nombreProducto}
+                            </h3>
+                            <p className="text-xs text-slate-500">
+                                {linea.producto?.codigo || "Sin código"} · {linea.categoria?.nombre || "Categoría no disponible"}
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            {/* PRECIO POR KILOGRAMO */}
+                            <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-right">
+                                <p className="text-[10px] font-medium text-blue-600">
+                                    Precio por kg
+                                </p>
+                                <p className="text-base font-bold text-blue-800">
+                                    {detalleVersion?.precio_por_kg != null
+                                        ? `${versionSeleccionada.moneda === "BOB" ? "Bs" : versionSeleccionada.moneda} ${Number(detalleVersion.precio_por_kg).toLocaleString("es-BO", {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        })}`
+                                        : "No disponible"}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <InfoItem label="Cantidad" value={`${detalle.cantidad} ${detalle.unidad_comercial}`} />
                         <InfoItem label="Precio unitario" value={`${versionSeleccionada.moneda} ${Number(detalle.precio_lista).toLocaleString("es-BO", { minimumFractionDigits: 2 })}`} />
@@ -797,16 +827,16 @@ export default function RequerimientoDetallePage() {
                         <MessageCircle className="h-4 w-4" />
                         Ver comunicaciones
                     </button>
-                {solicitud.estado == "aprobada" && (
-                    <button
-                        type="button"
-                        onClick={handleImprimir}
-                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted"
-                    >
-                        <MessageCircle className="h-4 w-4" />
-                        Imprimir
-                    </button>
-                )}
+                    {solicitud.estado == "aprobada" && (
+                        <button
+                            type="button"
+                            onClick={handleImprimir}
+                            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted"
+                        >
+                            <MessageCircle className="h-4 w-4" />
+                            Imprimir
+                        </button>
+                    )}
                 </div>
             </header>
 

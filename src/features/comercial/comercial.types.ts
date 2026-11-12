@@ -363,7 +363,8 @@ export interface ProductoCotizadoEnSolicitud {
     | "precio_lista"
     | "descuento_porcentaje"
     | "precio_unitario"
-    | "precio_total"
+    | "precio_total"    
+    | "precio_por_kg"
     | "unidad_comercial"
     | "peso_kg"
   >;
@@ -1219,6 +1220,9 @@ export interface CotizacionVersion {
   observaciones_comerciales: string;
   created_at: string;
   updated_at: string;
+  detalles?:Array<
+  Pick<CotizacionDetalle, "id" | "precio_por_kg" >
+  >;
 }
 
 export interface CotizacionVersionCreate {
@@ -1266,6 +1270,7 @@ export interface CotizacionDetalle {
   precio_total: string;
   unidad_comercial: string;
   peso_kg: string | null;
+  precio_por_kg: string | null;
   created_at: string;
   updated_at: string;
 }
