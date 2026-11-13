@@ -1205,6 +1205,7 @@ export interface CotizacionVersion {
   version: number;
   moneda: Moneda;
   precio_total: string;
+  precio_promedio_por_kg: string | null;
   estado: EstadoCotizacionVersion;
   forma_pago: string;
   validez_dias: number | null;

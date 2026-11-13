@@ -9,6 +9,7 @@ export default function OfertaComercialDetalle({
   estado,
   cantidad,
   total,
+  precioPromedioPorKg,
   moneda = "Bs",
   children,
   condiciones,
@@ -36,6 +37,7 @@ export default function OfertaComercialDetalle({
   estado: string;
   cantidad: number;
   total: string;
+  precioPromedioPorKg?: string | null;
   moneda?: string;
   children: ReactNode;
   condiciones?: ReactNode;
@@ -78,6 +80,19 @@ export default function OfertaComercialDetalle({
       <aside className="min-w-0 space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div><h2 className="font-bold text-slate-900">Acciones y estado</h2><p className="mt-3 border-b border-slate-200 pb-4 text-xs text-slate-500">{cliente} · {cantidad} {cantidad === 1 ? "producto" : "productos"}{version ? ` · V${version}` : ""}</p></div>
         <div className="min-w-0 border-b border-slate-200 pb-4"><p className="text-xs text-slate-500">Valor actual</p><p className="mt-1 break-words text-2xl font-bold text-slate-900 sm:text-3xl">{moneda} {total}</p><span className="mt-3 inline-flex max-w-full rounded-full bg-amber-100 px-3 py-1.5 text-[10px] font-semibold text-amber-800">{estado}</span></div>
+        {precioPromedioPorKg != null && (
+          <div className="border-b border-slate-200 pb-4">
+            <p className="text-xs text-slate-500">
+              Precio promedio por kg
+            </p>
+            <p className="mt-1 text-xl font-bold text-slate-900">
+              {moneda} {Number(precioPromedioPorKg).toLocaleString("es-BO", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+        )}
         {evidenciaRegistrada && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-[10px] text-emerald-900"><p className="font-semibold">Evidencia: {evidenciaRegistrada.medio}{evidenciaRegistrada.archivo ? ` · ${evidenciaRegistrada.archivo}` : ""}</p><p className="mt-1 break-words">{evidenciaRegistrada.detalle}</p></div>}
         {acciones ?? (pestañaActiva === "seguimiento" ? accionesSeguimiento : pestañaActiva === "versiones" ? accionesVersiones : <>
           <button type="button" onClick={onSend} disabled={!cantidad} className="w-full rounded-lg bg-blue-700 px-4 py-3 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">✓ Guardar y registrar envío</button>

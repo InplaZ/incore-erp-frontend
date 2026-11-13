@@ -190,10 +190,18 @@ export default function RequerimientoDetallePage() {
     const versionesDisponibles = (versionesData?.results ?? versionesDesdeSolicitud)
         .filter((version) => !cotizacionDeSolicitud || version.cotizacion === cotizacionDeSolicitud.id)
         .sort((a, b) => b.version - a.version);
-    const { data: versionConsultada, isLoading: cargandoVersionConsultada } = useCotizacionVersion(versionSeleccionadaId ?? 0);
+    const { data: versionConsultada, isLoading: cargandoVersionConsultada } =
+        useCotizacionVersion(versionSeleccionadaId ?? 0);
+
     const versionSeleccionadaActual = versionSeleccionadaId
-        ? versionesDisponibles.find((version) => version.id === versionSeleccionadaId)
-        ?? (versionConsultada?.cotizacion === cotizacionDeSolicitud?.id ? versionConsultada : null)
+        ? (
+            versionConsultada?.id === versionSeleccionadaId &&
+                versionConsultada.cotizacion === cotizacionDeSolicitud?.id
+                ? versionConsultada
+                : versionesDisponibles.find(
+                    (version) => version.id === versionSeleccionadaId
+                ) ?? null
+        )
         : versionesDisponibles[0] ?? null;
     const { data: eventosSeguimiento = [] } = useOfertaSeguimiento(versionSeleccionadaActual?.id ?? 0);
 
@@ -722,6 +730,7 @@ export default function RequerimientoDetallePage() {
                 estado={estadoEtiqueta[versionSeleccionada.estado] || versionSeleccionada.estado}
                 cantidad={lineasVersionSeleccionada.length}
                 total={totalProductos}
+                precioPromedioPorKg={versionSeleccionada.precio_promedio_por_kg}
                 moneda={versionSeleccionada.moneda === "BOB" ? "Bs" : versionSeleccionada.moneda}
                 versionCount={versionesCotizacion.length}
                 allowAddProduct={esBorrador}
