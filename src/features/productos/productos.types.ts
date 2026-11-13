@@ -40,6 +40,14 @@ export interface ProductoComercialCreate {
     impresion: boolean;
     color_impresion?: string[];
     tipo_impresion?: string;
+    colores_cara_a?: number | null;
+    colores_cara_b?: number | null;
+    numero_rodillo_cara_a?: string;
+    numero_rodillo_cara_b?: string;
+    tipo_impresion_cara_a?: "corrida" | "dimensionada" | "";
+    tipo_impresion_cara_b?: "corrida" | "dimensionada" | "";
+    denominacion_arte_cara_a?: string;
+    denominacion_arte_cara_b?: string;
     metros?: string | number | null;
     observaciones?: string;
   };
@@ -60,7 +68,13 @@ export interface ProductoComercialCreate {
     otras_caracteristicas?: string;
   };
   especificacion_bobina?: {
+    /** Ancho desarrollado/desdoblado; retained for API compatibility. */
     ancho: string | number;
+    fuelle_izquierdo?: string | number | null;
+    fuelle_derecho?: string | number | null;
+    largo_desdoblado?: string | number | null;
+    fuelle_superior?: string | number | null;
+    fuelle_inferior?: string | number | null;
     configuracion_pelicula?: "tubular" | "corte_lateral" | "corte_separacion";
     diametro?: string | number | null;
     diametro_nucleo?: string | number | null;
@@ -94,10 +108,27 @@ export interface ProductoComercialDetalle extends Producto {
     impresion: boolean;
     color_impresion: string[];
     tipo_impresion: string;
+    colores_cara_a: number | null;
+    colores_cara_b: number | null;
+    numero_rodillo_cara_a: string;
+    numero_rodillo_cara_b: string;
+    tipo_impresion_cara_a: "corrida" | "dimensionada" | "";
+    tipo_impresion_cara_b: "corrida" | "dimensionada" | "";
+    denominacion_arte_cara_a: string;
+    denominacion_arte_cara_b: string;
     metros: string | number | null;
     observaciones: string;
     especificacion_bolsa: NonNullable<ProductoComercialCreate["especificacion_bolsa"]> & { id: number } | null;
-    especificacion_bobina: NonNullable<ProductoComercialCreate["especificacion_bobina"]> & { id: number } | null;
+    especificacion_bobina: NonNullable<ProductoComercialCreate["especificacion_bobina"]> & {
+      id: number;
+      ancho_doblado: string | number | null;
+      largo_desdoblado: string | number | null;
+      largo_doblado: string | number | null;
+      fuelle_izquierdo: string | number | null;
+      fuelle_derecho: string | number | null;
+      fuelle_superior: string | number | null;
+      fuelle_inferior: string | number | null;
+    } | null;
   }>;
   presentacion: (NonNullable<ProductoComercialCreate["presentacion"]> & { id: number }) | null;
 }

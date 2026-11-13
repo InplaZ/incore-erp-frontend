@@ -911,9 +911,13 @@ export interface EspecificacionBobinaSolicitadaVersion {
   especificacion_producto_solicitado_version: number;
   ancho_doblado: string | null;
   ancho_desdoblado: string | null;
+  largo_doblado: string | null;
+  largo_desdoblado: string | null;
   configuracion_pelicula: ConfiguracionPelicula;
   fuelle_izquierdo: string | null;
   fuelle_derecho: string | null;
+  fuelle_superior: string | null;
+  fuelle_inferior: string | null;
   diametro: string | null;
   diametro_nucleo: string | null;
   longitud: string | null;
@@ -928,6 +932,12 @@ export interface EspecificacionBobinaSolicitadaVersionCreate {
   especificacion_producto_solicitado_version: number;
   ancho_doblado?: string | null;
   ancho_desdoblado?: string | null;
+  largo_doblado?: string | null;
+  largo_desdoblado?: string | null;
+  fuelle_izquierdo?: string | null;
+  fuelle_derecho?: string | null;
+  fuelle_superior?: string | null;
+  fuelle_inferior?: string | null;
   configuracion_pelicula?: ConfiguracionPelicula;
   diametro?: string | null;
   diametro_nucleo?: string | null;
@@ -952,8 +962,12 @@ export interface EspecificacionBobinaSolicitada {
   especificacion_producto_solicitado: number;
   ancho_doblado: string;
   ancho_desdoblado: string;
+  largo_doblado: string | null;
+  largo_desdoblado: string | null;
   fuelle_izquierdo: string;
   fuelle_derecho: string;
+  fuelle_superior: string | null;
+  fuelle_inferior: string | null;
   diametro: string | null;
   diametro_nucleo: string | null;
   longitud: string | null;
@@ -974,8 +988,12 @@ export interface EspecificacionBobinaSolicitadaCreate {
 
   ancho_doblado: string;
   ancho_desdoblado: string;
+  largo_doblado?: string | null;
+  largo_desdoblado?: string | null;
   fuelle_izquierdo: string;
   fuelle_derecho: string;
+  fuelle_superior?: string | null;
+  fuelle_inferior?: string | null;
 
   diametro?: string | null;
   diametro_nucleo?: string | null;
@@ -1138,6 +1156,16 @@ export interface ProductoVersion {
   color_bolsa: string;
   color_impresion: string[];
   tipo_impresion: TipoImpresion;
+  cara_impresion?: CaraImpresion | null;
+  tratamiento_impresion?: TratamientoImpresion | null;
+  colores_cara_a: number | null;
+  colores_cara_b: number | null;
+  numero_rodillo_cara_a: string;
+  numero_rodillo_cara_b: string;
+  tipo_impresion_cara_a: TipoImpresion | "";
+  tipo_impresion_cara_b: TipoImpresion | "";
+  denominacion_arte_cara_a: string;
+  denominacion_arte_cara_b: string;
   opacidad: Opacidad;
   activo: boolean;
   created_at: string;
@@ -1600,7 +1628,15 @@ export interface ProductoBusquedaResultado {
 
 export interface EspecificacionBobinaCatalogo {
   id: number;
+  /** Legacy API field, now consistently interpreted as developed width. */
   ancho: string | number;
+  ancho_doblado?: string | number | null;
+  largo_desdoblado?: string | number | null;
+  largo_doblado?: string | number | null;
+  fuelle_izquierdo?: string | number | null;
+  fuelle_derecho?: string | number | null;
+  fuelle_superior?: string | number | null;
+  fuelle_inferior?: string | number | null;
   configuracion_pelicula?: "tubular" | "corte_lateral" | "corte_separacion";
   diametro: string | number | null;
   diametro_nucleo: string | number | null;

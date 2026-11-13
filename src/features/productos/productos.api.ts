@@ -5,7 +5,7 @@ import type {
   BuscarCatalogoResponse,
   BuscarSimilaresResponse,
 } from "@/features/comercial/comercial.types";
-import type { Producto, ProductoCategoria, ProductoSubcategoria, ProductoComercialCreate, ProductoComercialCreado } from "./productos.types";
+import type { Producto, ProductoCategoria, ProductoSubcategoria, ProductoComercialCreate, ProductoComercialDetalle } from "./productos.types";
 
 // ============================================================
 // CATEGORÍAS DE PRODUCTOS
@@ -27,16 +27,16 @@ export const productosApi = {
   list: async (): Promise<Producto[]> =>
     api.get("/productos/productos/"),
 
-  get: async (id: number): Promise<Producto> =>
+  get: async (id: number): Promise<ProductoComercialDetalle> =>
     api.get(`/productos/productos/${id}/`),
 
   create: async (data: Partial<Producto> | FormData): Promise<Producto> =>
     api.post("/productos/productos/", data),
 
-  createComercial: async (data: ProductoComercialCreate): Promise<ProductoComercialCreado> =>
+  createComercial: async (data: ProductoComercialCreate): Promise<ProductoComercialDetalle> =>
     api.post("/productos/productos/crear-comercial/", data),
 
-  updateComercial: async (id: number, data: ProductoComercialCreate): Promise<ProductoComercialCreado> =>
+  updateComercial: async (id: number, data: ProductoComercialCreate): Promise<ProductoComercialDetalle> =>
     api.patch(`/productos/productos/${id}/editar-comercial/`, data),
 
   update: async (id: number, data: Partial<Producto> | FormData): Promise<Producto> =>

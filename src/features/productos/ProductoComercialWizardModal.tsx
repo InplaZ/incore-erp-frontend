@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, X } from "lucide-react";
-import { useProducto, useProductos, useProductosCategorias, useProductosSubcategorias, useCreateProductoComercial, useUpdateProductoComercial } from "@/features/productos/productos.hooks";
+import { useProducto, useProductos, useProductosCategorias, useCreateProductoComercial, useUpdateProductoComercial } from "@/features/productos/productos.hooks";
 import type { ProductoComercialCreado, Producto, ProductoComercialDetalle } from "@/features/productos/productos.types";
 import { viabilidadApi } from "@/features/viabilidad/viabilidad.api";
 import type { EvaluarViabilidadPayload, EvaluarViabilidadResponse } from "@/features/viabilidad/viabilidad.types";
@@ -26,8 +26,8 @@ type PesosProductoResponse = {
 // Estado local del formulario. Se transforma al guardar en ProductoComercialCreate;
 // no representa una entidad paralela ni se persiste en localStorage.
 type Wizard = {
-  name: string; productType: "bolsa" | "bobina";
-  categoria: string; subcategoria: string;
+  productType: "bolsa" | "bobina";
+  categoria: string;
   application: string; use: string; content: string; food: boolean;
   material: string; layers: string; micraje: string; color: string;
   width: string; widthFlat: string; length: string; foldLength: string;
@@ -60,18 +60,22 @@ type Wizard = {
   quantity: string;
   filmConfig: "tubular" | "corte_lateral" | "corte_separacion";
   bobinaFinishes: string[];
-  widthType: "doblado" | "desdoblado";
-  // Fuelle exclusivo de bobina
+  // Fuelle de bobina
   bobinaSides: string[];
   bobinaSideMeasures: Record<string, string>;
   bobinaSideSymmetry: "simetrico" | "asimetrico";
   bobinaCommonSideMeasure: string;
+  bobinaLengthFlat: string;
+  bobinaLengthSides: string[];
+  bobinaLengthSideMeasures: Record<string, string>;
+  bobinaLengthSideSymmetry: "simetrico" | "asimetrico";
+  bobinaCommonLengthSideMeasure: string;
 
 };
 
 
 const initialForm: Wizard = {
-  name: "", productType: "bolsa", categoria: "", subcategoria: "", application: "Comercio y supermercados",
+  productType: "bolsa", categoria: "", application: "Comercio y supermercados",
   use: "", content: "", food: false, material: "PEBD", layers: "monocapa", micraje: "", color: "",
   width: "", widthFlat: "", length: "", foldLength: "",
   fuelle: false,
@@ -102,7 +106,6 @@ const initialForm: Wizard = {
   quantity: "",
   filmConfig: "tubular",
   bobinaFinishes: [],
-  widthType: "desdoblado",
   bobinaSides: [],
   bobinaSideMeasures: {
     Izquierda: "",
@@ -110,6 +113,11 @@ const initialForm: Wizard = {
   },
   bobinaSideSymmetry: "simetrico",
   bobinaCommonSideMeasure: "",
+  bobinaLengthFlat: "",
+  bobinaLengthSides: [],
+  bobinaLengthSideMeasures: { Superior: "", Inferior: "" },
+  bobinaLengthSideSymmetry: "simetrico",
+  bobinaCommonLengthSideMeasure: "",
 };
 
 // Opciones de presentación del formulario. Los valores enviados al backend
@@ -462,6 +470,19 @@ function FilmConfigSVG({ type }: FilmConfigSVGProps) {
 const finishOptions = ["aromatizada", "perforada", "antideslizante", "oxobiodegradable", "otro"];
 const finishLabels: Record<string, string> = { aromatizada: "Aromatizada", perforada: "Perforada", antideslizante: "Antideslizante", oxobiodegradable: "Oxobiodegradable", otro: "Otro" };
 
+function tipoProductoDesdeCategoria(nombre?: string): Wizard["productType"] | null {
+  const normalizado = (nombre ?? "").trim().toLocaleLowerCase();
+  if (normalizado.includes("bobina")) return "bobina";
+  if (normalizado.includes("bolsa")) return "bolsa";
+  return null;
+}
+
+function dimensionComoTexto(valor: string | number | null | undefined): string {
+  if (valor === null || valor === undefined || valor === "") return "";
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? String(numero) : String(valor).trim();
+}
+
 export default function ProductoComercialWizardModal({ open, onClose, onSuccess, producto }: { open: boolean; onClose: () => void; onSuccess?: (producto: ProductoComercialCreado) => void; producto?: Producto | null }) {
   // Estado de navegación y datos temporales de esta creación.
   const [step, setStep] = useState(0);
@@ -485,8 +506,93 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
   const { data: categories = [] } = useProductosCategorias();
   const { data: products = [] } = useProductos();
   const categoryId = Number(form.categoria) || undefined;
-  const { data: subcategorias = [] } = useProductosSubcategorias(categoryId);
   const commercialProducts = useMemo(() => products.filter(p => p.estado_homologacion === "homologado"), [products]);
+
+  const bolsaDimensiones = useMemo(() => {
+    const ancho = Number(form.widthFlat);
+    if (!form.widthFlat.trim()) {
+      return {
+        anchoDoblado: null as number | null,
+        error: form.fuelle ? "Ingresa el ancho desdoblado para calcular el ancho doblado." : "",
+      };
+    }
+    if (!Number.isFinite(ancho) || ancho <= 0) {
+      return { anchoDoblado: null, error: "El ancho desdoblado debe ser mayor que cero." };
+    }
+    const leerFuelle = (lado: string) => {
+      if (!form.fuelle || !form.sides.includes(lado)) return 0;
+      const valor = form.sideMeasures[lado] ?? "";
+      if (!valor.trim()) return null;
+      const medida = Number(valor);
+      return Number.isFinite(medida) && medida >= 0 ? medida : null;
+    };
+    const izquierdo = leerFuelle("Izquierda");
+    const derecho = leerFuelle("Derecha");
+    if (izquierdo === null || derecho === null) {
+      return { anchoDoblado: null, error: "Completa las medidas de los fuelles seleccionados." };
+    }
+    if (izquierdo + derecho >= ancho) {
+      return { anchoDoblado: null, error: "La suma de los fuelles debe ser menor que el ancho desdoblado." };
+    }
+    return { anchoDoblado: ancho - izquierdo - derecho, error: "" };
+  }, [form.widthFlat, form.fuelle, form.sides, form.sideMeasures]);
+
+  const bobinaDimensiones = useMemo(() => {
+    const ancho = Number(form.width);
+    const leerFuelle = (
+      lado: "Izquierda" | "Derecha" | "Superior" | "Inferior",
+      lados: string[],
+      simetria: "simetrico" | "asimetrico",
+      medidaComun: string,
+      medidas: Record<string, string>,
+    ) => {
+      if (!lados.includes(lado)) return 0;
+      const valor = simetria === "simetrico" ? medidaComun : medidas[lado] ?? "";
+      if (!valor.trim()) return null;
+      const medida = Number(valor);
+      return Number.isFinite(medida) && medida >= 0 ? medida : null;
+    };
+    const izquierdo = leerFuelle("Izquierda", form.bobinaSides, form.bobinaSideSymmetry, form.bobinaCommonSideMeasure, form.bobinaSideMeasures);
+    const derecho = leerFuelle("Derecha", form.bobinaSides, form.bobinaSideSymmetry, form.bobinaCommonSideMeasure, form.bobinaSideMeasures);
+    const superior = leerFuelle("Superior", form.bobinaLengthSides, form.bobinaLengthSideSymmetry, form.bobinaCommonLengthSideMeasure, form.bobinaLengthSideMeasures);
+    const inferior = leerFuelle("Inferior", form.bobinaLengthSides, form.bobinaLengthSideSymmetry, form.bobinaCommonLengthSideMeasure, form.bobinaLengthSideMeasures);
+    const anchoError = !form.width.trim() || !Number.isFinite(ancho) || ancho <= 0
+      ? "Ingresa un ancho desdoblado mayor que cero."
+      : izquierdo === null || derecho === null
+        ? "Completa las medidas de los fuelles laterales seleccionados."
+        : izquierdo + derecho > ancho
+          ? "La suma de los fuelles laterales no puede superar el ancho desdoblado."
+          : "";
+    const anchoDoblado = anchoError ? null : Number((ancho - (izquierdo ?? 0) - (derecho ?? 0)).toFixed(2));
+
+    const largo = Number(form.bobinaLengthFlat);
+    let largoError = "";
+    let largoDoblado: number | null = null;
+    if (form.bobinaLengthFlat.trim()) {
+      if (!Number.isFinite(largo) || largo <= 0) {
+        largoError = "El largo desdoblado debe ser mayor que cero.";
+      } else if (superior === null || inferior === null) {
+        largoError = "Completa las medidas de los fuelles superior e inferior seleccionados.";
+      } else if (superior + inferior > largo) {
+        largoError = "La suma de los fuelles superior e inferior no puede superar el largo desdoblado.";
+      } else {
+        largoDoblado = Number((largo - superior - inferior).toFixed(2));
+      }
+    } else if (superior !== 0 || inferior !== 0) {
+      largoError = "Ingresa el largo desdoblado para calcular el largo doblado con fuelles.";
+    }
+    return {
+      anchoDoblado,
+      largoDoblado,
+      izquierdo,
+      derecho,
+      superior,
+      inferior,
+      error: anchoError,
+      largoError,
+    };
+  }, [form.width, form.bobinaSides, form.bobinaSideSymmetry, form.bobinaCommonSideMeasure, form.bobinaSideMeasures,
+    form.bobinaLengthFlat, form.bobinaLengthSides, form.bobinaLengthSideSymmetry, form.bobinaCommonLengthSideMeasure, form.bobinaLengthSideMeasures]);
 
   useEffect(() => {
     if (!open) return;
@@ -499,12 +605,37 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
     const descripcion = detalle.descripcion ?? "";
     const extraer = (etiqueta: string) => descripcion.match(new RegExp(`(?:^|\\n)${etiqueta}:\\s*(.*)`, "i"))?.[1] ?? "";
     const acabado = bolsa?.acabado_especial?.split(",").map(v => v.trim()).filter(Boolean) ?? [];
+    const bobinaIzquierdo = dimensionComoTexto(bobina?.fuelle_izquierdo);
+    const bobinaDerecho = dimensionComoTexto(bobina?.fuelle_derecho);
+    const bobinaSuperior = dimensionComoTexto(bobina?.fuelle_superior);
+    const bobinaInferior = dimensionComoTexto(bobina?.fuelle_inferior);
+    const bobinaSides = [
+      ...(Number(bobinaIzquierdo) > 0 ? ["Izquierda"] : []),
+      ...(Number(bobinaDerecho) > 0 ? ["Derecha"] : []),
+    ];
+    const medidasBobinaSeleccionadas = [
+      ...(bobinaSides.includes("Izquierda") ? [bobinaIzquierdo] : []),
+      ...(bobinaSides.includes("Derecha") ? [bobinaDerecho] : []),
+    ];
+    const simetricos = medidasBobinaSeleccionadas.length > 0
+      && medidasBobinaSeleccionadas.every(medida => medida === medidasBobinaSeleccionadas[0]);
+    const bobinaLengthSides = [
+      ...(Number(bobinaSuperior) > 0 ? ["Superior"] : []),
+      ...(Number(bobinaInferior) > 0 ? ["Inferior"] : []),
+    ];
+    const medidasBobinaLongitudSeleccionadas = [
+      ...(bobinaLengthSides.includes("Superior") ? [bobinaSuperior] : []),
+      ...(bobinaLengthSides.includes("Inferior") ? [bobinaInferior] : []),
+    ];
+    const largosSimetricos = medidasBobinaLongitudSeleccionadas.length > 0
+      && medidasBobinaLongitudSeleccionadas.every(medida => medida === medidasBobinaLongitudSeleccionadas[0]);
+    const categoriaTipo = tipoProductoDesdeCategoria(
+      categories.find(c => c.id === detalle.categoria)?.nombre,
+    );
     const formPrecargado: Wizard = {
       ...initialForm,
-      name: detalle.nombre,
-      productType: bobina || categories.find(c => c.id === detalle.categoria)?.nombre.toLowerCase().includes("bobina") ? "bobina" : "bolsa",
+      productType: categoriaTipo ?? (bobina ? "bobina" : "bolsa"),
       categoria: String(detalle.categoria),
-      subcategoria: detalle.subcategoria ? String(detalle.subcategoria) : "",
       application: extraer("Aplicación prevista") || initialForm.application,
       use: extraer("Uso específico"),
       content: extraer("Contenido"),
@@ -531,7 +662,16 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       sello: bolsa?.tipo_sello ?? initialForm.sello,
       pestana: bolsa?.pestana ?? initialForm.pestana,
       filmConfig: bobina?.configuracion_pelicula ?? initialForm.filmConfig,
+      bobinaSides,
+      bobinaSideMeasures: { Izquierda: bobinaIzquierdo, Derecha: bobinaDerecho },
+      bobinaSideSymmetry: simetricos ? "simetrico" : "asimetrico",
+      bobinaCommonSideMeasure: simetricos ? medidasBobinaSeleccionadas[0] ?? "" : "",
       meters: String(bobina?.longitud ?? version?.metros ?? ""),
+      bobinaLengthFlat: String(bobina?.largo_desdoblado ?? ""),
+      bobinaLengthSides,
+      bobinaLengthSideMeasures: { Superior: bobinaSuperior, Inferior: bobinaInferior },
+      bobinaLengthSideSymmetry: largosSimetricos ? "simetrico" : "asimetrico",
+      bobinaCommonLengthSideMeasure: largosSimetricos ? medidasBobinaLongitudSeleccionadas[0] ?? "" : "",
       diameter: String(bobina?.diametro ?? ""),
       coreDiameter: String(bobina?.diametro_nucleo ?? ""),
       coreType: bobina?.tipo_nucleo ?? "",
@@ -540,6 +680,14 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       printType: version?.tipo_impresion ?? initialForm.printType,
       printTreatment: version?.tratamiento_impresion ?? initialForm.printTreatment,
       printFace: version?.cara_impresion ?? initialForm.printFace,
+      colorsFaceA: String(version?.colores_cara_a ?? ""),
+      colorsFaceB: String(version?.colores_cara_b ?? ""),
+      printRollerFaceA: version?.numero_rodillo_cara_a ?? "",
+      printRollerFaceB: version?.numero_rodillo_cara_b ?? "",
+      printTypeFaceA: version?.tipo_impresion_cara_a ?? "",
+      printTypeFaceB: version?.tipo_impresion_cara_b ?? "",
+      printArtNameFaceA: version?.denominacion_arte_cara_a ?? "",
+      printArtNameFaceB: version?.denominacion_arte_cara_b ?? "",
       printColors: version?.color_impresion?.join(", ") ?? "",
       designId: String(version?.diseno ?? ""),
       unit: detalle.unidad_medida,
@@ -584,16 +732,20 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
             : null,
 
           // Rodillos requeridos por cada cara
-          rodillo_cara_a: s.impression ? s.printRollerFaceA.trim() || null : null,
-          rodillo_cara_b: s.impression && s.printFace === "dos_caras"
+          numero_rodillo_cara_a: s.impression ? s.printRollerFaceA.trim() : "",
+          numero_rodillo_cara_b: s.impression && s.printFace === "dos_caras"
             ? s.printRollerFaceB.trim() || null
-            : null,
+            : "",
+          tipo_impresion_cara_a: s.impression ? s.printTypeFaceA : "",
+          tipo_impresion_cara_b: s.impression && s.printFace === "dos_caras" ? s.printTypeFaceB : "",
+          denominacion_arte_cara_a: s.impression ? s.printArtNameFaceA.trim() : "",
+          denominacion_arte_cara_b: s.impression && s.printFace === "dos_caras" ? s.printArtNameFaceB.trim() : "",
 
           opacidad: "", tratamientos_acabados_especiales: s.finishes, otras_caracteristicas: s.notes,
         },
         ...(s.productType === "bolsa" ? {
           especificacion_bolsa: {
-            ancho_doblado: s.width,
+            ancho_doblado: s.widthFlat.trim() ? bolsaDimensiones.anchoDoblado : s.width,
             ancho_desdoblado: s.widthFlat || null,
             largo_doblado: s.length,
             largo_desdoblado: s.foldLength || null,
@@ -609,7 +761,12 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
         } : {
           especificacion_bobina: {
             ancho: s.width,
-            tipo_ancho: s.widthType,
+            fuelle_izquierdo: bobinaDimensiones.izquierdo || null,
+            fuelle_derecho: bobinaDimensiones.derecho || null,
+            largo_desdoblado: s.bobinaLengthFlat || null,
+            fuelle_superior: bobinaDimensiones.superior || null,
+            fuelle_inferior: bobinaDimensiones.inferior || null,
+            largo_doblado: bobinaDimensiones.largoDoblado,
             diametro: s.diameter || null,
             diametro_nucleo: s.coreDiameter || null,
             longitud: s.meters || null,
@@ -621,7 +778,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
         }),
       },
     };
-  }, [categoryId, form]);
+  }, [categoryId, form, bolsaDimensiones, bobinaDimensiones]);
 
   const payloadKey = JSON.stringify(payload);
   const weightPayload = payload?.datos_especificacion ?? null;
@@ -773,18 +930,50 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       const ref = catalog.productos.find(p => p.producto_id === chosen.id);
       if (!ref) { setError("La ficha homologada no tiene una versión visible en el catálogo."); return; }
       const category = activeCategories.find(c => c.nombre === ref.categoria);
+      const tipoReferencia = ref.especificacion_bobina ? "bobina" : "bolsa";
+      const bobinaIzquierdo = dimensionComoTexto(ref.especificacion_bobina?.fuelle_izquierdo);
+      const bobinaDerecho = dimensionComoTexto(ref.especificacion_bobina?.fuelle_derecho);
+      const bobinaSuperior = dimensionComoTexto(ref.especificacion_bobina?.fuelle_superior);
+      const bobinaInferior = dimensionComoTexto(ref.especificacion_bobina?.fuelle_inferior);
+      const bobinaSides = [
+        ...(Number(bobinaIzquierdo) > 0 ? ["Izquierda"] : []),
+        ...(Number(bobinaDerecho) > 0 ? ["Derecha"] : []),
+      ];
+      const medidasBobinaSeleccionadas = [
+        ...(bobinaSides.includes("Izquierda") ? [bobinaIzquierdo] : []),
+        ...(bobinaSides.includes("Derecha") ? [bobinaDerecho] : []),
+      ];
+      const simetricos = medidasBobinaSeleccionadas.length > 0
+        && medidasBobinaSeleccionadas.every(medida => medida === medidasBobinaSeleccionadas[0]);
+      const bobinaLengthSides = [
+        ...(Number(bobinaSuperior) > 0 ? ["Superior"] : []),
+        ...(Number(bobinaInferior) > 0 ? ["Inferior"] : []),
+      ];
+      const medidasBobinaLongitudSeleccionadas = [
+        ...(bobinaLengthSides.includes("Superior") ? [bobinaSuperior] : []),
+        ...(bobinaLengthSides.includes("Inferior") ? [bobinaInferior] : []),
+      ];
+      const largosSimetricos = medidasBobinaLongitudSeleccionadas.length > 0
+        && medidasBobinaLongitudSeleccionadas.every(medida => medida === medidasBobinaLongitudSeleccionadas[0]);
       setForm(prev => ({
-        ...prev, name: prev.name || ref.producto_nombre, categoria: category ? String(category.id) : prev.categoria,
+        ...prev, productType: tipoReferencia, categoria: category ? String(category.id) : prev.categoria,
         material: ref.material, layers: ref.capas || prev.layers, micraje: String(ref.micraje ?? ""), impression: ref.impresion,
         color: ref.color_bolsa, width: String(ref.especificacion_bolsa?.ancho_doblado ?? ref.especificacion_bobina?.ancho ?? ""),
         widthFlat: String(ref.especificacion_bolsa?.ancho_desdoblado ?? ""), length: String(ref.especificacion_bolsa?.largo_doblado ?? ""),
         meters: String(ref.especificacion_bobina?.longitud ?? ""), diameter: String(ref.especificacion_bobina?.diametro ?? ""),
         coreDiameter: String(ref.especificacion_bobina?.diametro_nucleo ?? ""), coreType: ref.especificacion_bobina?.tipo_nucleo ?? prev.coreType,
         weight: String(ref.especificacion_bobina?.peso ?? ""), sello: ref.especificacion_bolsa?.tipo_sello ?? prev.sello,
-        troquel: ref.especificacion_bolsa?.tipo_troquel ?? prev.troquel
+        troquel: ref.especificacion_bolsa?.tipo_troquel ?? prev.troquel,
+        bobinaSides,
+        bobinaSideMeasures: { Izquierda: bobinaIzquierdo, Derecha: bobinaDerecho },
+        bobinaSideSymmetry: simetricos ? "simetrico" : "asimetrico",
+        bobinaCommonSideMeasure: simetricos ? medidasBobinaSeleccionadas[0] ?? "" : "",
+        bobinaLengthFlat: String(ref.especificacion_bobina?.largo_desdoblado ?? ""),
+        bobinaLengthSides,
+        bobinaLengthSideMeasures: { Superior: bobinaSuperior, Inferior: bobinaInferior },
+        bobinaLengthSideSymmetry: largosSimetricos ? "simetrico" : "asimetrico",
+        bobinaCommonLengthSideMeasure: largosSimetricos ? medidasBobinaLongitudSeleccionadas[0] ?? "" : "",
       }));
-      if (ref.especificacion_bobina) set("productType", "bobina");
-      else if (ref.especificacion_bolsa) set("productType", "bolsa");
       setError("");
     } catch { setError("No se pudo cargar la referencia homologada."); }
   };
@@ -794,10 +983,11 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
     setError("");
     if (producto && cargandoDetalle) { setError("Espera a que termine de cargar la ficha del producto."); return; }
     if (!categoryId) { setError("Selecciona una categoría activa del catálogo."); setStep(0); return; }
-    if (!form.name.trim()) { setError("Indica el nombre o denominación del producto."); setStep(0); return; }
-    if (!form.width || !form.length && form.productType === "bolsa" || !form.meters && form.productType === "bobina") {
-      setError("Completa las dimensiones requeridas para el tipo de producto."); setStep(1); return;
-    }
+    const category = categoryOptions.find(c => c.id === categoryId);
+    const productType = tipoProductoDesdeCategoria(category?.nombre);
+    if (!productType) { setError("La categoría debe identificar si el producto es bolsa o bobina."); setStep(0); return; }
+    const errorFisico = validateStep(1);
+    if (errorFisico) { setError(errorFisico); setStep(1); return; }
     const description = [
       `Aplicación prevista: ${form.application}`,
       form.use && `Uso específico: ${form.use}`,
@@ -809,18 +999,45 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       : "";
     const descripcionFinal = [descripcionAdicional, description].filter(Boolean).join("\n");
     const versionObservations = [form.notes, form.designId ? `Diseño asociado: ${form.designId}` : ""].filter(Boolean).join("\n");
+    const anchoNombre = productType === "bobina"
+      ? form.width
+      : (bolsaDimensiones.anchoDoblado ?? form.width);
+    const largoNombre = productType === "bobina" ? form.meters : form.length;
+    const dimensionesNombre = [anchoNombre, largoNombre, form.micraje]
+      .map(dimensionComoTexto)
+      .filter(Boolean)
+      .join("X");
+    const nombreGenerado = [
+      productType === "bobina" ? "BOB" : "BLS",
+      form.material.trim().toUpperCase(),
+      form.color.trim().toUpperCase(),
+      dimensionesNombre,
+    ].filter(Boolean).join(" ");
+    const categoriaActual = productoDetalle?.categoria ?? producto?.categoria;
+    const subcategoriaActual = producto && categoriaActual === categoryId
+      ? productoDetalle?.subcategoria ?? producto.subcategoria
+      : null;
     const request: ProductoComercialCreate = {
-      producto: { categoria: categoryId, subcategoria: Number(form.subcategoria) || null, nombre: form.name.trim(), descripcion: descripcionFinal, unidad_medida: form.unit },
+      producto: { categoria: categoryId, subcategoria: subcategoriaActual, nombre: nombreGenerado, descripcion: descripcionFinal, unidad_medida: form.unit },
       version: {
         material: form.material, capas: form.layers, apto_alimento: form.food, micraje: form.micraje || null,
         color_bolsa: form.color, impresion: form.impression, tipo_impresion: form.printType,
         cara_impresion: form.impression ? form.printFace : null, tratamiento_impresion: form.printTreatment,
         color_impresion: form.printColors.split(",").map(v => v.trim()).filter(Boolean), diseno: Number(form.designId) || null,
+        colores_cara_a: form.impression ? Number(form.colorsFaceA) || null : null,
+        colores_cara_b: form.impression && form.printFace === "dos_caras" ? Number(form.colorsFaceB) || null : null,
+        numero_rodillo_cara_a: form.impression ? form.printRollerFaceA.trim() : "",
+        numero_rodillo_cara_b: form.impression && form.printFace === "dos_caras" ? form.printRollerFaceB.trim() : "",
+        tipo_impresion_cara_a: form.impression ? form.printTypeFaceA as "corrida" | "dimensionada" | "" : "",
+        tipo_impresion_cara_b: form.impression && form.printFace === "dos_caras" ? form.printTypeFaceB as "corrida" | "dimensionada" | "" : "",
+        denominacion_arte_cara_a: form.impression ? form.printArtNameFaceA.trim() : "",
+        denominacion_arte_cara_b: form.impression && form.printFace === "dos_caras" ? form.printArtNameFaceB.trim() : "",
         metros: form.productType === "bobina" ? form.meters || null : null, observaciones: versionObservations
       },
-      ...(form.productType === "bolsa" ? {
+      ...(productType === "bolsa" ? {
         especificacion_bolsa: {
-          ancho_doblado: form.width, ancho_desdoblado: form.widthFlat || null,
+          ancho_doblado: form.widthFlat.trim() ? bolsaDimensiones.anchoDoblado ?? form.width : form.width,
+          ancho_desdoblado: form.widthFlat || null,
           largo_doblado: form.length, largo_desdoblado: form.foldLength || null, fuelle: form.fuelle,
           fuelle_izquierdo: form.sideMeasures.Izquierda || null, fuelle_derecho: form.sideMeasures.Derecha || null,
           fuelle_inferior: form.sideMeasures.Abajo || null, fuelle_superior: form.sideMeasures.Arriba || null,
@@ -830,12 +1047,17 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       } : {
         especificacion_bobina: {
           ancho: form.width,
+          fuelle_izquierdo: bobinaDimensiones.izquierdo || null,
+          fuelle_derecho: bobinaDimensiones.derecho || null,
+          largo_desdoblado: form.bobinaLengthFlat,
+          fuelle_superior: bobinaDimensiones.superior || null,
+          fuelle_inferior: bobinaDimensiones.inferior || null,
           configuracion_pelicula: form.filmConfig,
           diametro: form.diameter || null, diametro_nucleo: form.coreDiameter || null, tipo_nucleo: form.coreType,
           peso: form.weight || null, longitud: form.meters || null, otras_caracteristicas: form.notes
         }
       }),
-      ...(form.productType === "bolsa" ? { presentacion: { unidades_por_fajo: Number(form.unitsPerPack) || 0, fajos_por_bulto: Number(form.fajosPerBundle) || 0, paquetes_por_jaba: Number(form.packagesPerJaba) || 0, jabas_por_bulto: Number(form.jabasPerBundle) || 0 } } : {}),
+      ...(productType === "bolsa" ? { presentacion: { unidades_por_fajo: Number(form.unitsPerPack) || 0, fajos_por_bulto: Number(form.fajosPerBundle) || 0, paquetes_por_jaba: Number(form.packagesPerJaba) || 0, jabas_por_bulto: Number(form.jabasPerBundle) || 0 } } : {}),
     };
     try {
       const guardado = producto
@@ -855,11 +1077,11 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
 
   const validateStep = (stepToValidate: number): string | null => {
     if (stepToValidate === 0) {
-      if (!form.name.trim()) {
-        return "Ingresa el nombre o denominación del producto.";
-      }
       if (!form.categoria) {
         return "Selecciona una categoría para continuar.";
+      }
+      if (!tipoProductoDesdeCategoria(categories.find(c => String(c.id) === form.categoria)?.nombre)) {
+        return "La categoría debe corresponder a una bolsa o una bobina.";
       }
     }
 
@@ -870,8 +1092,19 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       if (!form.micraje.trim() || Number(form.micraje) <= 0) {
         return "Ingresa un espesor mayor que cero.";
       }
-      if (!form.width.trim() || Number(form.width) <= 0) {
-        return "Ingresa un ancho mayor que cero.";
+      if (form.productType === "bobina") {
+        if (!form.width.trim() || Number(form.width) <= 0) return "Ingresa un ancho desdoblado mayor que cero.";
+        if (bobinaDimensiones.error) return bobinaDimensiones.error;
+        if (!form.bobinaLengthFlat.trim() || Number(form.bobinaLengthFlat) <= 0) return "Ingresa un largo desdoblado mayor que cero.";
+        if (bobinaDimensiones.largoError) return bobinaDimensiones.largoError;
+      } else {
+        const anchoManualNecesario = !form.widthFlat.trim() && !form.fuelle;
+        if (anchoManualNecesario && (!form.width.trim() || Number(form.width) <= 0)) {
+          return "Ingresa un ancho doblado mayor que cero o el ancho desdoblado.";
+        }
+        if (form.widthFlat.trim() && bolsaDimensiones.error) return bolsaDimensiones.error;
+        if (form.fuelle && !form.widthFlat.trim()) return "Ingresa el ancho desdoblado para calcular el ancho doblado con fuelles.";
+        if (!form.widthFlat.trim() && form.fuelle) return "Ingresa el ancho desdoblado para calcular el ancho doblado con fuelles.";
       }
       if (
         form.productType === "bobina" &&
@@ -921,13 +1154,11 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
     setStep(current => Math.min(current + 1, steps.length - 1));
   };
 
-
   // Contenido de cada paso del wizard:
   // 0 Aplicación · 1 Características físicas · 2 Impresión · 3 Diseño
   // 4 Cantidad/presentación · 5 Observaciones y resumen.
   const stepBody = () => {
     if (step === 0) return <div className="grid gap-4 sm:grid-cols-2">
-      {field("Nombre / denominación", "name", { required: true })}
       <label className="block">
         <span className={labelClass}>Categoría *</span>
 
@@ -939,22 +1170,11 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
             const categoriaSeleccionada = categoryOptions.find(
               (c) => String(c.id) === e.target.value
             );
-
-            const nombreCategoria = categoriaSeleccionada?.nombre
-              .trim()
-              .toLowerCase();
-
-            const nuevoTipo =
-              nombreCategoria?.includes("bobina")
-                ? "bobina"
-                : nombreCategoria?.includes("bolsa")
-                  ? "bolsa"
-                  : null;
+            const nuevoTipo = tipoProductoDesdeCategoria(categoriaSeleccionada?.nombre);
 
             setForm((current) => ({
               ...current,
               categoria: e.target.value,
-              subcategoria: "",
               ...(nuevoTipo
                 ? { productType: nuevoTipo }
                 : {}),
@@ -968,14 +1188,6 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
               {categoria.nombre}
             </option>
           ))}
-        </select>
-      </label>
-      <label className="block">
-        <span className={labelClass}>Subcategoría</span>
-        <select className={inputClass} value={form.subcategoria} onChange={e => set("subcategoria", e.target.value)}>
-          <option value="">Sin subcategoría</option>
-          {form.subcategoria && !subcategorias.some(s => String(s.id) === form.subcategoria) && <option value={form.subcategoria}>Subcategoría actual (inactiva)</option>}
-          {subcategorias.map(subcategoria => <option key={subcategoria.id} value={String(subcategoria.id)}>{subcategoria.nombre}</option>)}
         </select>
       </label>
       <label className="block"><span className={labelClass}>Aplicación prevista</span><select className={inputClass} value={form.application} onChange={e => set("application", e.target.value)}>{applications.map(a => <option key={a}>{a}</option>)}</select></label>
@@ -1006,14 +1218,27 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
 
         {form.productType === "bolsa" ? (
           <>
-            {field("Ancho doblado (cm)", "width", {
-              type: "number",
-              required: true,
-            })}
+            {form.widthFlat.trim() ? (
+              <label className="block">
+                <span className={labelClass}>Ancho doblado calculado (cm)</span>
+                <input
+                  className={`${inputClass} bg-slate-50`}
+                  type="number"
+                  value={bolsaDimensiones.anchoDoblado ?? ""}
+                  readOnly
+                  aria-label="Ancho doblado calculado de bolsa"
+                />
+              </label>
+            ) : field("Ancho doblado (cm)", "width", { type: "number", required: true })}
 
             {field("Ancho desdoblado (cm)", "widthFlat", {
               type: "number",
+              required: form.fuelle,
             })}
+
+            {bolsaDimensiones.error && (form.fuelle || form.widthFlat.trim()) && (
+              <p className="text-xs text-red-600 sm:col-span-3" role="alert">{bolsaDimensiones.error}</p>
+            )}
 
             {field("Largo doblado (cm)", "length", {
               type: "number",
@@ -1026,27 +1251,36 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
           </>
         ) : (
           <>
-            {field("Ancho de bobina (cm)", "width", {
+            {field("Ancho desdoblado de bobina (cm)", "width", {
               type: "number",
               required: true,
             })}
-
             <label className="block">
-              <span className={labelClass}>Tipo de ancho</span>
-              <select
-                className={inputClass}
-                value={form.widthType}
-                onChange={e => {
-                  const value = e.target.value;
+              <span className={labelClass}>Ancho doblado calculado (cm)</span>
+              <input
+                className={`${inputClass} bg-slate-50`}
+                type="number"
+                value={bobinaDimensiones.anchoDoblado ?? ""}
+                readOnly
+                aria-label="Ancho doblado calculado de bobina"
+              />
+              {bobinaDimensiones.error && <span className="mt-1 block text-xs text-red-600" role="alert">{bobinaDimensiones.error}</span>}
+            </label>
 
-                  if (value === "doblado" || value === "desdoblado") {
-                    set("widthType", value);
-                  }
-                }}
-              >
-                <option value="desdoblado">Ancho desdoblado</option>
-                <option value="doblado">Ancho doblado</option>
-              </select>
+            {field("Largo desdoblado de bobina (cm)", "bobinaLengthFlat", {
+              type: "number",
+              required: true,
+            })}
+            <label className="block">
+              <span className={labelClass}>Largo doblado calculado (cm)</span>
+              <input
+                className={`${inputClass} bg-slate-50`}
+                type="number"
+                value={bobinaDimensiones.largoDoblado ?? ""}
+                readOnly
+                aria-label="Largo doblado calculado de bobina"
+              />
+              {bobinaDimensiones.largoError && <span className="mt-1 block text-xs text-red-600" role="alert">{bobinaDimensiones.largoError}</span>}
             </label>
 
             {field("Metros por rollo", "meters", {
@@ -1289,6 +1523,65 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
             )}
           </section>
 
+          <section className="border-b border-slate-200 pb-5">
+            <h4 className="mb-3 text-sm font-semibold text-slate-800">
+              Fuelles de largo · Superior e inferior
+            </h4>
+            <div className="flex flex-wrap gap-x-5 gap-y-3">
+              {(["Superior", "Inferior"] as const).map((side) => (
+                <label key={side} className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={form.bobinaLengthSides.includes(side)}
+                    onChange={(e) => setForm((current) => {
+                      const sides = e.target.checked
+                        ? [...current.bobinaLengthSides, side]
+                        : current.bobinaLengthSides.filter((item) => item !== side);
+                      return {
+                        ...current,
+                        bobinaLengthSides: sides,
+                        bobinaCommonLengthSideMeasure: sides.length ? current.bobinaCommonLengthSideMeasure : "",
+                        bobinaLengthSideMeasures: sides.length ? current.bobinaLengthSideMeasures : { Superior: "", Inferior: "" },
+                      };
+                    })}
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                  Fuelle {side.toLowerCase()}
+                </label>
+              ))}
+            </div>
+            {form.bobinaLengthSides.length > 0 && (
+              <div className="mt-4 space-y-3">
+                <div className="flex flex-wrap gap-5">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="radio" name="bobinaLengthSideSymmetry" checked={form.bobinaLengthSideSymmetry === "simetrico"} onChange={() => set("bobinaLengthSideSymmetry", "simetrico")} />
+                    Simétrico
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="radio" name="bobinaLengthSideSymmetry" checked={form.bobinaLengthSideSymmetry === "asimetrico"} onChange={() => set("bobinaLengthSideSymmetry", "asimetrico")} />
+                    Asimétrico
+                  </label>
+                </div>
+                {form.bobinaLengthSideSymmetry === "simetrico" ? (
+                  <label className="block">
+                    <span className={labelClass}>Medida común de fuelle superior/inferior (cm)</span>
+                    <input type="number" min="0" step="any" className={inputClass} value={form.bobinaCommonLengthSideMeasure} onChange={(e) => set("bobinaCommonLengthSideMeasure", e.target.value)} />
+                  </label>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {form.bobinaLengthSides.map((side) => (
+                      <label key={side} className="block">
+                        <span className={labelClass}>Fuelle {side.toLowerCase()} (cm)</span>
+                        <input type="number" min="0" step="any" className={inputClass} value={form.bobinaLengthSideMeasures[side]} onChange={(e) => setForm((current) => ({ ...current, bobinaLengthSideMeasures: { ...current.bobinaLengthSideMeasures, [side]: e.target.value } }))} />
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {form.bobinaLengthSides.length === 0 && <p className="mt-2 text-xs text-slate-500">Sin fuelles superior e inferior.</p>}
+          </section>
+
           {/* Configuración de película */}
           <section>
             <h4 className="mb-3 text-sm font-semibold text-slate-800">
@@ -1474,6 +1767,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
                     value={form.printTypeFaceA}
                     onChange={e => set("printTypeFaceA", e.target.value)}
                   >
+                    <option value="">Selecciona...</option>
                     <option value="corrida">Corrida</option>
                     <option value="dimensionada">Dimensionada</option>
                   </select>
@@ -1513,6 +1807,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
                       value={form.printTypeFaceB}
                       onChange={e => set("printTypeFaceB", e.target.value)}
                     >
+                    <option value="">Selecciona...</option>
                       <option value="corrida">Corrida</option>
                       <option value="dimensionada">Dimensionada</option>
                     </select>
@@ -1723,19 +2018,19 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {[
             {
-              label: "Nombre",
-              value: form.name || "Sin nombre",
-            },
-            {
               label: "Material",
               value: form.material || "No definido",
+            },
+            {
+              label: "Color",
+              value: form.color || "No definido",
             },
             ...(form.productType === "bolsa"
               ? [
                 {
                   label: "Ancho doblado (bolsa)",
-                  value: form.width
-                    ? `${form.width} cm`
+                  value: (bolsaDimensiones.anchoDoblado ?? Number(form.width)) > 0
+                    ? `${bolsaDimensiones.anchoDoblado ?? form.width} cm`
                     : "No definido",
                 },
                 {
@@ -1747,17 +2042,32 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
               ]
               : [
                 {
-                  label:
-                    form.widthType === "desdoblado"
-                      ? "Ancho desdoblado (bobina)"
-                      : "Ancho doblado (bobina)",
-                  value: form.width
-                    ? `${form.width} cm`
-                    : "No definido",
+                  label: "Ancho desdoblado (bobina)",
+                  value: form.width ? `${form.width} cm` : "No definido",
+                },
+                {
+                  label: "Ancho doblado calculado (bobina)",
+                  value: bobinaDimensiones.anchoDoblado != null ? `${bobinaDimensiones.anchoDoblado} cm` : "Pendiente",
+                },
+                {
+                  label: "Largo desdoblado (bobina)",
+                  value: form.bobinaLengthFlat ? `${form.bobinaLengthFlat} cm` : "No definido",
+                },
+                {
+                  label: "Largo doblado calculado (bobina)",
+                  value: bobinaDimensiones.largoDoblado != null ? `${bobinaDimensiones.largoDoblado} cm` : "Pendiente",
+                },
+                {
+                  label: "Metros por rollo",
+                  value: form.meters ? `${form.meters} m` : "No definido",
                 },
               ]),
             ...(form.productType === "bolsa"
               ? [
+                {
+                  label: "Largo doblado",
+                  value: form.length ? `${form.length} cm` : "No definido",
+                },
                 {
                   label: "Largo desdoblado",
                   value: form.foldLength
@@ -1773,9 +2083,15 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
             ...(form.productType === "bolsa"
               ? [
                 {
-                  label: "Fuelle de bolsa",
-                  value: form.fuelle
-                    ? "Con fuelle"
+                  label: "Fuelle izquierdo (bolsa)",
+                  value: form.fuelle && form.sides.includes("Izquierda")
+                    ? form.sideMeasures.Izquierda ? `${form.sideMeasures.Izquierda} cm` : "Medida pendiente"
+                    : "Sin fuelle",
+                },
+                {
+                  label: "Fuelle derecho (bolsa)",
+                  value: form.fuelle && form.sides.includes("Derecha")
+                    ? form.sideMeasures.Derecha ? `${form.sideMeasures.Derecha} cm` : "Medida pendiente"
                     : "Sin fuelle",
                 },
               ]
@@ -1802,6 +2118,22 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
                       : form.bobinaSideMeasures.Derecha
                         ? `${form.bobinaSideMeasures.Derecha} cm`
                         : "Medida pendiente"
+                    : "Sin fuelle",
+                },
+                {
+                  label: "Fuelle superior (bobina)",
+                  value: form.bobinaLengthSides.includes("Superior")
+                    ? form.bobinaLengthSideSymmetry === "simetrico"
+                      ? form.bobinaCommonLengthSideMeasure ? `${form.bobinaCommonLengthSideMeasure} cm` : "Medida pendiente"
+                      : form.bobinaLengthSideMeasures.Superior ? `${form.bobinaLengthSideMeasures.Superior} cm` : "Medida pendiente"
+                    : "Sin fuelle",
+                },
+                {
+                  label: "Fuelle inferior (bobina)",
+                  value: form.bobinaLengthSides.includes("Inferior")
+                    ? form.bobinaLengthSideSymmetry === "simetrico"
+                      ? form.bobinaCommonLengthSideMeasure ? `${form.bobinaCommonLengthSideMeasure} cm` : "Medida pendiente"
+                      : form.bobinaLengthSideMeasures.Inferior ? `${form.bobinaLengthSideMeasures.Inferior} cm` : "Medida pendiente"
                     : "Sin fuelle",
                 },
               ]),
