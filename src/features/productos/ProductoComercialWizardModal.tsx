@@ -973,6 +973,32 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
     </label>
   );
   const sectionTitle = (title: string, subtitle: string) => <div className="mb-4"><h3 className="font-semibold text-slate-800">{title}</h3><p className="text-xs text-slate-500">{subtitle}</p></div>;
+  const nombreGenerado = useMemo(() => {
+    const dimensiones = form.productType === "bolsa"
+      ? [form.widthFlat, form.micraje, form.foldLength]
+      : [form.width, form.meters, form.micraje];
+
+    const medidas = dimensiones
+      .map(dimensionComoTexto)
+      .filter(Boolean)
+      .join("X");
+
+    return [
+      form.productType === "bolsa" ? "BLS" : "BOB",
+      form.material.trim().toUpperCase(),
+      form.color.trim().toUpperCase(),
+      medidas,
+    ].filter(Boolean).join(" ");
+  }, [
+    form.productType,
+    form.material,
+    form.color,
+    form.widthFlat,
+    form.width,
+    form.micraje,
+    form.foldLength,
+    form.meters,
+  ]);
   const toggle = (label: string, checked: boolean, onChange: (value: boolean) => void) => <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} className="h-4 w-4 accent-blue-600" />{label}</label>;
 
   // Copia especificaciones de una referencia homologada a este formulario;
@@ -1069,22 +1095,6 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       : "";
     const descripcionFinal = [descripcionAdicional, description].filter(Boolean).join("\n");
     const versionObservations = [form.notes, form.designId ? `Diseño asociado: ${form.designId}` : ""].filter(Boolean).join("\n");
-    const anchoNombre = productType === "bobina"
-      ? form.width
-      : (bolsaDimensiones.anchoDoblado ?? form.width);
-    const largoNombre = productType === "bobina"
-      ? form.meters
-      : bolsaDimensiones.largoDoblado;
-    const dimensionesNombre = [anchoNombre, largoNombre, form.micraje]
-      .map(dimensionComoTexto)
-      .filter(Boolean)
-      .join("X");
-    const nombreGenerado = [
-      productType === "bobina" ? "BOB" : "BLS",
-      form.material.trim().toUpperCase(),
-      form.color.trim().toUpperCase(),
-      dimensionesNombre,
-    ].filter(Boolean).join(" ");
     const categoriaActual = productoDetalle?.categoria ?? producto?.categoria;
     const subcategoriaActual = producto && categoriaActual === categoryId
       ? productoDetalle?.subcategoria ?? producto.subcategoria
@@ -2030,26 +2040,35 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       </div>
     );
     return <div className="space-y-5">
-      {sectionTitle(
-        "Observaciones",
-        "Añade información adicional sobre las características del producto."
-      )}
+      <div className="rounded-xl border border-blue-200 bg-white-50 p-4">
+        <p className="mb-1 text-xs font-semibold text-green-700">
+          PRODUCTO
+        </p>
+        <p className="text-lg font-bold text-slate-800">
+          {nombreGenerado || "Completa las características para generar el nombre"}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Se actualizará automáticamente según las dimensiones y características ingresadas.
+        </p>
+      </div>
+      {/* Observaciones en una sección independiente */}
+      <div className="border-t border-slate-200 pt-5">
+        <h3 className="mb-2 text-sm font-bold text-slate-800">
+          Observaciones adicionales
+        </h3>
 
-      {/* Observaciones en la parte superior */}
-      <div>
-        <label className={labelClass}>
-          Observaciones adicionales del requerimiento
-        </label>
+        <p className="mb-3 text-xs text-slate-500">
+          Añade detalles técnicos, acabados u otras indicaciones del producto.
+        </p>
 
         <textarea
-          className={`${inputClass} min-h-24 resize-y`}
+          className={`${inputClass} min-h-28 resize-y`}
           rows={4}
           value={form.notes}
           onChange={e => set("notes", e.target.value)}
-          placeholder="Describe detalles técnicos, acabados u otras indicaciones..."
+          placeholder="Escribe aquí las observaciones adicionales..."
         />
       </div>
-
       {/* Resumen sin contenedor exterior */}
       <div>
         <h3 className="mb-3 text-sm font-bold text-slate-800">
@@ -2197,6 +2216,9 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
           ))}
         </div>
       </div>
+
+
+
     </div>
   };
 
