@@ -396,53 +396,60 @@ export default function RequerimientoStepDetalles(
     fuelleDerechoEditado,
     setFuelleDerecho,
   ]);
+  // Calcular ancho doblado desde el ancho desdoblado
   useEffect(() => {
-    if (!anchoDoblado) {
-      setAnchoDesdoblado("");
+    const ancho = Number(anchoDesdoblado);
+
+    if (!anchoDesdoblado || !Number.isFinite(ancho)) {
+      setAnchoDoblado("");
       return;
     }
 
-    const ancho = Number(anchoDoblado) || 0;
     const izquierdo = fuelle
       ? Number(fuelleIzquierdo) || 0
       : 0;
+
     const derecho = fuelle
       ? Number(fuelleDerecho) || 0
       : 0;
 
-    setAnchoDesdoblado(
-      String(ancho + izquierdo + derecho),
+    setAnchoDoblado(
+      String(ancho - izquierdo - derecho),
     );
   }, [
-    anchoDoblado,
+    anchoDesdoblado,
     fuelle,
     fuelleIzquierdo,
     fuelleDerecho,
-    setAnchoDesdoblado,
+    setAnchoDoblado,
   ]);
+
+  // Calcular largo doblado desde el largo desdoblado
   useEffect(() => {
-    if (!largoDoblado) {
-      setLargoDesdoblado("");
+    const largo = Number(largoDesdoblado);
+
+    if (!largoDesdoblado || !Number.isFinite(largo)) {
+      setLargoDoblado("");
       return;
     }
 
-    const largo = Number(largoDoblado) || 0;
     const inferior = fuelle
       ? Number(fuelleInferior) || 0
       : 0;
+
     const superior = fuelle
       ? Number(fuelleSuperior) || 0
       : 0;
 
-    setLargoDesdoblado(
-      String(largo + inferior + superior),
+    setLargoDoblado(
+      String(largo - inferior - superior),
     );
   }, [
-    largoDoblado,
+    largoDesdoblado,
     fuelle,
     fuelleInferior,
     fuelleSuperior,
-    setLargoDesdoblado,
+    setLargoDoblado,
   ]);
 
   const toggleTratamiento = (value: TratamientoAcabadoEspecial) => {
@@ -489,51 +496,6 @@ export default function RequerimientoStepDetalles(
   };
 
 
-  const ancho = Number(anchoDoblado) || 0;
-  const izquierdo = fuelle
-    ? Number(fuelleIzquierdo) || 0
-    : 0;
-  const derecho = fuelle
-    ? Number(fuelleDerecho) || 0
-    : 0;
-
-  const anchoTotal = ancho + izquierdo + derecho;
-
-  const setAncho = (value: string) => {
-    setAnchoDoblado(value);
-
-    const base = Number(value) || 0;
-    const izquierdo = fuelle
-      ? Number(fuelleIzquierdo) || 0
-      : 0;
-    const derecho = fuelle
-      ? Number(fuelleDerecho) || 0
-      : 0;
-
-    setAnchoDesdoblado(
-      value
-        ? String(base + izquierdo + derecho)
-        : "",
-    );
-  };
-
-  const setLargo = (value: string) => {
-    setLargoDoblado(value);
-
-    const base = Number(value) || 0;
-    const inferior = fuelle
-      ? Number(fuelleInferior) || 0
-      : 0;
-    const superior = fuelle
-      ? Number(fuelleSuperior) || 0
-      : 0;
-
-    setLargoDesdoblado(
-      value
-        ? String(base + inferior + superior)
-        : "",
-    );
-  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-4">
@@ -555,518 +517,528 @@ export default function RequerimientoStepDetalles(
         </p>
       </div>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-      <div className="order-last min-w-0 space-y-3 lg:order-first">
-      {/* INFORMACIÓN */}
+        <div className="order-last min-w-0 space-y-3 lg:order-first">
+          {/* INFORMACIÓN */}
 
-      <Section
-        icon={Palette}
-        title="Características generales"
-        description="Información básica del material y su apariencia."
-        summary={`${material} · ${capas || "Capas pendientes"} · ${micraje ? `${micraje} µm` : "Micraje pendiente"}`}
-        defaultOpen
-      >
+          <Section
+            icon={Palette}
+            title="Características generales"
+            description="Información básica del material y su apariencia."
+            summary={`${material} · ${capas || "Capas pendientes"} · ${micraje ? `${micraje} µm` : "Micraje pendiente"}`}
+            defaultOpen
+          >
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
 
-          <Field
-            label="Material"
-            value={material}
-            onChange={(v) =>
-              setMaterial(
-                v as MaterialProducto,
-              )
-            }
-            type="select"
-            options={[
-              {
-                value: "PEAD",
-                label: "PEAD",
-              },
-              {
-                value: "PEBD",
-                label: "PEBD",
-              },
-              {
-                value: "PP",
-                label: "PP",
-              },
-              {
-                value: "BOPP",
-                label: "BOPP",
-              },
-              {
-                value: "OTRO",
-                label: "Otro",
-              },
-            ]}
-          />
+              <Field
+                label="Material"
+                value={material}
+                onChange={(v) =>
+                  setMaterial(
+                    v as MaterialProducto,
+                  )
+                }
+                type="select"
+                options={[
+                  {
+                    value: "PEAD",
+                    label: "PEAD",
+                  },
+                  {
+                    value: "PEBD",
+                    label: "PEBD",
+                  },
+                  {
+                    value: "PP",
+                    label: "PP",
+                  },
+                  {
+                    value: "BOPP",
+                    label: "BOPP",
+                  },
+                  {
+                    value: "OTRO",
+                    label: "Otro",
+                  },
+                ]}
+              />
 
-          <Field
-            label="Tipo de capa"
-            value={capas}
-            onChange={(v) =>
-              setCapas(
-                v as TipoCapa | "",
-              )
-            }
-            type="select"
-            options={[
-              {
-                value: "",
-                label: "Seleccionar",
-              },
-              {
-                value: "monocapa",
-                label: "Monocapa",
-              },
-              {
-                value: "bicapa",
-                label: "Bicapa",
-              },
-              {
-                value: "tricapa",
-                label: "Tricapa",
-              },
-            ]}
-          />
+              <Field
+                label="Tipo de capa"
+                value={capas}
+                onChange={(v) =>
+                  setCapas(
+                    v as TipoCapa | "",
+                  )
+                }
+                type="select"
+                options={[
+                  {
+                    value: "",
+                    label: "Seleccionar",
+                  },
+                  {
+                    value: "monocapa",
+                    label: "Monocapa",
+                  },
+                  {
+                    value: "bicapa",
+                    label: "Bicapa",
+                  },
+                  {
+                    value: "tricapa",
+                    label: "Tricapa",
+                  },
+                ]}
+              />
 
-          <Field
-            label="Micraje"
-            value={micraje}
-            onChange={setMicraje}
-            placeholder="Ej. 50"
-            suffix="µm"
-            type="number"
-          />
+              <Field
+                label="Micraje"
+                value={micraje}
+                onChange={setMicraje}
+                placeholder="Ej. 50"
+                suffix="µm"
+                type="number"
+              />
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">
-              Apto para alimentos
-            </label>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">
+                  Apto para alimentos
+                </label>
 
-            <Select
-              value={
-                aptoAlimento
-                  ? "Sí"
-                  : "No"
-              }
-              onChange={(e) =>
-                setAptoAlimento(
-                  e.target.value === "Sí",
-                )
-              }
-            >
-              <option value="Sí">
-                Sí
-              </option>
+                <Select
+                  value={
+                    aptoAlimento
+                      ? "Sí"
+                      : "No"
+                  }
+                  onChange={(e) =>
+                    setAptoAlimento(
+                      e.target.value === "Sí",
+                    )
+                  }
+                >
+                  <option value="Sí">
+                    Sí
+                  </option>
 
-              <option value="No">
-                No
-              </option>
-            </Select>
-          </div>
+                  <option value="No">
+                    No
+                  </option>
+                </Select>
+              </div>
 
-        </div>
+            </div>
 
-        {/* ==================================================
+            {/* ==================================================
             COLORES
         ================================================== */}
 
-        <div className="mt-5 border-t border-border pt-5">
+            <div className="mt-5 border-t border-border pt-5">
 
-          <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
 
-            <div>
-              <label className="block text-sm font-medium">
-                Colores y cantidades
-              </label>
+                <div>
+                  <label className="block text-sm font-medium">
+                    Colores y cantidades
+                  </label>
 
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Define cada color solicitado y la
-                cantidad correspondiente.
-              </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Define cada color solicitado y la
+                    cantidad correspondiente.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={agregarVarianteColor}
+                  className="shrink-0 rounded-lg border border-border px-3 py-2 text-xs font-medium transition hover:bg-muted/40"
+                >
+                  + Agregar color
+                </button>
+
+              </div>
+
+              <div className="space-y-3">
+
+                {variantesColor.map(
+                  (variante, index) => (
+                    <div
+                      key={index}
+                      className="grid gap-3 rounded-xl border border-border bg-muted/20 p-3 sm:grid-cols-[1fr_180px_auto]"
+                    >
+
+                      <Field
+                        label="Color"
+                        value={
+                          variante.color
+                        }
+                        onChange={(value) =>
+                          actualizarVarianteColor(
+                            index,
+                            "color",
+                            value,
+                          )
+                        }
+                        placeholder="Ej. Rojo"
+                      />
+
+                      <Field
+                        label="Cantidad"
+                        value={
+                          variante.cantidad
+                        }
+                        onChange={(value) =>
+                          actualizarVarianteColor(
+                            index,
+                            "cantidad",
+                            value,
+                          )
+                        }
+                        placeholder="Ej. 2000"
+                        type="number"
+                        suffix={
+                          product === "roll"
+                            ? "bob."
+                            : "unid."
+                        }
+                      />
+
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            eliminarVarianteColor(
+                              index,
+                            )
+                          }
+                          className="h-10 rounded-lg border border-border px-3 text-xs font-medium text-destructive transition hover:bg-destructive/10"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+
+                    </div>
+                  ),
+                )}
+
+              </div>
+
+              {variantesColor.length === 0 && (
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-5 text-center">
+
+                  <Palette className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
+
+                  <p className="text-xs text-muted-foreground">
+                    Todavía no se han agregado colores.
+                  </p>
+
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Puedes agregarlos cuando conozcas
+                    la distribución solicitada.
+                  </p>
+
+                </div>
+              )}
+
             </div>
 
-            <button
-              type="button"
-              onClick={agregarVarianteColor}
-              className="shrink-0 rounded-lg border border-border px-3 py-2 text-xs font-medium transition hover:bg-muted/40"
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+
+              <Field
+                label="Opacidad"
+                value={opacidad}
+                onChange={(v) =>
+                  setOpacidad(
+                    v as Opacidad,
+                  )
+                }
+                type="select"
+                options={[
+                  {
+                    value: "alta",
+                    label: "Alta",
+                  },
+                  {
+                    value: "media",
+                    label: "Media",
+                  },
+                  {
+                    value: "baja",
+                    label: "Baja",
+                  },
+                ]}
+              />
+
+            </div>
+
+          </Section>
+
+          {/* 3. DIMENSIONES */}
+          {product === "bag" && (
+            <Section
+              icon={Ruler}
+              title="Medidas de la bolsa"
+              description="Ingresa las dimensiones desdobladas. Las dimensiones dobladas se calculan automáticamente según los fuelles."
+              summary={`${anchoDoblado || "—"} × ${largoDoblado || "—"} cm`}
             >
-              + Agregar color
-            </button>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field
+                  label="Ancho desdoblado"
+                  value={anchoDesdoblado}
+                  onChange={setAnchoDesdoblado}
+                  placeholder="Ej. 50"
+                  suffix="cm"
+                  type="number"
+                  hint="Ancho total de la bolsa extendida."
+                />
 
-          </div>
+                <Field
+                  label="Largo desdoblado"
+                  value={largoDesdoblado}
+                  onChange={setLargoDesdoblado}
+                  placeholder="Ej. 40"
+                  suffix="cm"
+                  type="number"
+                  hint="Largo total de la bolsa extendida."
+                />
+              </div>
 
-          <div className="space-y-3">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    Ancho doblado calculado
+                  </p>
+                  <p className="text-lg font-semibold">
+                    {anchoDoblado ? `${anchoDoblado} cm` : "—"}
+                  </p>
+                </div>
 
-            {variantesColor.map(
-              (variante, index) => (
-                <div
-                  key={index}
-                  className="grid gap-3 rounded-xl border border-border bg-muted/20 p-3 sm:grid-cols-[1fr_180px_auto]"
-                >
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    Largo doblado calculado
+                  </p>
+                  <p className="text-lg font-semibold">
+                    {largoDoblado ? `${largoDoblado} cm` : "—"}
+                  </p>
+                </div>
+              </div>
+            </Section>
+          )}
+          {/* 3B. CARACTERÍSTICAS DE BOBINA */}
+          {product === "roll" && (
+            <Section
+              icon={Ruler}
+              title="Características de la bobina"
+              description="Indica las medidas principales solicitadas por el cliente."
+              summary={`Ancho ${anchoBobina || "—"} cm · Longitud ${longitud || "—"} m`}
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field
+                  label="Ancho de bobina"
+                  value={anchoBobina}
+                  onChange={setAnchoBobina}
+                  placeholder="Ej. 200"
+                  suffix="cm"
+                  type="number"
+                  hint="Ancho solicitado para la bobina."
+                />
 
-                  <Field
-                    label="Color"
-                    value={
-                      variante.color
-                    }
-                    onChange={(value) =>
-                      actualizarVarianteColor(
-                        index,
-                        "color",
-                        value,
-                      )
-                    }
-                    placeholder="Ej. Rojo"
-                  />
+                <Field
+                  label="Longitud"
+                  value={longitud}
+                  onChange={setLongitud}
+                  placeholder="Ej. 5000"
+                  suffix="m"
+                  type="number"
+                  hint="Longitud solicitada para la bobina."
+                />
+              </div>
+            </Section>
+          )}
+          {/* 4. FUELLE */}
+          {product === "bag" && (
+            <Section
+              icon={Ruler}
+              title="¿La bolsa tiene fuelle?"
+              description="El fuelle agrega profundidad a la bolsa."
+              summary={fuelle ? "Con fuelle" : "Sin fuelle"}
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  { value: true, title: "Sí, tiene fuelle", text: "Necesito indicar sus medidas." },
+                  { value: false, title: "No tiene fuelle", text: "La bolsa no lleva fuelle." },
+                ].map((option) => (
+                  <button
+                    key={String(option.value)}
+                    type="button"
+                    onClick={() => setFuelle(option.value)}
+                    className={`rounded-xl border p-4 text-left transition-all ${fuelle === option.value
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/10"
+                      : "border-border hover:bg-muted/40"
+                      }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{option.title}</span>
+                      {fuelle === option.value && (
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                          <Check className="h-4 w-4" />
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {option.text}
+                    </p>
+                  </button>
+                ))}
+              </div>
 
-                  <Field
-                    label="Cantidad"
-                    value={
-                      variante.cantidad
-                    }
-                    onChange={(value) =>
-                      actualizarVarianteColor(
-                        index,
-                        "cantidad",
-                        value,
-                      )
-                    }
-                    placeholder="Ej. 2000"
-                    type="number"
-                    suffix={
-                      product === "roll"
-                        ? "bob."
-                        : "unid."
-                    }
-                  />
-
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        eliminarVarianteColor(
-                          index,
-                        )
-                      }
-                      className="h-10 rounded-lg border border-border px-3 text-xs font-medium text-destructive transition hover:bg-destructive/10"
-                    >
-                      Eliminar
-                    </button>
+              {fuelle && (
+                <div className="mt-4 rounded-xl bg-muted/30 p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Ruler className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-medium">Medidas del fuelle</p>
                   </div>
 
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <Field
+                      label="Fuelle A"
+                      value={fuelleIzquierdo}
+                      onChange={(value) => {
+                        setFuelleIzquierdo(value);
+                        if (!fuelleDerechoEditado) setFuelleDerecho(value);
+                      }}
+                      placeholder="Ej. 5"
+                      suffix="cm"
+                      type="number"
+                      hint="Izquierdo"
+                    />
+                    <Field
+                      label="Fuelle B"
+                      value={fuelleDerecho}
+                      onChange={(value) => {
+                        setFuelleDerechoEditado(true);
+                        setFuelleDerecho(value);
+                      }}
+                      placeholder="Ej. 5"
+                      suffix="cm"
+                      type="number"
+                      hint="Derecho"
+                    />
+                    <Field
+                      label="Fuelle inferior"
+                      value={fuelleInferior}
+                      onChange={setFuelleInferior}
+                      placeholder="Opcional"
+                      suffix="cm"
+                      type="number"
+                    />
+                    <Field
+                      label="Fuelle superior"
+                      value={fuelleSuperior}
+                      onChange={setFuelleSuperior}
+                      placeholder="Opcional"
+                      suffix="cm"
+                      type="number"
+                    />
+                  </div>
                 </div>
-              ),
-            )}
-
-          </div>
-
-          {variantesColor.length === 0 && (
-            <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-5 text-center">
-
-              <Palette className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
-
-              <p className="text-xs text-muted-foreground">
-                Todavía no se han agregado colores.
-              </p>
-
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Puedes agregarlos cuando conozcas
-                la distribución solicitada.
-              </p>
-
-            </div>
+              )}
+            </Section>
           )}
 
-        </div>
+          {/* 5. CONFIGURACIÓN */}
+          {product === "bag" && (
+            <Section
+              icon={Settings2}
+              title="Configuración de la bolsa"
+              description="Selecciona la forma y el tipo de sellado."
+              summary={`${tipoTroquel || "Troquel pendiente"} · Sello ${tipoSello || "pendiente"}`}
+            >
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field
+                  label="Tipo de bolsa / troquel"
+                  value={tipoTroquel}
+                  onChange={(v) => setTipoTroquel(v as TipoTroquel | "")}
+                  type="select"
+                  options={[
+                    { value: "", label: "Seleccionar" },
+                    { value: "camiseta", label: "Camiseta" },
+                    { value: "normal", label: "Normal" },
+                    { value: "rinonera", label: "Riñonera" },
+                    { value: "con_asa", label: "Con asa" },
+                    { value: "refuerzo", label: "Refuerzo" },
+                    { value: "solapa", label: "Solapa" },
+                    { value: "adhesiva", label: "Adhesiva" },
+                    { value: "cierre_facil", label: "Cierre fácil" },
+                  ]}
+                />
+                <Field
+                  label="Tipo de sello"
+                  value={tipoSello}
+                  onChange={(v) => setTipoSello(v as TipoSello)}
+                  type="select"
+                  options={[
+                    { value: "ninguno", label: "Ninguno" },
+                    { value: "fondo", label: "Fondo" },
+                    { value: "lateral", label: "Lateral" },
+                  ]}
+                />
+                <Field
+                  label="Pestaña"
+                  value={tipoPestana}
+                  onChange={(v) => setTipoPestana(v as TipoPestana | "")}
+                  type="select"
+                  options={[
+                    { value: "sin_pestana", label: "Sin pestaña" },
+                    { value: "superior", label: "Superior" },
+                    { value: "inferior", label: "Inferior" },
+                    { value: "ambas", label: "Ambas" }
+                  ]}
+                />
+              </div>
+            </Section>
+          )}
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-
-          <Field
-            label="Opacidad"
-            value={opacidad}
-            onChange={(v) =>
-              setOpacidad(
-                v as Opacidad,
-              )
-            }
-            type="select"
-            options={[
-              {
-                value: "alta",
-                label: "Alta",
-              },
-              {
-                value: "media",
-                label: "Media",
-              },
-              {
-                value: "baja",
-                label: "Baja",
-              },
-            ]}
-          />
-
-        </div>
-
-      </Section>
-
-      {/* 3. DIMENSIONES */}
-      {product === "bag" && (
-        <Section
-          icon={Ruler}
-          title="Medidas de la bolsa"
-          description="Ingresa las medidas principales. El ancho total se calcula automáticamente cuando hay fuelle."
-          summary={`${anchoDoblado || "—"} × ${largoDoblado || "—"} cm`}
-        >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field
-              label="Ancho"
-              value={anchoDoblado}
-              onChange={setAncho}
-              placeholder="Ej. 30"
-              suffix="cm"
-              type="number"
-              hint="Ancho de la bolsa sin contar el fuelle."
-            />
-            <Field
-              label="Largo"
-              value={largoDoblado}
-              onChange={setLargo}
-              placeholder="Ej. 40"
-              suffix="cm"
-              type="number"
-            />
-          </div>
-
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3">
-            <div>
-              <p className="text-xs text-muted-foreground">Ancho total</p>
-              <p className="text-lg font-semibold">
-                {anchoTotal > 0 ? `${anchoTotal} cm` : "—"}
-              </p>
-            </div>
-            <div className="rounded-lg bg-background px-3 py-2 text-xs text-muted-foreground">
-              Ancho + fuelle A + fuelle B
-            </div>
-          </div>
-        </Section>
-      )}
-      {/* 3B. CARACTERÍSTICAS DE BOBINA */}
-      {product === "roll" && (
-        <Section
-          icon={Ruler}
-          title="Características de la bobina"
-          description="Indica las medidas principales solicitadas por el cliente."
-          summary={`Ancho ${anchoBobina || "—"} cm · Longitud ${longitud || "—"} m`}
-        >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field
-              label="Ancho de bobina"
-              value={anchoBobina}
-              onChange={setAnchoBobina}
-              placeholder="Ej. 200"
-              suffix="cm"
-              type="number"
-              hint="Ancho solicitado para la bobina."
-            />
-
-            <Field
-              label="Longitud"
-              value={longitud}
-              onChange={setLongitud}
-              placeholder="Ej. 5000"
-              suffix="m"
-              type="number"
-              hint="Longitud solicitada para la bobina."
-            />
-          </div>
-        </Section>
-      )}
-      {/* 4. FUELLE */}
-      {product === "bag" && (
-        <Section
-          icon={Ruler}
-          title="¿La bolsa tiene fuelle?"
-          description="El fuelle agrega profundidad a la bolsa."
-          summary={fuelle ? "Con fuelle" : "Sin fuelle"}
-        >
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              { value: true, title: "Sí, tiene fuelle", text: "Necesito indicar sus medidas." },
-              { value: false, title: "No tiene fuelle", text: "La bolsa no lleva fuelle." },
-            ].map((option) => (
-              <button
-                key={String(option.value)}
-                type="button"
-                onClick={() => setFuelle(option.value)}
-                className={`rounded-xl border p-4 text-left transition-all ${fuelle === option.value
-                  ? "border-primary bg-primary/5 ring-2 ring-primary/10"
-                  : "border-border hover:bg-muted/40"
+          {/* 6. IMPRESIÓN */}
+          <Section
+            icon={Palette}
+            title="¿Necesita impresión?"
+            description="Activa esta opción solo si el cliente quiere imprimir un diseño."
+            summary={impresion ? `Requiere impresión${archivoColorImpresion ? ` · ${archivoColorImpresion.name}` : " · PDF opcional"}` : "Sin impresión"}
+          >
+            <button
+              type="button"
+              onClick={() => setImpresion(!impresion)}
+              className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition-all ${impresion
+                ? "border-primary bg-primary/5 ring-2 ring-primary/10"
+                : "border-border hover:bg-muted/40"
+                }`}
+            >
+              <div>
+                <p className="font-medium">
+                  {impresion ? "Sí, requiere impresión" : "No requiere impresión"}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {impresion
+                    ? "Ahora puedes indicar cómo debe realizarse."
+                    : "Puedes activarlo si el cliente solicita un diseño impreso."}
+                </p>
+              </div>
+              <span
+                className={`relative h-6 w-11 rounded-full transition-colors ${impresion ? "bg-primary" : "bg-muted"
                   }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{option.title}</span>
-                  {fuelle === option.value && (
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <Check className="h-4 w-4" />
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {option.text}
-                </p>
-              </button>
-            ))}
-          </div>
-
-          {fuelle && (
-            <div className="mt-4 rounded-xl bg-muted/30 p-4">
-              <div className="mb-4 flex items-center gap-2">
-                <Ruler className="h-4 w-4 text-primary" />
-                <p className="text-sm font-medium">Medidas del fuelle</p>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <Field
-                  label="Fuelle A"
-                  value={fuelleIzquierdo}
-                  onChange={(value) => {
-                    setFuelleIzquierdo(value);
-                    if (!fuelleDerechoEditado) setFuelleDerecho(value);
-                  }}
-                  placeholder="Ej. 5"
-                  suffix="cm"
-                  type="number"
-                  hint="Izquierdo"
+                <span
+                  className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${impresion ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
-                <Field
-                  label="Fuelle B"
-                  value={fuelleDerecho}
-                  onChange={(value) => {
-                    setFuelleDerechoEditado(true);
-                    setFuelleDerecho(value);
-                  }}
-                  placeholder="Ej. 5"
-                  suffix="cm"
-                  type="number"
-                  hint="Derecho"
-                />
-                <Field
-                  label="Fuelle inferior"
-                  value={fuelleInferior}
-                  onChange={setFuelleInferior}
-                  placeholder="Opcional"
-                  suffix="cm"
-                  type="number"
-                />
-                <Field
-                  label="Fuelle superior"
-                  value={fuelleSuperior}
-                  onChange={setFuelleSuperior}
-                  placeholder="Opcional"
-                  suffix="cm"
-                  type="number"
-                />
-              </div>
-            </div>
-          )}
-        </Section>
-      )}
+              </span>
+            </button>
 
-      {/* 5. CONFIGURACIÓN */}
-      {product === "bag" && (
-        <Section
-          icon={Settings2}
-          title="Configuración de la bolsa"
-          description="Selecciona la forma y el tipo de sellado."
-          summary={`${tipoTroquel || "Troquel pendiente"} · Sello ${tipoSello || "pendiente"}`}
-        >
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Field
-              label="Tipo de bolsa / troquel"
-              value={tipoTroquel}
-              onChange={(v) => setTipoTroquel(v as TipoTroquel | "")}
-              type="select"
-              options={[
-                { value: "", label: "Seleccionar" },
-                { value: "camiseta", label: "Camiseta" },
-                { value: "normal", label: "Normal" },
-                { value: "rinonera", label: "Riñonera" },
-                { value: "con_asa", label: "Con asa" },
-                { value: "refuerzo", label: "Refuerzo" },
-                { value: "solapa", label: "Solapa" },
-                { value: "adhesiva", label: "Adhesiva" },
-                { value: "cierre_facil", label: "Cierre fácil" },
-              ]}
-            />
-            <Field
-              label="Tipo de sello"
-              value={tipoSello}
-              onChange={(v) => setTipoSello(v as TipoSello)}
-              type="select"
-              options={[
-                { value: "ninguno", label: "Ninguno" },
-                { value: "fondo", label: "Fondo" },
-                { value: "lateral", label: "Lateral" },
-              ]}
-            />
-            <Field
-              label="Pestaña"
-              value={tipoPestana}
-              onChange={(v) => setTipoPestana(v as TipoPestana | "")}
-              type="select"
-              options={[
-                { value: "sin_pestana", label: "Sin pestaña" },
-                { value: "superior", label: "Superior" },
-                { value: "inferior", label: "Inferior" },
-                { value: "ambas", label: "Ambas" }
-              ]}
-            />
-          </div>
-        </Section>
-      )}
-
-      {/* 6. IMPRESIÓN */}
-      <Section
-        icon={Palette}
-        title="¿Necesita impresión?"
-        description="Activa esta opción solo si el cliente quiere imprimir un diseño."
-        summary={impresion ? `Requiere impresión${archivoColorImpresion ? ` · ${archivoColorImpresion.name}` : " · PDF opcional"}` : "Sin impresión"}
-      >
-        <button
-          type="button"
-          onClick={() => setImpresion(!impresion)}
-          className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition-all ${impresion
-            ? "border-primary bg-primary/5 ring-2 ring-primary/10"
-            : "border-border hover:bg-muted/40"
-            }`}
-        >
-          <div>
-            <p className="font-medium">
-              {impresion ? "Sí, requiere impresión" : "No requiere impresión"}
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {impresion
-                ? "Ahora puedes indicar cómo debe realizarse."
-                : "Puedes activarlo si el cliente solicita un diseño impreso."}
-            </p>
-          </div>
-          <span
-            className={`relative h-6 w-11 rounded-full transition-colors ${impresion ? "bg-primary" : "bg-muted"
-              }`}
-          >
-            <span
-              className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${impresion ? "translate-x-6" : "translate-x-1"
-                }`}
-            />
-          </span>
-        </button>
-
-        {impresion && (
-          <div className="mt-4 grid gap-4 rounded-xl bg-muted/30 p-4 sm:grid-cols-2">
-            {/**
+            {impresion && (
+              <div className="mt-4 grid gap-4 rounded-xl bg-muted/30 p-4 sm:grid-cols-2">
+                {/**
             <Field
               label="Colores de impresión"
               value={colorImpresion}
@@ -1074,185 +1046,180 @@ export default function RequerimientoStepDetalles(
               placeholder="Ej. rojo, azul y negro"
             />
              */}
-            <div>
-              <label htmlFor="archivo-color-impresion" className="mb-1 block text-sm font-medium">Diseño de impresión (PDF)</label>
-              <input id="archivo-color-impresion" type="file" accept="application/pdf,.pdf" onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                if (file && (!file.name.toLowerCase().endsWith(".pdf") || file.size > 20 * 1024 * 1024)) {
-                  window.alert("Selecciona un archivo PDF de hasta 20 MB.");
-                  event.target.value = "";
-                  return;
-                }
-                setArchivoColorImpresion(file);
-              }} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" />
-              <p className="mt-1 text-xs text-muted-foreground">Opcional · máximo 20 MB{archivoColorImpresion ? ` · ${archivoColorImpresion.name}` : ""}</p>
-            </div>
-            <Field
-              label="Tipo de impresión"
-              value={tipoImpresion}
-              onChange={(v) => setTipoImpresion(v as TipoImpresion)}
-              type="select"
-              options={[
-                { value: "corrida", label: "Corrida" },
-                { value: "dimensionada", label: "Dimensionada" },
-              ]}
-            />
-            <Field
-              label="Cara Impresion"
-              value={caraImpresion}
-              onChange={(v) => setCaraImpresion(v as CaraImpresion | "")}
-              type="select"
-              options={[
-                { value: "", label: "Seleccionar" },
-                { value: "una_cara", label: "Una cara" },
-                { value: "dos_caras", label: "Dos caras" },
-              ]}
-            />
-            <div className="sm:col-span-2">
-              <Field
-                label="Tratamiento de impresión"
-                value={tratamientoImpresion}
-                onChange={(v) =>
-                  setTratamientoImpresion(v as TratamientoImpresion)
-                }
-                type="select"
-                options={[
-                  { value: "solido", label: "Sólido" },
-                  { value: "degradado", label: "Degradado" },
-                  { value: "trameado", label: "Trameado" },
-                ]}
-              />
-            </div>
-            <Field
-              label="Posición de impresión"
-              value={posicionImpresion}
-              onChange={(v) =>
-                setPosicionImpresion(v as PosicionImpresion)
-              }
-              type="select"
-              options={[
-                { value: "centrada", label: "Centrada" },
-                { value: "personalizada", label: "Personalizada" },
-              ]}
-            />
-            {posicionImpresion === "personalizada" && (
-              <div className="sm:col-span-2 grid gap-4 rounded-xl border border-border bg-background p-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="archivo-color-impresion" className="mb-1 block text-sm font-medium">Diseño de impresión (PDF)</label>
+                  <input id="archivo-color-impresion" type="file" accept="application/pdf,.pdf" onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    if (file && (!file.name.toLowerCase().endsWith(".pdf") || file.size > 20 * 1024 * 1024)) {
+                      window.alert("Selecciona un archivo PDF de hasta 20 MB.");
+                      event.target.value = "";
+                      return;
+                    }
+                    setArchivoColorImpresion(file);
+                  }} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" />
+                  <p className="mt-1 text-xs text-muted-foreground">Opcional · máximo 20 MB{archivoColorImpresion ? ` · ${archivoColorImpresion.name}` : ""}</p>
+                </div>
                 <Field
-                  label="Distancia superior"
-                  value={distanciaImpresionSuperior}
-                  onChange={setDistanciaImpresionSuperior}
-                  placeholder="Ej. 5"
-                  suffix="cm"
-                  type="number"
+                  label="Tipo de impresión"
+                  value={tipoImpresion}
+                  onChange={(v) => setTipoImpresion(v as TipoImpresion)}
+                  type="select"
+                  options={[
+                    { value: "corrida", label: "Corrida" },
+                    { value: "dimensionada", label: "Dimensionada" },
+                  ]}
                 />
-
                 <Field
-                  label="Distancia inferior"
-                  value={distanciaImpresionInferior}
-                  onChange={setDistanciaImpresionInferior}
-                  placeholder="Ej. 5"
-                  suffix="cm"
-                  type="number"
+                  label="Cara Impresion"
+                  value={caraImpresion}
+                  onChange={(v) => setCaraImpresion(v as CaraImpresion | "")}
+                  type="select"
+                  options={[
+                    { value: "", label: "Seleccionar" },
+                    { value: "una_cara", label: "Una cara" },
+                    { value: "dos_caras", label: "Dos caras" },
+                  ]}
                 />
-
+                <div className="sm:col-span-2">
+                  <Field
+                    label="Tratamiento de impresión"
+                    value={tratamientoImpresion}
+                    onChange={(v) =>
+                      setTratamientoImpresion(v as TratamientoImpresion)
+                    }
+                    type="select"
+                    options={[
+                      { value: "solido", label: "Sólido" },
+                      { value: "degradado", label: "Degradado" },
+                      { value: "trameado", label: "Trameado" },
+                    ]}
+                  />
+                </div>
                 <Field
-                  label="Distancia izquierda"
-                  value={distanciaImpresionIzquierda}
-                  onChange={setDistanciaImpresionIzquierda}
-                  placeholder="Ej. 3"
-                  suffix="cm"
-                  type="number"
+                  label="Posición de impresión"
+                  value={posicionImpresion}
+                  onChange={(v) =>
+                    setPosicionImpresion(v as PosicionImpresion)
+                  }
+                  type="select"
+                  options={[
+                    { value: "centrada", label: "Centrada" },
+                    { value: "personalizada", label: "Personalizada" },
+                  ]}
                 />
+                {posicionImpresion === "personalizada" && (
+                  <div className="sm:col-span-2 grid gap-4 rounded-xl border border-border bg-background p-4 sm:grid-cols-2">
+                    <Field
+                      label="Distancia superior"
+                      value={distanciaImpresionSuperior}
+                      onChange={setDistanciaImpresionSuperior}
+                      placeholder="Ej. 5"
+                      suffix="cm"
+                      type="number"
+                    />
 
-                <Field
-                  label="Distancia derecha"
-                  value={distanciaImpresionDerecha}
-                  onChange={setDistanciaImpresionDerecha}
-                  placeholder="Ej. 3"
-                  suffix="cm"
-                  type="number"
-                />
+                    <Field
+                      label="Distancia inferior"
+                      value={distanciaImpresionInferior}
+                      onChange={setDistanciaImpresionInferior}
+                      placeholder="Ej. 5"
+                      suffix="cm"
+                      type="number"
+                    />
 
+                    <Field
+                      label="Distancia izquierda"
+                      value={distanciaImpresionIzquierda}
+                      onChange={setDistanciaImpresionIzquierda}
+                      placeholder="Ej. 3"
+                      suffix="cm"
+                      type="number"
+                    />
+
+                    <Field
+                      label="Distancia derecha"
+                      value={distanciaImpresionDerecha}
+                      onChange={setDistanciaImpresionDerecha}
+                      placeholder="Ej. 3"
+                      suffix="cm"
+                      type="number"
+                    />
+
+                  </div>
+                )}
               </div>
             )}
+          </Section>
+
+          {/* 7. ACABADOS */}
+          <Section
+            icon={Sparkles}
+            title="Tratamientos y acabados"
+            description="Selecciona todos los que correspondan."
+            summary={tratamientosAcabadosEspeciales.length ? `${tratamientosAcabadosEspeciales.length} seleccionado(s)` : "Ninguno seleccionado"}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              {tratamientosDisponibles.map((item) => {
+                const selected = tratamientosAcabadosEspeciales.includes(item.value);
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => toggleTratamiento(item.value)}
+                    className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-all ${selected
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/10"
+                      : "border-border hover:bg-muted/40"
+                      }`}
+                  >
+                    <span
+                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${selected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border"
+                        }`}
+                    >
+                      {selected && <Check className="h-3.5 w-3.5" />}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-medium">{item.label}</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {item.description}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
+
+          {/* 8. DESCRIPCIÓN Y AVANZADO */}
+          <Section
+            icon={Settings2}
+            title="Otras características"
+            description="Detalles adicionales que ayuden a comprender la solicitud."
+            summary={otrasCaracteristicas ? "Información agregada" : "Opcional"}
+          >
+            <textarea
+              value={otrasCaracteristicas}
+              onChange={(e) => setOtrasCaracteristicas(e.target.value)}
+              rows={3}
+              placeholder="Agrega cualquier otra característica relevante..."
+              className={`${inputClass} resize-y`}
+            />
+          </Section>
+        </div>
+
+        <aside className="order-first space-y-3 lg:order-last lg:sticky lg:top-4">
+          <div className="rounded-xl border border-primary/15 bg-primary/[0.03] px-4 py-3 text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Tip:</span>{" "}
+            abre cada sección cuando necesites completar esos datos. Puedes dejar vacíos los campos que aún no conoces.
           </div>
-        )}
-      </Section>
-
-      {/* 7. ACABADOS */}
-      <Section
-        icon={Sparkles}
-        title="Tratamientos y acabados"
-        description="Selecciona todos los que correspondan."
-        summary={tratamientosAcabadosEspeciales.length ? `${tratamientosAcabadosEspeciales.length} seleccionado(s)` : "Ninguno seleccionado"}
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          {tratamientosDisponibles.map((item) => {
-            const selected = tratamientosAcabadosEspeciales.includes(item.value);
-            return (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => toggleTratamiento(item.value)}
-                className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-all ${selected
-                  ? "border-primary bg-primary/5 ring-2 ring-primary/10"
-                  : "border-border hover:bg-muted/40"
-                  }`}
-              >
-                <span
-                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${selected
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border"
-                    }`}
-                >
-                  {selected && <Check className="h-3.5 w-3.5" />}
-                </span>
-                <span>
-                  <span className="block text-sm font-medium">{item.label}</span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                    {item.description}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </Section>
-
-      {/* 8. DESCRIPCIÓN Y AVANZADO */}
-      <Section
-        icon={Settings2}
-        title="Otras características"
-        description="Detalles adicionales que ayuden a comprender la solicitud."
-        summary={otrasCaracteristicas ? "Información agregada" : "Opcional"}
-      >
-        <textarea
-          value={otrasCaracteristicas}
-          onChange={(e) => setOtrasCaracteristicas(e.target.value)}
-          rows={3}
-          placeholder="Agrega cualquier otra característica relevante..."
-          className={`${inputClass} resize-y`}
-        />
-      </Section>
+          <ViabilidadPreviaPanel
+            resultado={viabilidadPrevia ?? null}
+            cargando={evaluandoViabilidadPrevia}
+            error={errorViabilidadPrevia}
+          />
+        </aside>
       </div>
-
-      <aside className="order-first space-y-3 lg:order-last lg:sticky lg:top-4">
-        <div className="rounded-xl border border-primary/15 bg-primary/[0.03] px-4 py-3 text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">Tip:</span>{" "}
-          abre cada sección cuando necesites completar esos datos. Puedes dejar vacíos los campos que aún no conoces.
-        </div>
-        <ViabilidadPreviaPanel
-          resultado={viabilidadPrevia ?? null}
-          cargando={evaluandoViabilidadPrevia}
-          error={errorViabilidadPrevia}
-        />
-      </aside>
-      </div>
-
-      {/* Mantener compatibilidad con el modelo: los campos desdoblados se
-          actualizan internamente y no se muestran como campos independientes. */}
-      <input type="hidden" value={anchoDesdoblado} readOnly />
-      <input type="hidden" value={largoDesdoblado} readOnly />
     </div>
   );
 }

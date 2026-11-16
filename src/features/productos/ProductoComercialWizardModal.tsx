@@ -508,91 +508,148 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
   const categoryId = Number(form.categoria) || undefined;
   const commercialProducts = useMemo(() => products.filter(p => p.estado_homologacion === "homologado"), [products]);
 
+
   const bolsaDimensiones = useMemo(() => {
-    const ancho = Number(form.widthFlat);
-    if (!form.widthFlat.trim()) {
-      return {
-        anchoDoblado: null as number | null,
-        error: form.fuelle ? "Ingresa el ancho desdoblado para calcular el ancho doblado." : "",
-      };
-    }
-    if (!Number.isFinite(ancho) || ancho <= 0) {
-      return { anchoDoblado: null, error: "El ancho desdoblado debe ser mayor que cero." };
-    }
     const leerFuelle = (lado: string) => {
-      if (!form.fuelle || !form.sides.includes(lado)) return 0;
+      if (!form.sides.includes(lado)) return 0;
+
       const valor = form.sideMeasures[lado] ?? "";
       if (!valor.trim()) return null;
+
       const medida = Number(valor);
       return Number.isFinite(medida) && medida >= 0 ? medida : null;
     };
-    const izquierdo = leerFuelle("Izquierda");
-    const derecho = leerFuelle("Derecha");
-    if (izquierdo === null || derecho === null) {
-      return { anchoDoblado: null, error: "Completa las medidas de los fuelles seleccionados." };
+
+    // Determinar si existen fuelles que afectan cada dimensión.
+    const hayFuelleAncho =
+      form.sides.includes("Izquierda") ||
+      form.sides.includes("Derecha");
+
+    const hayFuelleLargo =
+      form.sides.includes("Arriba") ||
+      form.sides.includes("Abajo");
+
+    // ANCHO: desdoblado - fuelles izquierdo y derecho.
+    const ancho = Number(form.widthFlat);
+    let anchoDoblado: number | null = null;
+    let error = "";
+
+    if (!form.widthFlat.trim() || !Number.isFinite(ancho) || ancho <= 0) {
+      error = "Ingresa un ancho desdoblado mayor que cero.";
+    } else {
+      const izquierdo = leerFuelle("Izquierda");
+      const derecho = leerFuelle("Derecha");
+
+      if (izquierdo === null || derecho === null) {
+        error = "Completa las medidas de los fuelles laterales seleccionados.";
+      } else if (hayFuelleAncho && izquierdo + derecho >= ancho) {
+        error = "La suma de los fuelles debe ser menor que el ancho desdoblado.";
+      } else {
+        anchoDoblado = ancho - izquierdo - derecho;
+      }
     }
-    if (izquierdo + derecho >= ancho) {
-      return { anchoDoblado: null, error: "La suma de los fuelles debe ser menor que el ancho desdoblado." };
+
+    // LARGO: desdoblado - fuelles inferior y superior.
+    const largo = Number(form.foldLength);
+    let largoDoblado: number | null = null;
+    let largoError = "";
+
+    if (!form.foldLength.trim() || !Number.isFinite(largo) || largo <= 0) {
+      largoError = "Ingresa un largo desdoblado mayor que cero.";
+    } else {
+      const inferior = leerFuelle("Abajo");
+      const superior = leerFuelle("Arriba");
+
+      if (inferior === null || superior === null) {
+        largoError = "Completa las medidas de los fuelles superior e inferior seleccionados.";
+      } else if (hayFuelleLargo && inferior + superior >= largo) {
+        largoError = "La suma de los fuelles debe ser menor que el largo desdoblado.";
+      } else {
+        largoDoblado = largo - inferior - superior;
+      }
     }
-    return { anchoDoblado: ancho - izquierdo - derecho, error: "" };
-  }, [form.widthFlat, form.fuelle, form.sides, form.sideMeasures]);
+
+    return {
+      anchoDoblado,
+      largoDoblado,
+      hayFuelleAncho,
+      hayFuelleLargo,
+      error,
+      largoError,
+    };
+  }, [
+    form.widthFlat,
+    form.foldLength,
+    form.sides,
+    form.sideMeasures,
+  ]);
+
+
 
   const bobinaDimensiones = useMemo(() => {
     const ancho = Number(form.width);
+
     const leerFuelle = (
-      lado: "Izquierda" | "Derecha" | "Superior" | "Inferior",
+      lado: "Izquierda" | "Derecha",
       lados: string[],
       simetria: "simetrico" | "asimetrico",
       medidaComun: string,
       medidas: Record<string, string>,
     ) => {
       if (!lados.includes(lado)) return 0;
-      const valor = simetria === "simetrico" ? medidaComun : medidas[lado] ?? "";
+
+      const valor = simetria === "simetrico"
+        ? medidaComun
+        : medidas[lado] ?? "";
+
       if (!valor.trim()) return null;
+
       const medida = Number(valor);
       return Number.isFinite(medida) && medida >= 0 ? medida : null;
     };
-    const izquierdo = leerFuelle("Izquierda", form.bobinaSides, form.bobinaSideSymmetry, form.bobinaCommonSideMeasure, form.bobinaSideMeasures);
-    const derecho = leerFuelle("Derecha", form.bobinaSides, form.bobinaSideSymmetry, form.bobinaCommonSideMeasure, form.bobinaSideMeasures);
-    const superior = leerFuelle("Superior", form.bobinaLengthSides, form.bobinaLengthSideSymmetry, form.bobinaCommonLengthSideMeasure, form.bobinaLengthSideMeasures);
-    const inferior = leerFuelle("Inferior", form.bobinaLengthSides, form.bobinaLengthSideSymmetry, form.bobinaCommonLengthSideMeasure, form.bobinaLengthSideMeasures);
-    const anchoError = !form.width.trim() || !Number.isFinite(ancho) || ancho <= 0
-      ? "Ingresa un ancho desdoblado mayor que cero."
+
+    const izquierdo = leerFuelle(
+      "Izquierda",
+      form.bobinaSides,
+      form.bobinaSideSymmetry,
+      form.bobinaCommonSideMeasure,
+      form.bobinaSideMeasures,
+    );
+
+    const derecho = leerFuelle(
+      "Derecha",
+      form.bobinaSides,
+      form.bobinaSideSymmetry,
+      form.bobinaCommonSideMeasure,
+      form.bobinaSideMeasures,
+    );
+
+    const error = !form.width.trim() || !Number.isFinite(ancho) || ancho <= 0
+      ? "Ingresa un ancho de bobina mayor que cero."
       : izquierdo === null || derecho === null
         ? "Completa las medidas de los fuelles laterales seleccionados."
         : izquierdo + derecho > ancho
-          ? "La suma de los fuelles laterales no puede superar el ancho desdoblado."
+          ? "La suma de los fuelles laterales no puede superar el ancho de bobina."
           : "";
-    const anchoDoblado = anchoError ? null : Number((ancho - (izquierdo ?? 0) - (derecho ?? 0)).toFixed(2));
 
-    const largo = Number(form.bobinaLengthFlat);
-    let largoError = "";
-    let largoDoblado: number | null = null;
-    if (form.bobinaLengthFlat.trim()) {
-      if (!Number.isFinite(largo) || largo <= 0) {
-        largoError = "El largo desdoblado debe ser mayor que cero.";
-      } else if (superior === null || inferior === null) {
-        largoError = "Completa las medidas de los fuelles superior e inferior seleccionados.";
-      } else if (superior + inferior > largo) {
-        largoError = "La suma de los fuelles superior e inferior no puede superar el largo desdoblado.";
-      } else {
-        largoDoblado = Number((largo - superior - inferior).toFixed(2));
-      }
-    } else if (superior !== 0 || inferior !== 0) {
-      largoError = "Ingresa el largo desdoblado para calcular el largo doblado con fuelles.";
-    }
+    const anchoDoblado = error
+      ? null
+      : Number((ancho - (izquierdo ?? 0) - (derecho ?? 0)).toFixed(2));
+
     return {
       anchoDoblado,
-      largoDoblado,
       izquierdo,
       derecho,
-      superior,
-      inferior,
-      error: anchoError,
-      largoError,
+      error,
     };
-  }, [form.width, form.bobinaSides, form.bobinaSideSymmetry, form.bobinaCommonSideMeasure, form.bobinaSideMeasures,
-    form.bobinaLengthFlat, form.bobinaLengthSides, form.bobinaLengthSideSymmetry, form.bobinaCommonLengthSideMeasure, form.bobinaLengthSideMeasures]);
+  }, [
+    form.width,
+    form.bobinaSides,
+    form.bobinaSideSymmetry,
+    form.bobinaCommonSideMeasure,
+    form.bobinaSideMeasures,
+  ]);
+
 
   useEffect(() => {
     if (!open) return;
@@ -745,10 +802,10 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
         },
         ...(s.productType === "bolsa" ? {
           especificacion_bolsa: {
-            ancho_doblado: s.widthFlat.trim() ? bolsaDimensiones.anchoDoblado : s.width,
-            ancho_desdoblado: s.widthFlat || null,
-            largo_doblado: s.length,
-            largo_desdoblado: s.foldLength || null,
+            ancho_doblado: bolsaDimensiones.anchoDoblado ?? Number(s.widthFlat),
+            ancho_desdoblado: s.widthFlat,
+            largo_doblado: bolsaDimensiones.largoDoblado ?? Number(s.foldLength),
+            largo_desdoblado: s.foldLength,
             fuelle: s.fuelle, fuelle_izquierdo: s.sideMeasures.Izquierda || null,
             fuelle_derecho: s.sideMeasures.Derecha || null, fuelle_inferior: s.sideMeasures.Abajo || null,
             fuelle_superior: s.sideMeasures.Arriba || null, tipo_troquel: s.troquel,
@@ -763,10 +820,8 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
             ancho: s.width,
             fuelle_izquierdo: bobinaDimensiones.izquierdo || null,
             fuelle_derecho: bobinaDimensiones.derecho || null,
-            largo_desdoblado: s.bobinaLengthFlat || null,
-            fuelle_superior: bobinaDimensiones.superior || null,
-            fuelle_inferior: bobinaDimensiones.inferior || null,
-            largo_doblado: bobinaDimensiones.largoDoblado,
+            fuelle_superior: null,
+            fuelle_inferior: null,
             diametro: s.diameter || null,
             diametro_nucleo: s.coreDiameter || null,
             longitud: s.meters || null,
@@ -802,8 +857,8 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       cantidad <= 0 ||
       !form.material ||
       !form.micraje ||
-      !form.width ||
-      (form.productType === "bolsa" ? !form.length : !form.meters)
+      (form.productType === "bolsa" ? !form.widthFlat : !form.width) ||
+      (form.productType === "bolsa" ? !form.foldLength : !form.meters)
     ) {
       setWeights(null);
       setCalculatingWeight(false);
@@ -877,7 +932,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
     form.material,
     form.micraje,
     form.width,
-    form.length,
+    form.foldLength,
     form.meters,
     form.productType,
     quantityUnit,
@@ -956,10 +1011,17 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       const largosSimetricos = medidasBobinaLongitudSeleccionadas.length > 0
         && medidasBobinaLongitudSeleccionadas.every(medida => medida === medidasBobinaLongitudSeleccionadas[0]);
       setForm(prev => ({
-        ...prev, productType: tipoReferencia, categoria: category ? String(category.id) : prev.categoria,
-        material: ref.material, layers: ref.capas || prev.layers, micraje: String(ref.micraje ?? ""), impression: ref.impresion,
-        color: ref.color_bolsa, width: String(ref.especificacion_bolsa?.ancho_doblado ?? ref.especificacion_bobina?.ancho ?? ""),
-        widthFlat: String(ref.especificacion_bolsa?.ancho_desdoblado ?? ""), length: String(ref.especificacion_bolsa?.largo_doblado ?? ""),
+        ...prev, productType: tipoReferencia,
+        categoria: category ? String(category.id) : prev.categoria,
+        material: ref.material,
+        layers: ref.capas || prev.layers,
+        micraje: String(ref.micraje ?? ""),
+        impression: ref.impresion,
+        color: ref.color_bolsa,
+        width: String(ref.especificacion_bolsa?.ancho_doblado ?? ref.especificacion_bobina?.ancho ?? ""),
+        widthFlat: String(ref.especificacion_bolsa?.ancho_desdoblado ?? ""),
+        length: String(ref.especificacion_bolsa?.largo_doblado ?? ""),
+        foldLength: String(ref.especificacion_bolsa?.largo_desdoblado ?? ""),
         meters: String(ref.especificacion_bobina?.longitud ?? ""), diameter: String(ref.especificacion_bobina?.diametro ?? ""),
         coreDiameter: String(ref.especificacion_bobina?.diametro_nucleo ?? ""), coreType: ref.especificacion_bobina?.tipo_nucleo ?? prev.coreType,
         weight: String(ref.especificacion_bobina?.peso ?? ""), sello: ref.especificacion_bolsa?.tipo_sello ?? prev.sello,
@@ -988,6 +1050,14 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
     if (!productType) { setError("La categoría debe identificar si el producto es bolsa o bobina."); setStep(0); return; }
     const errorFisico = validateStep(1);
     if (errorFisico) { setError(errorFisico); setStep(1); return; }
+    const largoDobladoBolsa =
+      bolsaDimensiones.largoDoblado ?? Number(form.foldLength);
+
+    if (productType === "bolsa" && largoDobladoBolsa === null) {
+      setError("No se pudo calcular el largo doblado de la bolsa.");
+      setStep(1);
+      return;
+    }
     const description = [
       `Aplicación prevista: ${form.application}`,
       form.use && `Uso específico: ${form.use}`,
@@ -1002,7 +1072,9 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
     const anchoNombre = productType === "bobina"
       ? form.width
       : (bolsaDimensiones.anchoDoblado ?? form.width);
-    const largoNombre = productType === "bobina" ? form.meters : form.length;
+    const largoNombre = productType === "bobina"
+      ? form.meters
+      : bolsaDimensiones.largoDoblado;
     const dimensionesNombre = [anchoNombre, largoNombre, form.micraje]
       .map(dimensionComoTexto)
       .filter(Boolean)
@@ -1036,9 +1108,11 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       },
       ...(productType === "bolsa" ? {
         especificacion_bolsa: {
-          ancho_doblado: form.widthFlat.trim() ? bolsaDimensiones.anchoDoblado ?? form.width : form.width,
-          ancho_desdoblado: form.widthFlat || null,
-          largo_doblado: form.length, largo_desdoblado: form.foldLength || null, fuelle: form.fuelle,
+          ancho_doblado: bolsaDimensiones.anchoDoblado ?? Number(form.widthFlat),
+          ancho_desdoblado: form.widthFlat,
+          largo_doblado: largoDobladoBolsa ?? form.length,
+          largo_desdoblado: form.foldLength,
+          fuelle: form.fuelle,
           fuelle_izquierdo: form.sideMeasures.Izquierda || null, fuelle_derecho: form.sideMeasures.Derecha || null,
           fuelle_inferior: form.sideMeasures.Abajo || null, fuelle_superior: form.sideMeasures.Arriba || null,
           tipo_troquel: form.troquel, tipo_sello: form.sello, pestana: form.pestana,
@@ -1049,12 +1123,15 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
           ancho: form.width,
           fuelle_izquierdo: bobinaDimensiones.izquierdo || null,
           fuelle_derecho: bobinaDimensiones.derecho || null,
-          largo_desdoblado: form.bobinaLengthFlat,
-          fuelle_superior: bobinaDimensiones.superior || null,
-          fuelle_inferior: bobinaDimensiones.inferior || null,
+          fuelle_superior: null,
+          fuelle_inferior: null,
           configuracion_pelicula: form.filmConfig,
-          diametro: form.diameter || null, diametro_nucleo: form.coreDiameter || null, tipo_nucleo: form.coreType,
-          peso: form.weight || null, longitud: form.meters || null, otras_caracteristicas: form.notes
+          diametro: form.diameter || null,
+          diametro_nucleo: form.coreDiameter || null,
+          tipo_nucleo: form.coreType,
+          peso: form.weight || null,
+          longitud: form.meters || null,
+          otras_caracteristicas: form.notes
         }
       }),
       ...(productType === "bolsa" ? { presentacion: { unidades_por_fajo: Number(form.unitsPerPack) || 0, fajos_por_bulto: Number(form.fajosPerBundle) || 0, paquetes_por_jaba: Number(form.packagesPerJaba) || 0, jabas_por_bulto: Number(form.jabasPerBundle) || 0 } } : {}),
@@ -1093,24 +1170,35 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
         return "Ingresa un espesor mayor que cero.";
       }
       if (form.productType === "bobina") {
-        if (!form.width.trim() || Number(form.width) <= 0) return "Ingresa un ancho desdoblado mayor que cero.";
-        if (bobinaDimensiones.error) return bobinaDimensiones.error;
-        if (!form.bobinaLengthFlat.trim() || Number(form.bobinaLengthFlat) <= 0) return "Ingresa un largo desdoblado mayor que cero.";
-        if (bobinaDimensiones.largoError) return bobinaDimensiones.largoError;
-      } else {
-        const anchoManualNecesario = !form.widthFlat.trim() && !form.fuelle;
-        if (anchoManualNecesario && (!form.width.trim() || Number(form.width) <= 0)) {
-          return "Ingresa un ancho doblado mayor que cero o el ancho desdoblado.";
+        if (!form.width.trim() || Number(form.width) <= 0) {
+          return "Ingresa un ancho de bobina mayor que cero.";
         }
-        if (form.widthFlat.trim() && bolsaDimensiones.error) return bolsaDimensiones.error;
-        if (form.fuelle && !form.widthFlat.trim()) return "Ingresa el ancho desdoblado para calcular el ancho doblado con fuelles.";
-        if (!form.widthFlat.trim() && form.fuelle) return "Ingresa el ancho desdoblado para calcular el ancho doblado con fuelles.";
-      }
-      if (
-        form.productType === "bobina" &&
-        (!form.meters.trim() || Number(form.meters) <= 0)
-      ) {
-        return "Ingresa una longitud de bobina mayor que cero.";
+
+        if (bobinaDimensiones.error) {
+          return bobinaDimensiones.error;
+        }
+
+        if (!form.meters.trim() || Number(form.meters) <= 0) {
+          return "Ingresa una longitud de bobina mayor que cero.";
+        }
+      } else {
+
+        if (!form.widthFlat.trim() || Number(form.widthFlat) <= 0) {
+          return "Ingresa un ancho desdoblado mayor que cero.";
+        }
+
+        if (bolsaDimensiones.error) {
+          return bolsaDimensiones.error;
+        }
+
+        if (!form.foldLength.trim() || Number(form.foldLength) <= 0) {
+          return "Ingresa un largo desdoblado mayor que cero.";
+        }
+
+        if (bolsaDimensiones.largoError) {
+          return bolsaDimensiones.largoError;
+        }
+
       }
       if (form.productType === "bolsa" && form.finishes.length > 1) {
         return "Solo puedes seleccionar un acabado especial.";
@@ -1218,72 +1306,78 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
 
         {form.productType === "bolsa" ? (
           <>
-            {form.widthFlat.trim() ? (
+            {field("Ancho desdoblado (cm)", "widthFlat", {
+              type: "number",
+              required: true,
+              placeholder: "Ej. 50",
+            })}
+
+
+            {bolsaDimensiones.hayFuelleAncho && (
               <label className="block">
-                <span className={labelClass}>Ancho doblado calculado (cm)</span>
+                <span className="mb-1.5 block text-xs font-semibold text-blue-700">
+                  Ancho doblado calculado (cm)
+                </span>
                 <input
-                  className={`${inputClass} bg-slate-50`}
+                  className="w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-semibold text-blue-800 outline-none cursor-not-allowed"
                   type="number"
                   value={bolsaDimensiones.anchoDoblado ?? ""}
                   readOnly
                   aria-label="Ancho doblado calculado de bolsa"
                 />
+                <span className="mt-1 block text-xs text-blue-600">
+                  Calculado automáticamente restando los fuelles izquierdo y derecho.
+                </span>
               </label>
-            ) : field("Ancho doblado (cm)", "width", { type: "number", required: true })}
-
-            {field("Ancho desdoblado (cm)", "widthFlat", {
-              type: "number",
-              required: form.fuelle,
-            })}
-
-            {bolsaDimensiones.error && (form.fuelle || form.widthFlat.trim()) && (
-              <p className="text-xs text-red-600 sm:col-span-3" role="alert">{bolsaDimensiones.error}</p>
             )}
 
-            {field("Largo doblado (cm)", "length", {
-              type: "number",
-              required: true,
-            })}
+
+            {bolsaDimensiones.error && (form.fuelle || form.widthFlat.trim()) && (
+              <p className="text-xs text-red-600 sm:col-span-3" role="alert">
+                {bolsaDimensiones.error}
+              </p>
+            )}
+
+
+            {bolsaDimensiones.hayFuelleLargo && (
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold text-blue-700">
+                  Largo doblado calculado (cm)
+                </span>
+
+                <input
+                  className="w-full cursor-not-allowed rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-semibold text-blue-800 outline-none"
+                  type="number"
+                  value={bolsaDimensiones.largoDoblado ?? ""}
+                  readOnly
+                  aria-label="Largo doblado calculado de bolsa"
+                />
+
+                <span className="mt-1 block text-xs text-blue-600">
+                  Calculado automáticamente restando los fuelles superior e inferior.
+                </span>
+
+                {bolsaDimensiones.largoError && (
+                  <span className="mt-1 block text-xs text-red-600" role="alert">
+                    {bolsaDimensiones.largoError}
+                  </span>
+                )}
+              </label>
+            )}
 
             {field("Largo desdoblado (cm)", "foldLength", {
               type: "number",
+              required: true,
             })}
           </>
         ) : (
           <>
-            {field("Ancho desdoblado de bobina (cm)", "width", {
+            {field("Ancho de bobina (cm)", "width", {
               type: "number",
               required: true,
             })}
-            <label className="block">
-              <span className={labelClass}>Ancho doblado calculado (cm)</span>
-              <input
-                className={`${inputClass} bg-slate-50`}
-                type="number"
-                value={bobinaDimensiones.anchoDoblado ?? ""}
-                readOnly
-                aria-label="Ancho doblado calculado de bobina"
-              />
-              {bobinaDimensiones.error && <span className="mt-1 block text-xs text-red-600" role="alert">{bobinaDimensiones.error}</span>}
-            </label>
 
-            {field("Largo desdoblado de bobina (cm)", "bobinaLengthFlat", {
-              type: "number",
-              required: true,
-            })}
-            <label className="block">
-              <span className={labelClass}>Largo doblado calculado (cm)</span>
-              <input
-                className={`${inputClass} bg-slate-50`}
-                type="number"
-                value={bobinaDimensiones.largoDoblado ?? ""}
-                readOnly
-                aria-label="Largo doblado calculado de bobina"
-              />
-              {bobinaDimensiones.largoError && <span className="mt-1 block text-xs text-red-600" role="alert">{bobinaDimensiones.largoError}</span>}
-            </label>
-
-            {field("Metros por rollo", "meters", {
+            {field("Metros por rollo (m)", "meters", {
               type: "number",
               required: true,
             })}
@@ -1291,219 +1385,62 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
         )}
       </div>
 
-      {form.productType === "bolsa" && (
-        <div className="border-t border-slate-200 pt-4">
-          <h4 className="mb-3 text-sm font-semibold">
-            Fuelles · Posición y simetría
-          </h4>
+      {
+        form.productType === "bolsa" && (
+          <div className="border-t border-slate-200 pt-4">
+            <h4 className="mb-3 text-sm font-semibold">
+              Fuelles · Posición y simetría
+            </h4>
 
-          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(250px,350px)]">
-            {/* IZQUIERDA: posiciones y medidas */}
-            <div className="min-w-0">
-              <div className="grid grid-cols-2 gap-3">
-                {sides.map(side => (
-                  <label
-                    key={side}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.sides.includes(side)}
-                      onChange={e =>
-                        setForm(f => {
-                          const nuevasPosiciones = e.target.checked
-                            ? [...f.sides, side]
-                            : f.sides.filter(x => x !== side);
-
-                          return {
-                            ...f,
-                            sides: nuevasPosiciones,
-                            fuelle: nuevasPosiciones.length > 0,
-                          };
-                        })
-                      }
-                    />
-                    {side}
-                  </label>
-                ))}
-              </div>
-
-              {form.sides.length > 0 && (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {form.sides.map(side => (
-                    <label key={side} className="block">
-                      <span className={labelClass}>
-                        Fuelle {side} (cm)
-                      </span>
+            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(250px,350px)]">
+              {/* IZQUIERDA: posiciones y medidas */}
+              <div className="min-w-0">
+                <div className="grid grid-cols-2 gap-3">
+                  {sides.map(side => (
+                    <label
+                      key={side}
+                      className="flex items-center gap-2 text-sm"
+                    >
                       <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        className={inputClass}
-                        value={form.sideMeasures[side]}
+                        type="checkbox"
+                        checked={form.sides.includes(side)}
                         onChange={e =>
-                          setForm(f => ({
-                            ...f,
-                            sideMeasures: {
-                              ...f.sideMeasures,
-                              [side]: e.target.value,
-                            },
-                          }))
+                          setForm(f => {
+                            const nuevasPosiciones = e.target.checked
+                              ? [...f.sides, side]
+                              : f.sides.filter(x => x !== side);
+
+                            return {
+                              ...f,
+                              sides: nuevasPosiciones,
+                              fuelle: nuevasPosiciones.length > 0,
+                            };
+                          })
                         }
                       />
+                      {side}
                     </label>
                   ))}
                 </div>
-              )}
-            </div>
 
-            {/* DERECHA: dibujo dinámico */}
-            <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <FuelleSVG sides={form.sides} />
-              <p className="mt-1 text-center text-xs text-slate-500">
-                Las líneas azules indican las posiciones seleccionadas.
-              </p>
-            </div>
-          </div>
-
-          {/* TROQUEL */}
-          <div className="mt-5 border-t border-slate-200 pt-4">
-            <h4 className="mb-3 text-sm font-semibold">
-              Troquel · Una sola opción
-            </h4>
-
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {troqueles.map(t => (
-                <button
-                  type="button"
-                  key={t.value}
-                  onClick={() => set("troquel", t.value)}
-                  aria-pressed={form.troquel === t.value}
-                  className={`flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold transition-colors ${form.troquel === t.value
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
-                    : "border-slate-200 bg-white text-slate-800 hover:border-blue-300"
-                    }`}
-                >
-                  <TroquelSVG type={t.value} />
-                  <span>{t.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* SELLO Y PESTAÑA */}
-          <div className="mt-5 grid gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2">
-            {field("Tipo de sello", "sello", {
-              options: ["fondo", "lateral"],
-            })}
-            {field("Pestaña", "pestana", {
-              options: ["sin_pestana", "con_pestana"],
-            })}
-          </div>
-        </div>
-
-      )}
-
-      {form.productType === "bolsa" && <div className="space-y-4 border-t border-slate-200 pt-4"><h4 className="text-sm font-semibold text-slate-800">Presentación y empaquetado</h4><div className="grid gap-3 sm:grid-cols-5"><label className="block"><span className={labelClass}>Unidad base</span><input className={`${inputClass} bg-slate-50`} value="Bolsa" readOnly /></label>{field("Bolsas por paquete/fajo", "unitsPerPack", { type: "number" })}{field("Fajos por bulto", "fajosPerBundle", { type: "number" })}{field("Paquetes por jaba", "packagesPerJaba", { type: "number" })}{field("Jabas por bulto", "jabasPerBundle", { type: "number" })}</div><div><h4 className="mb-2 text-sm font-semibold text-slate-800">Acabados opcionales</h4><div className="flex flex-wrap gap-x-5 gap-y-2">{finishOptions.map(option => <label key={option} className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" className="h-4 w-4 accent-blue-600" checked={form.finishes.includes(option)} onChange={e => set("finishes", e.target.checked ? [...form.finishes, option] : form.finishes.filter(v => v !== option))} />{finishLabels[option]}</label>)}</div>{form.finishes.includes("otro") && <input className={`${inputClass} mt-3 max-w-md`} value={form.otherFinish} onChange={e => set("otherFinish", e.target.value)} placeholder="Especifica otro acabado" />}</div></div>}
-      {/* Configuración exclusiva para bobinas */}
-      {form.productType === "bobina" && (
-        <div className="space-y-5 border-t border-slate-200 pt-5">
-          {/* Fuelles para bobinas */}
-
-          {/* Fuelles exclusivos de bobina */}
-          <section className="border-b border-slate-200 pb-5">
-            <h4 className="mb-3 text-sm font-semibold text-slate-800">
-              Fuelle de bobina · Izquierdo y derecho
-            </h4>
-
-            <div className="flex flex-wrap gap-x-5 gap-y-3">
-              {(["Izquierda", "Derecha"] as const).map((side) => (
-                <label
-                  key={side}
-                  className="flex items-center gap-2 text-sm text-slate-700"
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.bobinaSides.includes(side)}
-                    onChange={(e) =>
-                      setForm((current) => {
-                        const nextSides = e.target.checked
-                          ? [...current.bobinaSides, side]
-                          : current.bobinaSides.filter((item) => item !== side);
-
-                        return {
-                          ...current,
-                          bobinaSides: nextSides,
-                          bobinaCommonSideMeasure:
-                            nextSides.length === 0 ? "" : current.bobinaCommonSideMeasure,
-                          bobinaSideMeasures:
-                            nextSides.length === 0
-                              ? { Izquierda: "", Derecha: "" }
-                              : current.bobinaSideMeasures,
-                        };
-                      })
-                    }
-                    className="h-4 w-4 accent-blue-600"
-                  />
-                  Fuelle {side.toLowerCase()}
-                </label>
-              ))}
-            </div>
-
-            {form.bobinaSides.length > 0 && (
-              <div className="mt-4 space-y-3">
-                <div className="flex flex-wrap gap-5">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="radio"
-                      name="bobinaSideSymmetry"
-                      checked={form.bobinaSideSymmetry === "simetrico"}
-                      onChange={() => set("bobinaSideSymmetry", "simetrico")}
-                    />
-                    Simétrico
-                  </label>
-
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="radio"
-                      name="bobinaSideSymmetry"
-                      checked={form.bobinaSideSymmetry === "asimetrico"}
-                      onChange={() => set("bobinaSideSymmetry", "asimetrico")}
-                    />
-                    Asimétrico
-                  </label>
-                </div>
-
-                {form.bobinaSideSymmetry === "simetrico" ? (
-                  <label className="block">
-                    <span className={labelClass}>Medida común del fuelle (cm)</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className={inputClass}
-                      value={form.bobinaCommonSideMeasure}
-                      onChange={(e) => set("bobinaCommonSideMeasure", e.target.value)}
-                    />
-                  </label>
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {form.bobinaSides.map((side) => (
+                {form.sides.length > 0 && (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {form.sides.map(side => (
                       <label key={side} className="block">
                         <span className={labelClass}>
-                          Fuelle {side.toLowerCase()} (cm)
+                          Fuelle {side} (cm)
                         </span>
                         <input
                           type="number"
                           min="0"
                           step="any"
                           className={inputClass}
-                          value={form.bobinaSideMeasures[side]}
-                          onChange={(e) =>
-                            setForm((current) => ({
-                              ...current,
-                              bobinaSideMeasures: {
-                                ...current.bobinaSideMeasures,
+                          value={form.sideMeasures[side]}
+                          onChange={e =>
+                            setForm(f => ({
+                              ...f,
+                              sideMeasures: {
+                                ...f.sideMeasures,
                                 [side]: e.target.value,
                               },
                             }))
@@ -1514,148 +1451,252 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
                   </div>
                 )}
               </div>
-            )}
 
-            {form.bobinaSides.length === 0 && (
-              <p className="mt-2 text-xs text-slate-500">
-                Sin fuelles seleccionados.
-              </p>
-            )}
-          </section>
-
-          <section className="border-b border-slate-200 pb-5">
-            <h4 className="mb-3 text-sm font-semibold text-slate-800">
-              Fuelles de largo · Superior e inferior
-            </h4>
-            <div className="flex flex-wrap gap-x-5 gap-y-3">
-              {(["Superior", "Inferior"] as const).map((side) => (
-                <label key={side} className="flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={form.bobinaLengthSides.includes(side)}
-                    onChange={(e) => setForm((current) => {
-                      const sides = e.target.checked
-                        ? [...current.bobinaLengthSides, side]
-                        : current.bobinaLengthSides.filter((item) => item !== side);
-                      return {
-                        ...current,
-                        bobinaLengthSides: sides,
-                        bobinaCommonLengthSideMeasure: sides.length ? current.bobinaCommonLengthSideMeasure : "",
-                        bobinaLengthSideMeasures: sides.length ? current.bobinaLengthSideMeasures : { Superior: "", Inferior: "" },
-                      };
-                    })}
-                    className="h-4 w-4 accent-blue-600"
-                  />
-                  Fuelle {side.toLowerCase()}
-                </label>
-              ))}
-            </div>
-            {form.bobinaLengthSides.length > 0 && (
-              <div className="mt-4 space-y-3">
-                <div className="flex flex-wrap gap-5">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="radio" name="bobinaLengthSideSymmetry" checked={form.bobinaLengthSideSymmetry === "simetrico"} onChange={() => set("bobinaLengthSideSymmetry", "simetrico")} />
-                    Simétrico
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="radio" name="bobinaLengthSideSymmetry" checked={form.bobinaLengthSideSymmetry === "asimetrico"} onChange={() => set("bobinaLengthSideSymmetry", "asimetrico")} />
-                    Asimétrico
-                  </label>
-                </div>
-                {form.bobinaLengthSideSymmetry === "simetrico" ? (
-                  <label className="block">
-                    <span className={labelClass}>Medida común de fuelle superior/inferior (cm)</span>
-                    <input type="number" min="0" step="any" className={inputClass} value={form.bobinaCommonLengthSideMeasure} onChange={(e) => set("bobinaCommonLengthSideMeasure", e.target.value)} />
-                  </label>
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {form.bobinaLengthSides.map((side) => (
-                      <label key={side} className="block">
-                        <span className={labelClass}>Fuelle {side.toLowerCase()} (cm)</span>
-                        <input type="number" min="0" step="any" className={inputClass} value={form.bobinaLengthSideMeasures[side]} onChange={(e) => setForm((current) => ({ ...current, bobinaLengthSideMeasures: { ...current.bobinaLengthSideMeasures, [side]: e.target.value } }))} />
-                      </label>
-                    ))}
-                  </div>
-                )}
+              {/* DERECHA: dibujo dinámico */}
+              <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <FuelleSVG sides={form.sides} />
+                <p className="mt-1 text-center text-xs text-slate-500">
+                  Las líneas azules indican las posiciones seleccionadas.
+                </p>
               </div>
-            )}
-            {form.bobinaLengthSides.length === 0 && <p className="mt-2 text-xs text-slate-500">Sin fuelles superior e inferior.</p>}
-          </section>
+            </div>
 
-          {/* Configuración de película */}
-          <section>
-            <h4 className="mb-3 text-sm font-semibold text-slate-800">
-              Configuración de película / acabado
-            </h4>
+            {/* TROQUEL */}
+            <div className="mt-5 border-t border-slate-200 pt-4">
+              <h4 className="mb-3 text-sm font-semibold">
+                Troquel · Una sola opción
+              </h4>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                { value: "tubular", label: "Tubular" },
-                { value: "corte_lateral", label: "Corte lateral" },
-                { value: "corte_separacion", label: "Corte y separación" },
-              ].map(option => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => set("filmConfig", option.value as Wizard["filmConfig"])}
-                  aria-pressed={form.filmConfig === option.value}
-                  className={`rounded-xl border p-5 text-sm font-semibold transition ${form.filmConfig === option.value
-                    ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-200"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"
-                    }`}
-                >
-                  <span className="mb-3 block text-2xl">
-                    <FilmConfigSVG
-                      type={option.value as FilmConfigSVGProps["type"]}
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {troqueles.map(t => (
+                  <button
+                    type="button"
+                    key={t.value}
+                    onClick={() => set("troquel", t.value)}
+                    aria-pressed={form.troquel === t.value}
+                    className={`flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border p-3 text-xs font-bold transition-colors ${form.troquel === t.value
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-slate-200 bg-white text-slate-800 hover:border-blue-300"
+                      }`}
+                  >
+                    <TroquelSVG type={t.value} />
+                    <span>{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* SELLO Y PESTAÑA */}
+            <div className="mt-5 grid gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2">
+              {field("Tipo de sello", "sello", {
+                options: ["fondo", "lateral"],
+              })}
+              {field("Pestaña", "pestana", {
+                options: ["sin_pestana", "con_pestana"],
+              })}
+            </div>
+          </div>
+
+        )
+      }
+
+      {form.productType === "bolsa" && <div className="space-y-4 border-t border-slate-200 pt-4"><h4 className="text-sm font-semibold text-slate-800">Presentación y empaquetado</h4><div className="grid gap-3 sm:grid-cols-5"><label className="block"><span className={labelClass}>Unidad base</span><input className={`${inputClass} bg-slate-50`} value="Bolsa" readOnly /></label>{field("Bolsas por paquete/fajo", "unitsPerPack", { type: "number" })}{field("Fajos por bulto", "fajosPerBundle", { type: "number" })}{field("Paquetes por jaba", "packagesPerJaba", { type: "number" })}{field("Jabas por bulto", "jabasPerBundle", { type: "number" })}</div><div><h4 className="mb-2 text-sm font-semibold text-slate-800">Acabados opcionales</h4><div className="flex flex-wrap gap-x-5 gap-y-2">{finishOptions.map(option => <label key={option} className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" className="h-4 w-4 accent-blue-600" checked={form.finishes.includes(option)} onChange={e => set("finishes", e.target.checked ? [...form.finishes, option] : form.finishes.filter(v => v !== option))} />{finishLabels[option]}</label>)}</div>{form.finishes.includes("otro") && <input className={`${inputClass} mt-3 max-w-md`} value={form.otherFinish} onChange={e => set("otherFinish", e.target.value)} placeholder="Especifica otro acabado" />}</div></div>}
+      {/* Configuración exclusiva para bobinas */}
+      {
+        form.productType === "bobina" && (
+          <div className="space-y-5 border-t border-slate-200 pt-5">
+            {/* Fuelles para bobinas */}
+
+            {/* Fuelles exclusivos de bobina */}
+            <section className="border-b border-slate-200 pb-5">
+              <h4 className="mb-3 text-sm font-semibold text-slate-800">
+                Fuelle de bobina · Izquierdo y derecho
+              </h4>
+
+              <div className="flex flex-wrap gap-x-5 gap-y-3">
+                {(["Izquierda", "Derecha"] as const).map((side) => (
+                  <label
+                    key={side}
+                    className="flex items-center gap-2 text-sm text-slate-700"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.bobinaSides.includes(side)}
+                      onChange={(e) =>
+                        setForm((current) => {
+                          const nextSides = e.target.checked
+                            ? [...current.bobinaSides, side]
+                            : current.bobinaSides.filter((item) => item !== side);
+
+                          return {
+                            ...current,
+                            bobinaSides: nextSides,
+                            bobinaCommonSideMeasure:
+                              nextSides.length === 0 ? "" : current.bobinaCommonSideMeasure,
+                            bobinaSideMeasures:
+                              nextSides.length === 0
+                                ? { Izquierda: "", Derecha: "" }
+                                : current.bobinaSideMeasures,
+                          };
+                        })
+                      }
+                      className="h-4 w-4 accent-blue-600"
                     />
+                    Fuelle {side.toLowerCase()}
+                  </label>
+                ))}
+              </div>
 
-                    <span>{option.label}</span>
-                  </span>
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </section>
+              {form.bobinaSides.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  <div className="flex flex-wrap gap-5">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="bobinaSideSymmetry"
+                        checked={form.bobinaSideSymmetry === "simetrico"}
+                        onChange={() => set("bobinaSideSymmetry", "simetrico")}
+                      />
+                      Simétrico
+                    </label>
 
-          {/* Aditivos y acabados adicionales */}
-          <section className="border-t border-slate-200 pt-4">
-            <h4 className="mb-3 text-sm font-semibold text-slate-800">
-              Aditivos y acabados adicionales
-            </h4>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="bobinaSideSymmetry"
+                        checked={form.bobinaSideSymmetry === "asimetrico"}
+                        onChange={() => set("bobinaSideSymmetry", "asimetrico")}
+                      />
+                      Asimétrico
+                    </label>
+                  </div>
 
-            <div className="flex flex-wrap gap-x-5 gap-y-3">
-              {[
-                { value: "film_aromatizado", label: "Aromatizante" },
-                { value: "antideslizante", label: "Antideslizante" },
-                { value: "proteccion_uv", label: "Protección UV" },
-                { value: "otro", label: "Otro" },
-              ].map(option => (
-                <label
-                  key={option.value}
-                  className="flex items-center gap-2 text-sm text-slate-700"
-                >
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-blue-600"
-                    checked={form.bobinaFinishes.includes(option.value)}
-                    onChange={e =>
-                      set(
-                        "bobinaFinishes",
-                        e.target.checked
-                          ? [...form.bobinaFinishes, option.value]
-                          : form.bobinaFinishes.filter(
-                            value => value !== option.value
-                          )
-                      )
-                    }
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
+                  {form.bobinaSideSymmetry === "simetrico" ? (
+                    <label className="block">
+                      <span className={labelClass}>Medida común del fuelle (cm)</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        className={inputClass}
+                        value={form.bobinaCommonSideMeasure}
+                        onChange={(e) => set("bobinaCommonSideMeasure", e.target.value)}
+                      />
+                    </label>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {form.bobinaSides.map((side) => (
+                        <label key={side} className="block">
+                          <span className={labelClass}>
+                            Fuelle {side.toLowerCase()} (cm)
+                          </span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            className={inputClass}
+                            value={form.bobinaSideMeasures[side]}
+                            onChange={(e) =>
+                              setForm((current) => ({
+                                ...current,
+                                bobinaSideMeasures: {
+                                  ...current.bobinaSideMeasures,
+                                  [side]: e.target.value,
+                                },
+                              }))
+                            }
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {form.bobinaSides.length === 0 && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Sin fuelles seleccionados.
+                </p>
+              )}
+            </section>
+
+
+
+            {/* Configuración de película */}
+            <section>
+              <h4 className="mb-3 text-sm font-semibold text-slate-800">
+                Configuración de película / acabado
+              </h4>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { value: "tubular", label: "Tubular" },
+                  { value: "corte_lateral", label: "Corte lateral" },
+                  { value: "corte_separacion", label: "Corte y separación" },
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => set("filmConfig", option.value as Wizard["filmConfig"])}
+                    aria-pressed={form.filmConfig === option.value}
+                    className={`rounded-xl border p-5 text-sm font-semibold transition ${form.filmConfig === option.value
+                      ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-200"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"
+                      }`}
+                  >
+                    <span className="mb-3 block text-2xl">
+                      <FilmConfigSVG
+                        type={option.value as FilmConfigSVGProps["type"]}
+                      />
+
+                      <span>{option.label}</span>
+                    </span>
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* Aditivos y acabados adicionales */}
+            <section className="border-t border-slate-200 pt-4">
+              <h4 className="mb-3 text-sm font-semibold text-slate-800">
+                Aditivos y acabados adicionales
+              </h4>
+
+              <div className="flex flex-wrap gap-x-5 gap-y-3">
+                {[
+                  { value: "film_aromatizado", label: "Aromatizante" },
+                  { value: "antideslizante", label: "Antideslizante" },
+                  { value: "proteccion_uv", label: "Protección UV" },
+                  { value: "otro", label: "Otro" },
+                ].map(option => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 text-sm text-slate-700"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-blue-600"
+                      checked={form.bobinaFinishes.includes(option.value)}
+                      onChange={e =>
+                        set(
+                          "bobinaFinishes",
+                          e.target.checked
+                            ? [...form.bobinaFinishes, option.value]
+                            : form.bobinaFinishes.filter(
+                              value => value !== option.value
+                            )
+                        )
+                      }
+                    />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
+            </section>
+          </div>
+        )
+      }
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">La factibilidad se calcula con el servicio de viabilidad de INCORE. Los criterios y rutas corresponden a la configuración productiva vigente.</div>
     </div >;
 
@@ -1807,7 +1848,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
                       value={form.printTypeFaceB}
                       onChange={e => set("printTypeFaceB", e.target.value)}
                     >
-                    <option value="">Selecciona...</option>
+                      <option value="">Selecciona...</option>
                       <option value="corrida">Corrida</option>
                       <option value="dimensionada">Dimensionada</option>
                     </select>
@@ -2025,57 +2066,40 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
               label: "Color",
               value: form.color || "No definido",
             },
+
             ...(form.productType === "bolsa"
               ? [
                 {
-                  label: "Ancho doblado (bolsa)",
-                  value: (bolsaDimensiones.anchoDoblado ?? Number(form.width)) > 0
-                    ? `${bolsaDimensiones.anchoDoblado ?? form.width} cm`
-                    : "No definido",
-                },
-                {
-                  label: "Ancho desdoblado (bolsa)",
+                  label: "Ancho desdoblado",
                   value: form.widthFlat
                     ? `${form.widthFlat} cm`
                     : "No definido",
                 },
-              ]
-              : [
-                {
-                  label: "Ancho desdoblado (bobina)",
-                  value: form.width ? `${form.width} cm` : "No definido",
-                },
-                {
-                  label: "Ancho doblado calculado (bobina)",
-                  value: bobinaDimensiones.anchoDoblado != null ? `${bobinaDimensiones.anchoDoblado} cm` : "Pendiente",
-                },
-                {
-                  label: "Largo desdoblado (bobina)",
-                  value: form.bobinaLengthFlat ? `${form.bobinaLengthFlat} cm` : "No definido",
-                },
-                {
-                  label: "Largo doblado calculado (bobina)",
-                  value: bobinaDimensiones.largoDoblado != null ? `${bobinaDimensiones.largoDoblado} cm` : "Pendiente",
-                },
-                {
-                  label: "Metros por rollo",
-                  value: form.meters ? `${form.meters} m` : "No definido",
-                },
-              ]),
-            ...(form.productType === "bolsa"
-              ? [
-                {
-                  label: "Largo doblado",
-                  value: form.length ? `${form.length} cm` : "No definido",
-                },
+                ...(bolsaDimensiones.hayFuelleAncho
+                  ? [{
+                    label: "Ancho doblado calculado",
+                    value: bolsaDimensiones.anchoDoblado != null
+                      ? `${bolsaDimensiones.anchoDoblado} cm`
+                      : "Pendiente",
+                  }]
+                  : []),
                 {
                   label: "Largo desdoblado",
                   value: form.foldLength
                     ? `${form.foldLength} cm`
                     : "No definido",
                 },
+                ...(bolsaDimensiones.hayFuelleLargo
+                  ? [{
+                    label: "Largo doblado calculado",
+                    value: bolsaDimensiones.largoDoblado != null
+                      ? `${bolsaDimensiones.largoDoblado} cm`
+                      : "Pendiente",
+                  }]
+                  : []),
               ]
               : []),
+
             {
               label: "Espesor",
               value: form.micraje ? `${form.micraje} µm` : "No definido",

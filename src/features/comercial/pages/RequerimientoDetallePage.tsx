@@ -119,11 +119,14 @@ export default function RequerimientoDetallePage() {
     const anchoBolsaPeso = formLinea?.tecnica["especificacion_bolsa.ancho_doblado"];
     const anchoDesdobladoBolsaPeso = formLinea?.tecnica["especificacion_bolsa.ancho_desdoblado"];
     const largoBolsaPeso = formLinea?.tecnica["especificacion_bolsa.largo_doblado"];
-    const anchoBobinaDobladoPeso = formLinea?.tecnica["especificacion_bobina.ancho_doblado"];
-    const anchoBobinaDesdobladoPeso = formLinea?.tecnica["especificacion_bobina.ancho_desdoblado"];
+    const largoDesdobladoBolsaPeso =
+        formLinea?.tecnica["especificacion_bolsa.largo_desdoblado"];
+    const anchoBobinaPeso = formLinea?.tecnica["especificacion_bobina.ancho"];
     const configuracionBobinaPeso = formLinea?.tecnica["especificacion_bobina.configuracion_pelicula"];
     const metrosBobinaPeso = formLinea?.tecnica["especificacion_bobina.longitud"];
-
+    const esBobinaPeso = Object.keys(formLinea?.tecnica ?? {}).some(
+        (campo) => campo.startsWith("especificacion_bobina.")
+    );
     useEffect(() => {
         if (!lineaEditandoId || cantidadPeso == null) return;
         let vigente = true;
@@ -132,17 +135,23 @@ export default function RequerimientoDetallePage() {
             const datosEspecificacion = {
                 material: materialPeso || undefined,
                 micraje: micrajePeso || undefined,
-                especificacion_bolsa: {
-                    ancho_doblado: anchoBolsaPeso || undefined,
-                    ancho_desdoblado: anchoDesdobladoBolsaPeso || undefined,
-                    largo_doblado: largoBolsaPeso || undefined,
-                },
-                especificacion_bobina: {
-                    ancho_doblado: anchoBobinaDobladoPeso || undefined,
-                    ancho_desdoblado: anchoBobinaDesdobladoPeso || undefined,
-                    configuracion_pelicula: configuracionBobinaPeso || undefined,
-                    longitud: metrosBobinaPeso || undefined,
-                },
+
+                ...(esBobinaPeso
+                    ? {
+                        especificacion_bobina: {
+                            ancho: anchoBobinaPeso || undefined,
+                            configuracion_pelicula: configuracionBobinaPeso || undefined,
+                            longitud: metrosBobinaPeso || undefined,
+                        },
+                    }
+                    : {
+                        especificacion_bolsa: {
+                            ancho_doblado: anchoBolsaPeso || undefined,
+                            ancho_desdoblado: anchoDesdobladoBolsaPeso || undefined,
+                            largo_doblado: largoBolsaPeso || undefined,
+                            largo_desdoblado: largoDesdobladoBolsaPeso || undefined,
+                        },
+                    }),
             };
             try {
                 const resultado = await api.post<{ peso_kg: string | null }>(
@@ -168,8 +177,9 @@ export default function RequerimientoDetallePage() {
         anchoBolsaPeso,
         anchoDesdobladoBolsaPeso,
         largoBolsaPeso,
-        anchoBobinaDobladoPeso,
-        anchoBobinaDesdobladoPeso,
+        largoDesdobladoBolsaPeso,
+        anchoBobinaPeso,
+        esBobinaPeso,
         configuracionBobinaPeso,
         metrosBobinaPeso,
     ]);
@@ -709,18 +719,49 @@ export default function RequerimientoDetallePage() {
                             <label className="text-xs text-slate-600">Descuento %<input type="number" min="0" max="100" step="0.01" value={formLinea.descuento_porcentaje} onChange={(event) => setFormLinea({ ...formLinea, descuento_porcentaje: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label>
                         </div>
                         <p className="text-xs text-slate-500">Peso total calculado: {calculandoPeso ? "Calculando…" : formLinea.peso_kg ? `${formLinea.peso_kg} kg` : "No disponible"}</p>
-                        {especificacion && <fieldset className="space-y-3"><legend className="text-xs font-semibold text-slate-700">Especificaciones de esta línea</legend><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{campoTecnico("material", "Material", ["PEAD", "PEBD", "PP", "BOPP", "OTRO"])}{campoTecnico("capas", "Capas", ["monocapa", "bicapa", "tricapa"])}{campoTecnico("micraje", "Micraje")}{campoTecnico("color_bolsa", "Color")}{campoTecnico("impresion", "Lleva impresión")}{campoTecnico("color_impresion", "Colores (separados por coma)")}{especificacion.especificacionBolsa && <>{["ancho_doblado", "ancho_desdoblado", "largo_doblado", "largo_desdoblado"].map((field) => campoTecnico(`especificacion_bolsa.${field}`, `${field.replaceAll("_", " ")} (cm)`))}{campoTecnico("especificacion_bolsa.fuelle", "Tiene fuelle")}{campoTecnico("especificacion_bolsa.tipo_troquel", "Tipo de troquel", ["camiseta", "normal", "rinonera", "con_asa", "refuerzo", "solapa", "adhesiva", "cierre_facil"])}</>}{especificacion.especificacionBobina && <>{["ancho_doblado", "ancho_desdoblado", "longitud", "diametro", "peso"].map((field) => campoTecnico(`especificacion_bobina.${field}`, field.replaceAll("_", " ")))}{campoTecnico("especificacion_bobina.configuracion_pelicula", "Configuración", ["tubular", "corte_lateral", "corte_separacion"])}</>}{campoTecnico("otras_caracteristicas", "Otras características")}</div><label className="block max-w-lg text-xs text-slate-600">Motivo del cambio<input value={formLinea.motivo_cambio} onChange={(event) => setFormLinea({ ...formLinea, motivo_cambio: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label><p className="text-[11px] text-slate-500">Los cambios técnicos siguen el proceso existente de versionado y evaluación de viabilidad.</p></fieldset>}
+                        {especificacion && <fieldset className="space-y-3"><legend className="text-xs font-semibold text-slate-700">Especificaciones de esta línea</legend><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{campoTecnico("material", "Material", ["PEAD", "PEBD", "PP", "BOPP", "OTRO"])}{campoTecnico("capas", "Capas", ["monocapa", "bicapa", "tricapa"])}{campoTecnico("micraje", "Micraje")}{campoTecnico("color_bolsa", "Color")}{campoTecnico("impresion", "Lleva impresión")}{campoTecnico("color_impresion", "Colores (separados por coma)")}{especificacion.especificacionBolsa && <>
+                            {[
+                                "ancho_desdoblado",
+                                "largo_desdoblado",
+                                "fuelle_izquierdo",
+                                "fuelle_derecho",
+                                "fuelle_inferior",
+                                "fuelle_superior",
+                            ].map((field) =>
+                                campoTecnico(
+                                    `especificacion_bolsa.${field}`,
+                                    `${field.replaceAll("_", " ")} (cm)`
+                                )
+                            )}
+
+                            {campoTecnico(
+                                "especificacion_bolsa.fuelle",
+                                "Tiene fuelle"
+                            )}
+
+                            {campoTecnico(
+                                "especificacion_bolsa.tipo_troquel",
+                                "Tipo de troquel",
+                                ["camiseta", "normal", "rinonera", "con_asa", "refuerzo", "solapa", "adhesiva", "cierre_facil"]
+                            )}
+                        </>}{especificacion.especificacionBobina && <>{["ancho", "longitud", "diametro", "diametro_nucleo", "peso"].map((field) =>
+                            campoTecnico(`especificacion_bobina.${field}`, field.replaceAll("_", " "))
+                        )}{campoTecnico("especificacion_bobina.configuracion_pelicula", "Configuración", ["tubular", "corte_lateral", "corte_separacion"])}</>}{campoTecnico("otras_caracteristicas", "Otras características")}</div><label className="block max-w-lg text-xs text-slate-600">Motivo del cambio<input value={formLinea.motivo_cambio} onChange={(event) => setFormLinea({ ...formLinea, motivo_cambio: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label><p className="text-[11px] text-slate-500">Los cambios técnicos siguen el proceso existente de versionado y evaluación de viabilidad.</p></fieldset>}
                         <div className="flex justify-end gap-2"><button type="button" onClick={() => setLineaEditandoId(null)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">Cancelar</button><button type="submit" disabled={guardandoLinea} className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{guardandoLinea ? "Guardando…" : "Guardar cambios"}</button></div>
-                    </form>}
+                    </form>
+                    }
                 </article>;
-            })}
-            {productoPendiente && esBorrador && <form onSubmit={(event) => void guardarProductoAgregado(event)} className="rounded-lg border border-blue-200 bg-blue-50/40 p-4">
-                <div className="mb-3"><p className="font-semibold text-slate-900">Agregar {productoPendiente.nombre}</p><p className="text-xs text-slate-500">{productoPendiente.codigo} · Completa los datos comerciales antes de guardarlo en esta versión.</p></div>
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><label className="text-xs text-slate-600">Cantidad<input required type="number" min="0.01" step="0.01" value={cantidadPendiente} onChange={(event) => setCantidadPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label><label className="text-xs text-slate-600">Unidad<select value={unidadPendiente} onChange={(event) => setUnidadPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">{[productoPendiente.unidad, "unidad", "kg", "bobina", "fajo", "metro"].filter((item, index, arr) => arr.indexOf(item) === index).map((item) => <option key={item}>{item}</option>)}</select></label><label className="text-xs text-slate-600">Precio unitario<input required type="number" min="0" step="0.01" value={precioPendiente} onChange={(event) => setPrecioPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label><label className="text-xs text-slate-600">Descuento %<input type="number" min="0" max="100" step="0.01" value={descuentoPendiente} onChange={(event) => setDescuentoPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label></div>
-                {errorAgregarProducto && <p role="alert" className="mt-3 text-xs text-rose-700">{errorAgregarProducto}</p>}
-                <div className="mt-3 flex justify-end gap-2"><button type="button" onClick={() => setProductoPendiente(null)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">Cancelar</button><button type="submit" disabled={agregandoProducto} className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{agregandoProducto ? "Agregando…" : "Agregar a la versión"}</button></div>
-            </form>}
-        </div>;
+            })
+            }
+            {
+                productoPendiente && esBorrador && <form onSubmit={(event) => void guardarProductoAgregado(event)} className="rounded-lg border border-blue-200 bg-blue-50/40 p-4">
+                    <div className="mb-3"><p className="font-semibold text-slate-900">Agregar {productoPendiente.nombre}</p><p className="text-xs text-slate-500">{productoPendiente.codigo} · Completa los datos comerciales antes de guardarlo en esta versión.</p></div>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><label className="text-xs text-slate-600">Cantidad<input required type="number" min="0.01" step="0.01" value={cantidadPendiente} onChange={(event) => setCantidadPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label><label className="text-xs text-slate-600">Unidad<select value={unidadPendiente} onChange={(event) => setUnidadPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm">{[productoPendiente.unidad, "unidad", "kg", "bobina", "fajo", "metro"].filter((item, index, arr) => arr.indexOf(item) === index).map((item) => <option key={item}>{item}</option>)}</select></label><label className="text-xs text-slate-600">Precio unitario<input required type="number" min="0" step="0.01" value={precioPendiente} onChange={(event) => setPrecioPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label><label className="text-xs text-slate-600">Descuento %<input type="number" min="0" max="100" step="0.01" value={descuentoPendiente} onChange={(event) => setDescuentoPendiente(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm" /></label></div>
+                    {errorAgregarProducto && <p role="alert" className="mt-3 text-xs text-rose-700">{errorAgregarProducto}</p>}
+                    <div className="mt-3 flex justify-end gap-2"><button type="button" onClick={() => setProductoPendiente(null)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">Cancelar</button><button type="submit" disabled={agregandoProducto} className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{agregandoProducto ? "Agregando…" : "Agregar a la versión"}</button></div>
+                </form>
+            }
+        </div >;
 
         return <>
             <OfertaComercialDetalle
@@ -933,8 +974,69 @@ export default function RequerimientoDetallePage() {
                                                         <fieldset className="space-y-3"><legend className="mb-2 text-sm font-semibold">Material e impresión</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                                             {campoTecnico("material", "Material", ["PEAD", "PEBD", "PP", "BOPP", "OTRO"])}{campoTecnico("capas", "Capas", ["monocapa", "bicapa", "tricapa"])}{campoTecnico("apto_alimento", "Apto para alimentos")}{campoTecnico("micraje", "Micraje")}{campoTecnico("color_bolsa", "Color")}{campoTecnico("impresion", "Lleva impresión")}{campoTecnico("color_impresion", "Colores de impresión (separados por coma)")}{campoTecnico("tipo_impresion", "Tipo de impresión", ["corrida", "dimensionada"])}{campoTecnico("tratamiento_impresion", "Tratamiento de impresión", ["solido", "degradado", "trameado"])}{campoTecnico("cara_impresion", "Cara de impresión", ["anverso", "reverso", "ambas"])}{campoTecnico("posicion_impresion", "Posición", ["centrada", "personalizada"])}{campoTecnico("opacidad", "Opacidad", ["alta", "media", "baja"])}{campoTecnico("distancia_impresion_superior", "Distancia superior")}{campoTecnico("distancia_impresion_inferior", "Distancia inferior")}{campoTecnico("distancia_impresion_izquierda", "Distancia izquierda")}{campoTecnico("distancia_impresion_derecha", "Distancia derecha")}{campoTecnico("tratamientos_acabados_especiales", "Acabados especiales (separados por coma)")}{campoTecnico("otras_caracteristicas", "Otras características")}
                                                         </div></fieldset>
-                                                        {versionTecnica.especificacionBolsa && <fieldset><legend className="mb-2 text-sm font-semibold">Bolsa · medidas y acabados</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{["ancho_doblado", "ancho_desdoblado", "largo_doblado", "largo_desdoblado", "fuelle_izquierdo", "fuelle_derecho", "fuelle_inferior", "fuelle_superior"].map((campo) => campoTecnico(`especificacion_bolsa.${campo}`, `${campo.replaceAll("_", " ")} (cm)`))}{campoTecnico("especificacion_bolsa.fuelle", "Tiene fuelle")}{campoTecnico("especificacion_bolsa.tipo_troquel", "Tipo de troquel", ["camiseta", "normal", "rinonera", "con_asa", "refuerzo", "solapa", "adhesiva", "cierre_facil"])}{campoTecnico("especificacion_bolsa.tipo_sello", "Tipo de sello", ["lateral", "fondo", "ninguno"])}{campoTecnico("especificacion_bolsa.pestana", "Pestaña", ["sin_pestana", "superior", "inferior", "ambas"])}{campoTecnico("especificacion_bolsa.acabado_especial", "Acabado especial")}{campoTecnico("especificacion_bolsa.otras_caracteristicas", "Otras características de bolsa")}</div></fieldset>}
-                                                        {versionTecnica.especificacionBobina && <fieldset><legend className="mb-2 text-sm font-semibold">Bobina · medidas</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{["ancho_doblado", "ancho_desdoblado", "diametro", "diametro_nucleo", "peso", "longitud"].map((campo) => campoTecnico(`especificacion_bobina.${campo}`, `${campo.replaceAll("_", " ")} (cm / kg según corresponda)`))}{campoTecnico("especificacion_bobina.configuracion_pelicula", "Configuración de película", ["tubular", "corte_lateral", "corte_separacion"])}{campoTecnico("especificacion_bobina.tipo_nucleo", "Tipo de núcleo")}{campoTecnico("especificacion_bobina.otras_caracteristicas", "Otras características de bobina")}</div></fieldset>}
+                                                        {versionTecnica.especificacionBolsa && (
+                                                            <fieldset>
+                                                                <legend className="mb-2 text-sm font-semibold">
+                                                                    Bolsa · medidas y acabados
+                                                                </legend>
+
+                                                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                                                    {[
+                                                                        "ancho_desdoblado",
+                                                                        "largo_desdoblado",
+                                                                        "fuelle_izquierdo",
+                                                                        "fuelle_derecho",
+                                                                        "fuelle_inferior",
+                                                                        "fuelle_superior",
+                                                                    ].map((campo) =>
+                                                                        campoTecnico(
+                                                                            `especificacion_bolsa.${campo}`,
+                                                                            `${campo.replaceAll("_", " ")} (cm)`
+                                                                        )
+                                                                    )}
+
+                                                                    {campoTecnico(
+                                                                        "especificacion_bolsa.fuelle",
+                                                                        "Tiene fuelle"
+                                                                    )}
+
+                                                                    {campoTecnico(
+                                                                        "especificacion_bolsa.tipo_troquel",
+                                                                        "Tipo de troquel",
+                                                                        ["camiseta", "normal", "rinonera", "con_asa",
+                                                                            "refuerzo", "solapa", "adhesiva", "cierre_facil"]
+                                                                    )}
+
+                                                                    {campoTecnico(
+                                                                        "especificacion_bolsa.tipo_sello",
+                                                                        "Tipo de sello",
+                                                                        ["lateral", "fondo", "ninguno"]
+                                                                    )}
+
+                                                                    {campoTecnico(
+                                                                        "especificacion_bolsa.pestana",
+                                                                        "Pestaña",
+                                                                        ["sin_pestana", "superior", "inferior", "ambas"]
+                                                                    )}
+
+                                                                    {campoTecnico(
+                                                                        "especificacion_bolsa.acabado_especial",
+                                                                        "Acabado especial"
+                                                                    )}
+
+                                                                    {campoTecnico(
+                                                                        "especificacion_bolsa.otras_caracteristicas",
+                                                                        "Otras características de bolsa"
+                                                                    )}
+                                                                </div>
+                                                            </fieldset>
+                                                        )}
+                                                        {versionTecnica.especificacionBobina && <fieldset><legend className="mb-2 text-sm font-semibold">Bobina · medidas</legend><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{["ancho", "diametro", "diametro_nucleo", "peso", "longitud"].map((campo) =>
+                                                            campoTecnico(
+                                                                `especificacion_bobina.${campo}`,
+                                                                `${campo.replaceAll("_", " ")} (cm / kg según corresponda)`
+                                                            )
+                                                        )}{campoTecnico("especificacion_bobina.configuracion_pelicula", "Configuración de película", ["tubular", "corte_lateral", "corte_separacion"])}{campoTecnico("especificacion_bobina.tipo_nucleo", "Tipo de núcleo")}{campoTecnico("especificacion_bobina.otras_caracteristicas", "Otras características de bobina")}</div></fieldset>}
                                                         <p className="text-xs text-muted-foreground">Al guardar, las características modificadas crean una nueva versión técnica y vuelven a pasar por la evaluación de viabilidad. Los datos de esta versión quedarán en el historial.</p>
                                                     </div>}
                                                     {!versionTecnica && <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Producto de catálogo: su versión técnica es de solo lectura. Para cambiar sus características debe generarse una solicitud de producto nuevo conforme al proceso comercial.</p>}
