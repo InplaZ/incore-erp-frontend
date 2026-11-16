@@ -483,7 +483,27 @@ function dimensionComoTexto(valor: string | number | null | undefined): string {
   return Number.isFinite(numero) ? String(numero) : String(valor).trim();
 }
 
-export default function ProductoComercialWizardModal({ open, onClose, onSuccess, producto }: { open: boolean; onClose: () => void; onSuccess?: (producto: ProductoComercialCreado) => void; producto?: Producto | null }) {
+type DatosCantidadProducto = {
+  cantidad: string;
+  unidad_comercial: "unidad" | "kg" | "bobina";
+};
+
+type ProductoComercialWizardModalProps = {
+  open: boolean;
+  onClose: () => void;
+  onSuccess?: (
+    producto: ProductoComercialCreado,
+    datosCantidad: DatosCantidadProducto
+  ) => void;
+  producto?: Producto | null;
+};
+
+export default function ProductoComercialWizardModal({
+  open,
+  onClose,
+  onSuccess,
+  producto,
+}: ProductoComercialWizardModalProps) {
   // Estado de navegación y datos temporales de esta creación.
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<Wizard>(initialForm);
@@ -959,20 +979,6 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
     }, 450);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [open, payload, payloadKey, isReadyForFeasibility]);
-
-  if (!open) return null;
-  const set = <K extends keyof Wizard>(key: K, value: Wizard[K]) => setForm(current => ({ ...current, [key]: value }));
-  const activeCategories = categories.filter(c => c.activo);
-  const categoryOptions = producto && !activeCategories.some(c => c.id === producto.categoria)
-    ? [...activeCategories, ...categories.filter(c => c.id === producto.categoria)]
-    : activeCategories;
-  const field = (label: string, key: keyof Wizard, props: { type?: string; required?: boolean; placeholder?: string; options?: string[] } = {}) => (
-    <label className="block"><span className={labelClass}>{label}{props.required && <b className="text-red-500"> *</b>}</span>
-      {props.options ? <select className={inputClass} value={String(form[key])} required={props.required} onChange={e => set(key, e.target.value as never)}><option value="">Seleccionar</option>{props.options.map(v => <option key={v} value={v}>{v}</option>)}</select> :
-        <input className={inputClass} type={props.type ?? "text"} min={props.type === "number" ? "0" : undefined} step={props.type === "number" ? "any" : undefined} required={props.required} placeholder={props.placeholder} value={String(form[key] ?? "")} onChange={e => set(key, e.target.value as never)} />}
-    </label>
-  );
-  const sectionTitle = (title: string, subtitle: string) => <div className="mb-4"><h3 className="font-semibold text-slate-800">{title}</h3><p className="text-xs text-slate-500">{subtitle}</p></div>;
   const nombreGenerado = useMemo(() => {
     const dimensiones = form.productType === "bolsa"
       ? [form.widthFlat, form.micraje, form.foldLength]
@@ -999,6 +1005,21 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
     form.foldLength,
     form.meters,
   ]);
+
+  if (!open) return null;
+  const set = <K extends keyof Wizard>(key: K, value: Wizard[K]) => setForm(current => ({ ...current, [key]: value }));
+  const activeCategories = categories.filter(c => c.activo);
+  const categoryOptions = producto && !activeCategories.some(c => c.id === producto.categoria)
+    ? [...activeCategories, ...categories.filter(c => c.id === producto.categoria)]
+    : activeCategories;
+  const field = (label: string, key: keyof Wizard, props: { type?: string; required?: boolean; placeholder?: string; options?: string[] } = {}) => (
+    <label className="block"><span className={labelClass}>{label}{props.required && <b className="text-red-500"> *</b>}</span>
+      {props.options ? <select className={inputClass} value={String(form[key])} required={props.required} onChange={e => set(key, e.target.value as never)}><option value="">Seleccionar</option>{props.options.map(v => <option key={v} value={v}>{v}</option>)}</select> :
+        <input className={inputClass} type={props.type ?? "text"} min={props.type === "number" ? "0" : undefined} step={props.type === "number" ? "any" : undefined} required={props.required} placeholder={props.placeholder} value={String(form[key] ?? "")} onChange={e => set(key, e.target.value as never)} />}
+    </label>
+  );
+  const sectionTitle = (title: string, subtitle: string) => <div className="mb-4"><h3 className="font-semibold text-slate-800">{title}</h3><p className="text-xs text-slate-500">{subtitle}</p></div>;
+
   const toggle = (label: string, checked: boolean, onChange: (value: boolean) => void) => <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} className="h-4 w-4 accent-blue-600" />{label}</label>;
 
   // Copia especificaciones de una referencia homologada a este formulario;
@@ -1150,7 +1171,14 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
       const guardado = producto
         ? await update.mutateAsync({ id: producto.id, data: request })
         : await create.mutateAsync(request);
-      onSuccess?.(guardado);
+      const unidadComercial =
+        quantityUnit === "rollos" ? "bobina" : quantityUnit;
+
+      onSuccess?.(guardado, {
+        cantidad: form.quantity,
+        unidad_comercial: unidadComercial,
+      });
+
       onClose();
     }
     catch (e) {
@@ -2042,7 +2070,7 @@ export default function ProductoComercialWizardModal({ open, onClose, onSuccess,
     return <div className="space-y-5">
       <div className="rounded-xl border border-blue-200 bg-white-50 p-4">
         <p className="mb-1 text-xs font-semibold text-green-700">
-          PRODUCTO
+
         </p>
         <p className="text-lg font-bold text-slate-800">
           {nombreGenerado || "Completa las características para generar el nombre"}

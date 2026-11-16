@@ -29,6 +29,7 @@ import { cotizacionesDetallesApi, cotizacionesVersionesApi } from "../comercial.
 import { api } from "@/api/api.config";
 import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
 import RegistrarEnvioComercialModal, { type MedioEnvioComercial } from "../components/ofertas/RegistrarEnvioComercialModal";
+import PdfPreviewModal from "@/features/productos/PDFPreViewModal";
 
 function obtenerNumeroOfertaVisible(numero: string) {
     const coincidencia = numero.match(/^COT-\d{8}-(\d+)(-\d+)?$/i);
@@ -101,7 +102,10 @@ export default function RequerimientoDetallePage() {
     const [horaRecordatorioOferta, setHoraRecordatorioOferta] = useState("09:00");
     const [mostrarActividadOferta, setMostrarActividadOferta] = useState(false);
     const crearVersionCotizacion = useCrearCotizacionVersion();
-
+    const [pdfVersionPreview, setPdfVersionPreview] = useState<{
+        blob: Blob;
+        nombreArchivo: string;
+    } | null>(null);
     // Abrir modal de actividad si se navega con el parámetro actividad=true
     useEffect(() => {
         if (searchParams.get("actividad") === "true") {
@@ -596,16 +600,21 @@ export default function RequerimientoDetallePage() {
 
     const descargarPdfVersion = async () => {
         if (!versionSeleccionada) return;
+
         try {
-            const pdf = await cotizacionesVersionesApi.pdf(versionSeleccionada.id);
-            const url = URL.createObjectURL(pdf);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `${cotizacionDeSolicitud?.numero || `solicitud-${solicitudId}`}-V${versionSeleccionada.version}.pdf`;
-            link.click();
-            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+            const pdf = await cotizacionesVersionesApi.pdf(
+                versionSeleccionada.id
+            );
+
+            const nombreArchivo = `${cotizacionDeSolicitud?.numero || `solicitud-${solicitudId}`
+                }-V${versionSeleccionada.version}.pdf`;
+
+            setPdfVersionPreview({
+                blob: pdf,
+                nombreArchivo,
+            });
         } catch {
-            setErrorAccionOferta("No se pudo descargar el PDF de esta versión.");
+            setErrorAccionOferta("No se pudo visualizar el PDF de esta versión.");
         }
     };
 
@@ -623,14 +632,14 @@ export default function RequerimientoDetallePage() {
         const totalProductos = Number(totalVersionSeleccionada || 0).toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const acciones = <div className="space-y-2">
             {errorAccionOferta && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{errorAccionOferta}</p>}
-            <button type="button" onClick={() => void descargarPdfVersion()} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700">↓ Descargar PDF V{versionSeleccionada.version}</button>
+            <button type="button" onClick={() => void descargarPdfVersion()} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700">Ver PDF V{versionSeleccionada.version}</button>
             {esBorrador && <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("enviar"); }} disabled={!lineasVersionSeleccionada.length} className="w-full rounded-lg bg-blue-700 px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-50">✓ Guardar y registrar envío</button>}
             {esEnviada && <>
                 <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("aceptar"); }} className="w-full rounded-lg bg-emerald-700 px-3 py-2.5 text-xs font-semibold text-white">✓ Registrar aceptación del cliente</button>
-                <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("rechazar"); }} className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">Rechazar oferta</button>
+                <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("rechazar"); }} className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">Cerrar oportunidad</button>
             </>}
             {puedeCrearVersion && <button type="button" onClick={() => void prepararNuevaVersionOferta()} disabled={crearVersionCotizacion.isPending} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 disabled:opacity-50">{crearVersionCotizacion.isPending ? "Creando versión…" : "+ Nueva versión para negociar"}</button>}
-            {!['activa', 'cerrada', 'anulada'].includes(cotizacionDeSolicitud.estado) && !["aceptada", "anulada"].includes(versionSeleccionada.estado) && <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("cerrar"); }} className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">Cerrar oportunidad</button>}
+            {!['activa', 'cerrada', 'anulada'].includes(cotizacionDeSolicitud.estado) && !["aceptada", "anulada"].includes(versionSeleccionada.estado)}
             <button type="button" onClick={() => setMostrarActividadOferta(true)} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700">◉ Registrar seguimiento</button>
         </div>;
 
@@ -828,6 +837,14 @@ export default function RequerimientoDetallePage() {
                 setProductoPendiente({ versionId: version.id, nombre: producto.nombre, codigo: producto.codigo, unidad: producto.unidad_medida });
                 setCantidadPendiente("1"); setPrecioPendiente(""); setDescuentoPendiente("0"); setUnidadPendiente(producto.unidad_medida); setMostrarProductoWizard(false);
             }} />
+            {pdfVersionPreview && (
+                <PdfPreviewModal
+                    pdf={pdfVersionPreview.blob}
+                    nombreArchivo={pdfVersionPreview.nombreArchivo}
+                    descripcion="Documento de cotización"
+                    onClose={() => setPdfVersionPreview(null)}
+                />
+            )}
         </>;
     }
 

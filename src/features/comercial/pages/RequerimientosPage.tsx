@@ -506,37 +506,37 @@ export default function RequerimientosPage() {
     return [...new Set([nombreCompleto, cuenta.razon_social.trim()].filter(Boolean))].join(" · ") || `Cliente #${cuenta.codigo_cliente}`;
   };
 
-  
-const iniciarPreparacionOferta = () => {
-  if (!cuentaComercialId) {
-    mostrarToast("Cliente requerido", "Selecciona un cliente para continuar.");
-    return;
-  }
 
-  const datosBase: CotizacionMetaBorrador = {
-    cantidad: "",
-    moneda: "BOB",
-    precioLista: "",
-    descuentoPorcentaje: "0",
-    precioUnitario: "0.00",
-    precioTotal: "0.00",
-    fechaVencimiento: "",
-    observaciones: "",
-    prioridad,
-    fechaEntrega,
-    lugarEntrega,
-    tipoLugarEntrega,
-    departamentoEntrega: departamentoEntrega || "CB",
-    empresaTransporte,
-    sucursalEntrega: sucursalEntrega || "montes",
+  const iniciarPreparacionOferta = () => {
+    if (!cuentaComercialId) {
+      mostrarToast("Cliente requerido", "Selecciona un cliente para continuar.");
+      return;
+    }
+
+    const datosBase: CotizacionMetaBorrador = {
+      cantidad: "",
+      moneda: "BOB",
+      precioLista: "",
+      descuentoPorcentaje: "0",
+      precioUnitario: "0.00",
+      precioTotal: "0.00",
+      fechaVencimiento: "",
+      observaciones: "",
+      prioridad,
+      fechaEntrega,
+      lugarEntrega,
+      tipoLugarEntrega,
+      departamentoEntrega: departamentoEntrega || "CB",
+      empresaTransporte,
+      sucursalEntrega: sucursalEntrega || "montes",
+    };
+
+    setDatosCotizacion(datosBase);
+    setCondicionesOferta(condicionesVacias());
+    setFechaRegistroTemporal(new Date().toISOString());
+    setPestañaOferta("productos");
+    setVistaOferta("detalle_oferta");
   };
-
-  setDatosCotizacion(datosBase);
-  setCondicionesOferta(condicionesVacias());
-  setFechaRegistroTemporal(new Date().toISOString());
-  setPestañaOferta("productos");
-  setVistaOferta("detalle_oferta");
-};
 
   const totalOferta = useMemo(
     () => lineasCotizacion.reduce((total, linea) => total + importeLineaCotizacion(linea), 0),
@@ -1415,468 +1415,468 @@ const iniciarPreparacionOferta = () => {
       />}
       <CatalogoOfertaModal open={mostrarCatalogo && vistaOferta === "detalle_oferta"} product={product} onProductType={setProduct} onClose={() => setMostrarCatalogo(false)} onAdd={(producto) => { agregarProductoAlCarrito(producto); setDatosCotizacion((actual) => actual ?? { cantidad: "", moneda: "BOB", precioLista: "", descuentoPorcentaje: "0", precioUnitario: "0.00", precioTotal: "0.00", fechaVencimiento: "", observaciones: "", prioridad, fechaEntrega, lugarEntrega, tipoLugarEntrega, departamentoEntrega: departamentoEntrega || "CB", empresaTransporte, sucursalEntrega: sucursalEntrega || "montes", observacionesSolicitud: observaciones }); }} onCreate={handleCrearProductoNuevo} versionsInCart={lineasCotizacion.map((linea) => linea.producto_version_id).filter((id): id is number => id !== undefined)} />
       {false && <>
-      {/* Encabezado */}
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          {cotizacionVersionId ? `Agregar productos a ${cotizacionEnEdicion?.numero ?? "la cotización"} · versión ${versionEnEdicion?.version ?? ""}` : "Nueva oferta comercial"}
-        </h1>
+        {/* Encabezado */}
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {cotizacionVersionId ? `Agregar productos a ${cotizacionEnEdicion?.numero ?? "la cotización"} · versión ${versionEnEdicion?.version ?? ""}` : "Nueva oferta comercial"}
+          </h1>
 
-        <p className="mt-1 text-sm text-muted-foreground">
-          Registra la solicitud del cliente, evalúa la viabilidad técnica y genera la cotización económica.
-        </p>
-      </div>
-
-      <section className="rounded-xl border border-border bg-card p-4">
-        <label className="mb-2 block text-sm font-medium">Cliente de esta cotización</label>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="w-full max-w-xl">
-            <label htmlFor="buscar-cliente-cotizacion" className="mb-1.5 block text-xs text-muted-foreground">Buscar cliente</label>
-            <div className="relative" onBlur={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                setMostrarSugerenciasCliente(false);
-              }
-            }}>
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                id="buscar-cliente-cotizacion"
-                type="search"
-                role="combobox"
-                aria-autocomplete="list"
-                aria-expanded={mostrarSugerenciasCliente}
-                aria-controls="sugerencias-clientes-cotizacion"
-                value={buscarCliente}
-                onFocus={() => setMostrarSugerenciasCliente(true)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") setMostrarSugerenciasCliente(false);
-                }}
-                onChange={(event) => {
-                  setCuentaComercialId(null);
-                  setBuscarCliente(event.target.value);
-                  setMostrarSugerenciasCliente(true);
-                }}
-                placeholder="Nombre, razón social o código…"
-                className="w-full rounded-lg border border-border bg-background py-2.5 pl-9 pr-3 text-sm"
-              />
-              {mostrarSugerenciasCliente && (
-                <div id="sugerencias-clientes-cotizacion" role="listbox" aria-label="Clientes coincidentes" className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-lg">
-                  {clientesFiltrados.length ? clientesFiltrados.slice(0, 8).map((cuenta) => (
-                    <button
-                      key={cuenta.id}
-                      type="button"
-                      role="option"
-                      aria-selected={cuenta.id === cuentaComercialId}
-                      onClick={() => {
-                        setCuentaComercialId(cuenta.id);
-                        setBuscarCliente(nombreVisibleCliente(cuenta));
-                        setMostrarSugerenciasCliente(false);
-                      }}
-                      className="flex w-full flex-col items-start rounded-md px-3 py-2 text-left transition hover:bg-muted focus:bg-muted focus:outline-none"
-                    >
-                      <span className="text-sm font-medium text-foreground">{nombreVisibleCliente(cuenta)}</span>
-                      <span className="text-xs text-muted-foreground">Cliente #{cuenta.codigo_cliente}</span>
-                    </button>
-                  )) : (
-                    <p className="px-3 py-2 text-sm text-muted-foreground">No se encontraron clientes.</p>
-                  )}
-                </div>
-              )}
-            </div>
-            {cuentaSeleccionada && <p className="mt-1.5 text-xs text-primary">Cliente seleccionado: {nombreVisibleCliente(cuentaSeleccionada)}</p>}
-          </div>
-          <button
-            type="button"
-            onClick={() => setMostrarNuevoCliente(true)}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-primary/30 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/5"
-          >
-            <UserPlus className="h-4 w-4" /> Nuevo cliente
-          </button>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Registra la solicitud del cliente, evalúa la viabilidad técnica y genera la cotización económica.
+          </p>
         </div>
-      </section>
 
-      <section className="rounded-xl border border-border bg-card p-4">
-        <label className="mb-3 block text-sm font-medium">
-          Producto de esta cotización
-        </label>
-
-        <RequerimientoStepProducto
-          product={product}
-          setProduct={setProduct}
-        />
-      </section>
-
-
-      {lineasCotizacion.length > 0 && (
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_320px]">
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold">Carrito de productos</h2>
-              <p className="text-sm text-muted-foreground">{lineasCotizacion.length} {lineasCotizacion.length === 1 ? "producto" : "productos"} · Los importes se recalculan al guardar.</p>
-            </div>
-            <button type="button" onClick={() => document.getElementById("catalogo-productos-oferta")?.scrollIntoView({ behavior: "smooth" })} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">＋ Agregar producto</button>
-            {modoCatalogoExistente && step === 2 ? <button type="button" onClick={continuarConfiguracionExistentes} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">Continuar a cantidades y entrega</button> : !modoCatalogoExistente && <button
-              type="button"
-              onClick={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }}
-              disabled={formalizarCotizacion.isPending || !cuentaComercialId}
-              className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
-            >
-              Guardar y registrar envío
-            </button>}
-          </div>
-          <div className="space-y-3">
-            {lineasCotizacion.map((linea, index) => {
-              const unitario = Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100);
-              const subtotal = Number(linea.cantidad || 0) * unitario;
-              return (
-                <div key={linea.key} className="grid gap-3 rounded-lg border border-border p-4 lg:grid-cols-[minmax(200px,2fr)_110px_120px_110px_120px_130px_auto] lg:items-end">
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Línea {index + 1} · {linea.tipo_producto}</p>
-                    <p className="truncate font-medium">{linea.nombre}</p>
-                    <p className="text-xs text-muted-foreground">{linea.codigo} · {linea.producto_version_id ? "Versión de catálogo conservada" : "Especificación técnica solicitada"}</p>
+        <section className="rounded-xl border border-border bg-card p-4">
+          <label className="mb-2 block text-sm font-medium">Cliente de esta cotización</label>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="w-full max-w-xl">
+              <label htmlFor="buscar-cliente-cotizacion" className="mb-1.5 block text-xs text-muted-foreground">Buscar cliente</label>
+              <div className="relative" onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setMostrarSugerenciasCliente(false);
+                }
+              }}>
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  id="buscar-cliente-cotizacion"
+                  type="search"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={mostrarSugerenciasCliente}
+                  aria-controls="sugerencias-clientes-cotizacion"
+                  value={buscarCliente}
+                  onFocus={() => setMostrarSugerenciasCliente(true)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") setMostrarSugerenciasCliente(false);
+                  }}
+                  onChange={(event) => {
+                    setCuentaComercialId(null);
+                    setBuscarCliente(event.target.value);
+                    setMostrarSugerenciasCliente(true);
+                  }}
+                  placeholder="Nombre, razón social o código…"
+                  className="w-full rounded-lg border border-border bg-background py-2.5 pl-9 pr-3 text-sm"
+                />
+                {mostrarSugerenciasCliente && (
+                  <div id="sugerencias-clientes-cotizacion" role="listbox" aria-label="Clientes coincidentes" className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-lg">
+                    {clientesFiltrados.length ? clientesFiltrados.slice(0, 8).map((cuenta) => (
+                      <button
+                        key={cuenta.id}
+                        type="button"
+                        role="option"
+                        aria-selected={cuenta.id === cuentaComercialId}
+                        onClick={() => {
+                          setCuentaComercialId(cuenta.id);
+                          setBuscarCliente(nombreVisibleCliente(cuenta));
+                          setMostrarSugerenciasCliente(false);
+                        }}
+                        className="flex w-full flex-col items-start rounded-md px-3 py-2 text-left transition hover:bg-muted focus:bg-muted focus:outline-none"
+                      >
+                        <span className="text-sm font-medium text-foreground">{nombreVisibleCliente(cuenta)}</span>
+                        <span className="text-xs text-muted-foreground">Cliente #{cuenta.codigo_cliente}</span>
+                      </button>
+                    )) : (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">No se encontraron clientes.</p>
+                    )}
                   </div>
-                  <label className="text-xs text-muted-foreground">Cantidad
-                    <input type="number" min="0.01" step="0.01" value={linea.cantidad} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, cantidad: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
-                  </label>
-                  <label className="text-xs text-muted-foreground">Unidad comercial
-                    <select value={linea.unidad_comercial} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, unidad_comercial: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground">
-                      <option value="unidad">Unidad</option><option value="kg">Kilogramo</option><option value="bobina">Bobina</option><option value="fajo">Fajo</option><option value="metro">Metro</option>
-                    </select>
-                  </label>
-                  <label className="text-xs text-muted-foreground">Precio de lista
-                    <input type="number" min="0" step="0.01" value={linea.precio_lista} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, precio_lista: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
-                  </label>
-                  <label className="text-xs text-muted-foreground">Descuento %
-                    <input type="number" min="0" max="100" step="0.01" value={linea.descuento_porcentaje} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, descuento_porcentaje: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
-                  </label>
-                  <div><p className="text-xs text-muted-foreground">Subtotal preliminar</p><p className="font-semibold">{datosCotizacion?.moneda ?? "BOB"} {subtotal.toFixed(2)}</p></div>
-                  <button type="button" onClick={() => { setLineasCotizacion((items) => items.filter((item) => item.key !== linea.key)); if (lineasCotizacion.length === 1) setModoCatalogoExistente(false); }} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted">Quitar</button>
-                  {linea.producto_version_id ? (
-                    <PesoProductoCatalogo productoVersionId={linea.producto_version_id} cantidad={linea.cantidad} />
-                  ) : linea.especificacion ? (
-                    <PesoProductoNuevo
-                      tipoProducto={linea.tipo_producto}
-                      cantidad={linea.cantidad}
-                      especificacion={linea.especificacion}
-                      especificacionBolsa={linea.especificacion_bolsa}
-                      especificacionBobina={linea.especificacion_bobina}
-                    />
-                  ) : (
-                    <label className="text-xs text-muted-foreground lg:col-start-2">Peso total kg (opcional)
-                      <input type="number" min="0.001" step="0.001" value={linea.peso_kg ?? ""} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, peso_kg: event.target.value || null } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
-                    </label>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex justify-end border-t border-border pt-3 text-right">
-            <div><p className="text-xs text-muted-foreground">Total preliminar · sin impuestos añadidos</p><p className="text-xl font-semibold">{datosCotizacion?.moneda ?? "BOB"} {lineasCotizacion.reduce((sum, linea) => sum + Number(linea.cantidad || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100), 0).toFixed(2)}</p></div>
+                )}
+              </div>
+              {cuentaSeleccionada && <p className="mt-1.5 text-xs text-primary">Cliente seleccionado: {nombreVisibleCliente(cuentaSeleccionada)}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={() => setMostrarNuevoCliente(true)}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-primary/30 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/5"
+            >
+              <UserPlus className="h-4 w-4" /> Nuevo cliente
+            </button>
           </div>
         </section>
-        <aside className="space-y-4 rounded-xl border border-border bg-card p-5">
-          <h2 className="font-semibold">Acciones y estado</h2>
-          <p className="text-xs text-muted-foreground">{cuentaSeleccionada ? nombreVisibleCliente(cuentaSeleccionada) : "Selecciona un cliente"} · {lineasCotizacion.length} productos</p>
-          <div className="border-t border-border pt-4"><p className="text-xs text-muted-foreground">Valor actual</p><p className="mt-1 text-2xl font-bold">{datosCotizacion?.moneda ?? "BOB"} {lineasCotizacion.reduce((sum, linea) => sum + Number(linea.cantidad || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100), 0).toLocaleString("es-BO", { minimumFractionDigits: 2 })}</p><span className="mt-2 inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">Borrador: aún no enviado al cliente</span></div>
-          <button type="button" onClick={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }} disabled={formalizarCotizacion.isPending || !cuentaComercialId || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim())} className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">✓ Guardar y registrar envío</button>
-          {!modoCatalogoExistente && <button type="button" onClick={() => void guardarCotizacion()} disabled={formalizarCotizacion.isPending || !cuentaComercialId} className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium">Guardar borrador</button>}
-          {(!cuentaComercialId || !lineasCotizacion.length) && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">Selecciona el cliente y completa al menos un producto.</p>}
-        </aside>
+
+        <section className="rounded-xl border border-border bg-card p-4">
+          <label className="mb-3 block text-sm font-medium">
+            Producto de esta cotización
+          </label>
+
+          <RequerimientoStepProducto
+            product={product}
+            setProduct={setProduct}
+          />
+        </section>
+
+
+        {lineasCotizacion.length > 0 && (
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_320px]">
+            <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">Carrito de productos</h2>
+                  <p className="text-sm text-muted-foreground">{lineasCotizacion.length} {lineasCotizacion.length === 1 ? "producto" : "productos"} · Los importes se recalculan al guardar.</p>
+                </div>
+                <button type="button" onClick={() => document.getElementById("catalogo-productos-oferta")?.scrollIntoView({ behavior: "smooth" })} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">＋ Agregar producto</button>
+                {modoCatalogoExistente && step === 2 ? <button type="button" onClick={continuarConfiguracionExistentes} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">Continuar a cantidades y entrega</button> : !modoCatalogoExistente && <button
+                  type="button"
+                  onClick={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }}
+                  disabled={formalizarCotizacion.isPending || !cuentaComercialId}
+                  className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                >
+                  Guardar y registrar envío
+                </button>}
+              </div>
+              <div className="space-y-3">
+                {lineasCotizacion.map((linea, index) => {
+                  const unitario = Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100);
+                  const subtotal = Number(linea.cantidad || 0) * unitario;
+                  return (
+                    <div key={linea.key} className="grid gap-3 rounded-lg border border-border p-4 lg:grid-cols-[minmax(200px,2fr)_110px_120px_110px_120px_130px_auto] lg:items-end">
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">Línea {index + 1} · {linea.tipo_producto}</p>
+                        <p className="truncate font-medium">{linea.nombre}</p>
+                        <p className="text-xs text-muted-foreground">{linea.codigo} · {linea.producto_version_id ? "Versión de catálogo conservada" : "Especificación técnica solicitada"}</p>
+                      </div>
+                      <label className="text-xs text-muted-foreground">Cantidad
+                        <input type="number" min="0.01" step="0.01" value={linea.cantidad} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, cantidad: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
+                      </label>
+                      <label className="text-xs text-muted-foreground">Unidad comercial
+                        <select value={linea.unidad_comercial} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, unidad_comercial: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground">
+                          <option value="unidad">Unidad</option><option value="kg">Kilogramo</option><option value="bobina">Bobina</option><option value="fajo">Fajo</option><option value="metro">Metro</option>
+                        </select>
+                      </label>
+                      <label className="text-xs text-muted-foreground">Precio de lista
+                        <input type="number" min="0" step="0.01" value={linea.precio_lista} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, precio_lista: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
+                      </label>
+                      <label className="text-xs text-muted-foreground">Descuento %
+                        <input type="number" min="0" max="100" step="0.01" value={linea.descuento_porcentaje} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, descuento_porcentaje: event.target.value } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
+                      </label>
+                      <div><p className="text-xs text-muted-foreground">Subtotal preliminar</p><p className="font-semibold">{datosCotizacion?.moneda ?? "BOB"} {subtotal.toFixed(2)}</p></div>
+                      <button type="button" onClick={() => { setLineasCotizacion((items) => items.filter((item) => item.key !== linea.key)); if (lineasCotizacion.length === 1) setModoCatalogoExistente(false); }} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted">Quitar</button>
+                      {linea.producto_version_id ? (
+                        <PesoProductoCatalogo productoVersionId={linea.producto_version_id} cantidad={linea.cantidad} />
+                      ) : linea.especificacion ? (
+                        <PesoProductoNuevo
+                          tipoProducto={linea.tipo_producto}
+                          cantidad={linea.cantidad}
+                          especificacion={linea.especificacion}
+                          especificacionBolsa={linea.especificacion_bolsa}
+                          especificacionBobina={linea.especificacion_bobina}
+                        />
+                      ) : (
+                        <label className="text-xs text-muted-foreground lg:col-start-2">Peso total kg (opcional)
+                          <input type="number" min="0.001" step="0.001" value={linea.peso_kg ?? ""} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, peso_kg: event.target.value || null } : item))} className="mt-1 w-full rounded border border-border bg-background px-2 py-2 text-sm text-foreground" />
+                        </label>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-end border-t border-border pt-3 text-right">
+                <div><p className="text-xs text-muted-foreground">Total preliminar · sin impuestos añadidos</p><p className="text-xl font-semibold">{datosCotizacion?.moneda ?? "BOB"} {lineasCotizacion.reduce((sum, linea) => sum + Number(linea.cantidad || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100), 0).toFixed(2)}</p></div>
+              </div>
+            </section>
+            <aside className="space-y-4 rounded-xl border border-border bg-card p-5">
+              <h2 className="font-semibold">Acciones y estado</h2>
+              <p className="text-xs text-muted-foreground">{cuentaSeleccionada ? nombreVisibleCliente(cuentaSeleccionada) : "Selecciona un cliente"} · {lineasCotizacion.length} productos</p>
+              <div className="border-t border-border pt-4"><p className="text-xs text-muted-foreground">Valor actual</p><p className="mt-1 text-2xl font-bold">{datosCotizacion?.moneda ?? "BOB"} {lineasCotizacion.reduce((sum, linea) => sum + Number(linea.cantidad || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100), 0).toLocaleString("es-BO", { minimumFractionDigits: 2 })}</p><span className="mt-2 inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">Borrador: aún no enviado al cliente</span></div>
+              <button type="button" onClick={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }} disabled={formalizarCotizacion.isPending || !cuentaComercialId || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim())} className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">✓ Guardar y registrar envío</button>
+              {!modoCatalogoExistente && <button type="button" onClick={() => void guardarCotizacion()} disabled={formalizarCotizacion.isPending || !cuentaComercialId} className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium">Guardar borrador</button>}
+              {(!cuentaComercialId || !lineasCotizacion.length) && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">Selecciona el cliente y completa al menos un producto.</p>}
+            </aside>
+          </div>
+        )}
+        {ultimaVersionCotizacion && <button type="button" onClick={async () => { try { const pdf = await cotizacionesVersionesApi.pdf(ultimaVersionCotizacion!); const url = URL.createObjectURL(pdf); const enlace = document.createElement("a"); enlace.href = url; enlace.download = `oferta-${ultimaVersionCotizacion}.pdf`; enlace.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); } catch { mostrarToast("PDF no disponible", "No se pudo descargar el PDF de esta versión."); } }} className="rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium">↓ PDF de la oferta</button>}
+
+        {/* Contenido del paso */}
+        <div id="catalogo-productos-oferta" className="min-h-[500px] rounded-xl border border-border bg-card p-6">
+          {analizandoViabilidad ? (
+            <ViabilidadAnalizando />
+
+          ) : resultadoViabilidad ? (
+            <ViabilidadResultado
+              resultado={resultadoViabilidad!}
+              onContinuarCotizacion={() => {
+                setMostrarCotizacion(true);
+              }}
+              onCompletarEspecificacion={() => {
+                setResultadoViabilidad(null);
+                setErrorViabilidad(null);
+                setStep(2);
+              }}
+            />
+
+          ) : errorViabilidad ? (
+            <ViabilidadResultado
+              error={errorViabilidad!}
+              onCompletarEspecificacion={() => {
+                setErrorViabilidad(null);
+                setStep(2);
+              }}
+            />
+
+          ) : (
+            <>
+              {step === 1 && (
+                <RequerimientoStepBusquedaProducto
+                  product={product}
+                  onProductSelect={handleProductoSelect}
+                  onAddToCart={agregarProductoAlCarrito}
+                  versionesEnCarrito={lineasCotizacion.map((linea) => linea.producto_version_id).filter((id): id is number => id !== undefined)}
+                  onCreateNew={handleCrearProductoNuevo}
+                />
+              )}
+
+              {step === 2 && (
+                <RequerimientoStepDetalles
+                  product={product}
+                  viabilidadPrevia={resultadoViabilidadPrevia}
+                  evaluandoViabilidadPrevia={evaluandoViabilidadPrevia}
+                  errorViabilidadPrevia={errorViabilidadPrevia}
+                  esProductoNuevo={esProductoNuevo}
+                  cuentaComercialId={cuentaComercialId}
+                  setCuentaComercialId={setCuentaComercialId}
+                  cantidadUnidades={cantidadUnidades}
+
+                  material={material}
+                  setMaterial={setMaterial}
+
+                  micraje={micraje}
+                  setMicraje={setMicraje}
+
+                  colorBolsa={colorBolsa}
+                  setColorBolsa={setColorBolsa}
+
+                  variantesColor={variantesColor}
+                  setVariantesColor={setVariantesColor}
+
+                  opacidad={opacidad}
+                  setOpacidad={setOpacidad}
+
+                  tratamientosAcabadosEspeciales={
+                    tratamientosAcabadosEspeciales
+                  }
+                  setTratamientosAcabadosEspeciales={
+                    setTratamientosAcabadosEspeciales
+                  }
+
+                  aptoAlimento={aptoAlimento}
+                  setAptoAlimento={setAptoAlimento}
+
+                  impresion={impresion}
+                  setImpresion={setImpresion}
+
+                  colorImpresion={colorImpresion}
+                  setColorImpresion={setColorImpresion}
+                  archivoColorImpresion={archivoColorImpresion}
+                  setArchivoColorImpresion={setArchivoColorImpresion}
+
+                  tipoImpresion={tipoImpresion}
+                  setTipoImpresion={setTipoImpresion}
+
+                  tratamientoImpresion={tratamientoImpresion}
+                  setTratamientoImpresion={setTratamientoImpresion}
+
+                  posicionImpresion={posicionImpresion}
+                  setPosicionImpresion={setPosicionImpresion}
+
+                  distanciaImpresionSuperior={
+                    distanciaImpresionSuperior
+                  }
+                  setDistanciaImpresionSuperior={
+                    setDistanciaImpresionSuperior
+                  }
+
+                  distanciaImpresionInferior={
+                    distanciaImpresionInferior
+                  }
+                  setDistanciaImpresionInferior={
+                    setDistanciaImpresionInferior
+                  }
+
+                  distanciaImpresionIzquierda={
+                    distanciaImpresionIzquierda
+                  }
+                  setDistanciaImpresionIzquierda={
+                    setDistanciaImpresionIzquierda
+                  }
+
+                  distanciaImpresionDerecha={
+                    distanciaImpresionDerecha
+                  }
+                  setDistanciaImpresionDerecha={
+                    setDistanciaImpresionDerecha
+                  }
+
+                  caraImpresion={caraImpresion}
+                  setCaraImpresion={setCaraImpresion}
+
+                  otrasCaracteristicas={otrasCaracteristicas}
+                  setOtrasCaracteristicas={setOtrasCaracteristicas}
+
+                  anchoDoblado={anchoDoblado}
+                  setAnchoDoblado={setAnchoDoblado}
+
+                  anchoDesdoblado={anchoDesdoblado}
+                  setAnchoDesdoblado={setAnchoDesdoblado}
+
+                  largoDoblado={largoDoblado}
+                  setLargoDoblado={setLargoDoblado}
+
+                  largoDesdoblado={largoDesdoblado}
+                  setLargoDesdoblado={setLargoDesdoblado}
+
+                  fuelle={fuelle}
+                  setFuelle={setFuelle}
+
+                  fuelleIzquierdo={fuelleIzquierdo}
+                  setFuelleIzquierdo={setFuelleIzquierdo}
+
+                  fuelleDerecho={fuelleDerecho}
+                  setFuelleDerecho={setFuelleDerecho}
+
+                  fuelleInferior={fuelleInferior}
+                  setFuelleInferior={setFuelleInferior}
+
+                  fuelleSuperior={fuelleSuperior}
+                  setFuelleSuperior={setFuelleSuperior}
+
+                  capas={capas}
+                  setCapas={setCapas}
+
+                  tipoTroquel={tipoTroquel}
+                  setTipoTroquel={setTipoTroquel}
+
+                  tipoSello={tipoSello}
+                  setTipoSello={setTipoSello}
+
+                  tipoPestana={tipoPestana}
+                  setTipoPestana={setTipoPestana}
+
+                  anchoBobina={anchoBobina}
+                  setAnchoBobina={setAnchoBobina}
+
+                  diametro={diametro}
+                  setDiametro={setDiametro}
+
+                  diametroNucleo={diametroNucleo}
+                  setDiametroNucleo={setDiametroNucleo}
+
+                  tipoNucleo={tipoNucleo}
+                  setTipoNucleo={setTipoNucleo}
+
+                  peso={peso}
+                  setPeso={setPeso}
+
+                  longitud={longitud}
+                  setLongitud={setLongitud}
+                />
+              )}
+
+              {step === 3 && (
+                <RequerimientoStepEntrega
+                  cuentaComercialId={cuentaComercialId}
+                  setCuentaComercialId={setCuentaComercialId}
+                  productoSeleccionado={productoSeleccionado}
+
+                  cantidadUnidades={cantidadUnidades}
+                  setCantidadUnidades={setCantidadUnidades}
+
+                  prioridad={prioridad}
+                  setPrioridad={setPrioridad}
+                  fechaEntrega={fechaEntrega}
+                  setFechaEntrega={setFechaEntrega}
+                  lugarEntrega={lugarEntrega}
+                  setLugarEntrega={setLugarEntrega}
+                  tipoLugarEntrega={tipoLugarEntrega}
+                  setTipoLugarEntrega={setTipoLugarEntrega}
+                  departamentoEntrega={departamentoEntrega}
+                  setDepartamentoEntrega={setDepartamentoEntrega}
+                  empresaTransporte={empresaTransporte}
+                  setEmpresaTransporte={setEmpresaTransporte}
+                  sucursalEntrega={sucursalEntrega}
+                  setSucursalEntrega={setSucursalEntrega}
+                  observaciones={observaciones}
+                  setObservaciones={setObservaciones}
+                  showCantidad={false}
+                  showCliente={false}
+                />
+              )}
+
+              {step === 4 && (
+                <RequerimientoStepConfirmacion
+                  cuentaSeleccionada={cuentaSeleccionada}
+                  product={product}
+                  cantidadUnidades={cantidadUnidades}
+                  cantidadKg={cantidadKg}
+                  prioridad={prioridad}
+                  fechaEntrega={fechaEntrega}
+                  descripcion={descripcion}
+                  observaciones={observaciones}
+                  lugarEntrega={lugarEntrega}
+                  material={material}
+                  aptoAlimento={aptoAlimento}
+                  micraje={micraje}
+                  colorBolsa={colorBolsa}
+                  opacidad={opacidad}
+                  capas={capas}
+                  variantesColor={variantesColor}
+                  tratamientosAcabadosEspeciales={
+                    tratamientosAcabadosEspeciales
+                  }
+                  impresion={impresion}
+                  colorImpresion={colorImpresion}
+                  tipoImpresion={tipoImpresion}
+                  tratamientoImpresion={tratamientoImpresion}
+                  caraImpresion={caraImpresion}
+                  posicionImpresion={posicionImpresion}
+                  distanciaImpresionSuperior={
+                    distanciaImpresionSuperior
+                  }
+                  distanciaImpresionInferior={
+                    distanciaImpresionInferior
+                  }
+                  distanciaImpresionIzquierda={
+                    distanciaImpresionIzquierda
+                  }
+                  distanciaImpresionDerecha={
+                    distanciaImpresionDerecha
+                  }
+                  otrasCaracteristicas={otrasCaracteristicas}
+                  anchoDoblado={anchoDoblado}
+                  anchoDesdoblado={anchoDesdoblado}
+                  largoDoblado={largoDoblado}
+                  largoDesdoblado={largoDesdoblado}
+                  fuelle={fuelle}
+                  fuelleIzquierdo={fuelleIzquierdo}
+                  fuelleDerecho={fuelleDerecho}
+                  fuelleInferior={fuelleInferior}
+                  fuelleSuperior={fuelleSuperior}
+                  tipoTroquel={tipoTroquel}
+                  tipoSello={tipoSello}
+                  tipoPestana={tipoPestana}
+                  anchoBobina={anchoBobina}
+                  diametro={diametro}
+                  diametroNucleo={diametroNucleo}
+                  tipoNucleo={tipoNucleo}
+                  peso={peso}
+                  longitud={longitud}
+                />
+              )}
+            </>
+          )}
         </div>
-      )}
-      {ultimaVersionCotizacion && <button type="button" onClick={async () => { try { const pdf = await cotizacionesVersionesApi.pdf(ultimaVersionCotizacion!); const url = URL.createObjectURL(pdf); const enlace = document.createElement("a"); enlace.href = url; enlace.download = `oferta-${ultimaVersionCotizacion}.pdf`; enlace.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); } catch { mostrarToast("PDF no disponible", "No se pudo descargar el PDF de esta versión."); } }} className="rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium">↓ PDF de la oferta</button>}
 
-      {/* Contenido del paso */}
-      <div id="catalogo-productos-oferta" className="min-h-[500px] rounded-xl border border-border bg-card p-6">
-        {analizandoViabilidad ? (
-          <ViabilidadAnalizando />
-
-        ) : resultadoViabilidad ? (
-          <ViabilidadResultado
-            resultado={resultadoViabilidad!}
-            onContinuarCotizacion={() => {
-              setMostrarCotizacion(true);
-            }}
-            onCompletarEspecificacion={() => {
-              setResultadoViabilidad(null);
-              setErrorViabilidad(null);
-              setStep(2);
-            }}
-          />
-
-        ) : errorViabilidad ? (
-          <ViabilidadResultado
-            error={errorViabilidad!}
-            onCompletarEspecificacion={() => {
-              setErrorViabilidad(null);
-              setStep(2);
-            }}
-          />
-
-        ) : (
-          <>
-            {step === 1 && (
-              <RequerimientoStepBusquedaProducto
-                product={product}
-                onProductSelect={handleProductoSelect}
-                onAddToCart={agregarProductoAlCarrito}
-                versionesEnCarrito={lineasCotizacion.map((linea) => linea.producto_version_id).filter((id): id is number => id !== undefined)}
-                onCreateNew={handleCrearProductoNuevo}
-              />
-            )}
-
-            {step === 2 && (
-              <RequerimientoStepDetalles
-                product={product}
-                viabilidadPrevia={resultadoViabilidadPrevia}
-                evaluandoViabilidadPrevia={evaluandoViabilidadPrevia}
-                errorViabilidadPrevia={errorViabilidadPrevia}
-                esProductoNuevo={esProductoNuevo}
-                cuentaComercialId={cuentaComercialId}
-                setCuentaComercialId={setCuentaComercialId}
-                cantidadUnidades={cantidadUnidades}
-
-                material={material}
-                setMaterial={setMaterial}
-
-                micraje={micraje}
-                setMicraje={setMicraje}
-
-                colorBolsa={colorBolsa}
-                setColorBolsa={setColorBolsa}
-
-                variantesColor={variantesColor}
-                setVariantesColor={setVariantesColor}
-
-                opacidad={opacidad}
-                setOpacidad={setOpacidad}
-
-                tratamientosAcabadosEspeciales={
-                  tratamientosAcabadosEspeciales
-                }
-                setTratamientosAcabadosEspeciales={
-                  setTratamientosAcabadosEspeciales
-                }
-
-                aptoAlimento={aptoAlimento}
-                setAptoAlimento={setAptoAlimento}
-
-                impresion={impresion}
-                setImpresion={setImpresion}
-
-                colorImpresion={colorImpresion}
-                setColorImpresion={setColorImpresion}
-                archivoColorImpresion={archivoColorImpresion}
-                setArchivoColorImpresion={setArchivoColorImpresion}
-
-                tipoImpresion={tipoImpresion}
-                setTipoImpresion={setTipoImpresion}
-
-                tratamientoImpresion={tratamientoImpresion}
-                setTratamientoImpresion={setTratamientoImpresion}
-
-                posicionImpresion={posicionImpresion}
-                setPosicionImpresion={setPosicionImpresion}
-
-                distanciaImpresionSuperior={
-                  distanciaImpresionSuperior
-                }
-                setDistanciaImpresionSuperior={
-                  setDistanciaImpresionSuperior
-                }
-
-                distanciaImpresionInferior={
-                  distanciaImpresionInferior
-                }
-                setDistanciaImpresionInferior={
-                  setDistanciaImpresionInferior
-                }
-
-                distanciaImpresionIzquierda={
-                  distanciaImpresionIzquierda
-                }
-                setDistanciaImpresionIzquierda={
-                  setDistanciaImpresionIzquierda
-                }
-
-                distanciaImpresionDerecha={
-                  distanciaImpresionDerecha
-                }
-                setDistanciaImpresionDerecha={
-                  setDistanciaImpresionDerecha
-                }
-
-                caraImpresion={caraImpresion}
-                setCaraImpresion={setCaraImpresion}
-
-                otrasCaracteristicas={otrasCaracteristicas}
-                setOtrasCaracteristicas={setOtrasCaracteristicas}
-
-                anchoDoblado={anchoDoblado}
-                setAnchoDoblado={setAnchoDoblado}
-
-                anchoDesdoblado={anchoDesdoblado}
-                setAnchoDesdoblado={setAnchoDesdoblado}
-
-                largoDoblado={largoDoblado}
-                setLargoDoblado={setLargoDoblado}
-
-                largoDesdoblado={largoDesdoblado}
-                setLargoDesdoblado={setLargoDesdoblado}
-
-                fuelle={fuelle}
-                setFuelle={setFuelle}
-
-                fuelleIzquierdo={fuelleIzquierdo}
-                setFuelleIzquierdo={setFuelleIzquierdo}
-
-                fuelleDerecho={fuelleDerecho}
-                setFuelleDerecho={setFuelleDerecho}
-
-                fuelleInferior={fuelleInferior}
-                setFuelleInferior={setFuelleInferior}
-
-                fuelleSuperior={fuelleSuperior}
-                setFuelleSuperior={setFuelleSuperior}
-
-                capas={capas}
-                setCapas={setCapas}
-
-                tipoTroquel={tipoTroquel}
-                setTipoTroquel={setTipoTroquel}
-
-                tipoSello={tipoSello}
-                setTipoSello={setTipoSello}
-
-                tipoPestana={tipoPestana}
-                setTipoPestana={setTipoPestana}
-
-                anchoBobina={anchoBobina}
-                setAnchoBobina={setAnchoBobina}
-
-                diametro={diametro}
-                setDiametro={setDiametro}
-
-                diametroNucleo={diametroNucleo}
-                setDiametroNucleo={setDiametroNucleo}
-
-                tipoNucleo={tipoNucleo}
-                setTipoNucleo={setTipoNucleo}
-
-                peso={peso}
-                setPeso={setPeso}
-
-                longitud={longitud}
-                setLongitud={setLongitud}
-              />
-            )}
-
-            {step === 3 && (
-              <RequerimientoStepEntrega
-                cuentaComercialId={cuentaComercialId}
-                setCuentaComercialId={setCuentaComercialId}
-                productoSeleccionado={productoSeleccionado}
-
-                cantidadUnidades={cantidadUnidades}
-                setCantidadUnidades={setCantidadUnidades}
-
-                prioridad={prioridad}
-                setPrioridad={setPrioridad}
-                fechaEntrega={fechaEntrega}
-                setFechaEntrega={setFechaEntrega}
-                lugarEntrega={lugarEntrega}
-                setLugarEntrega={setLugarEntrega}
-                tipoLugarEntrega={tipoLugarEntrega}
-                setTipoLugarEntrega={setTipoLugarEntrega}
-                departamentoEntrega={departamentoEntrega}
-                setDepartamentoEntrega={setDepartamentoEntrega}
-                empresaTransporte={empresaTransporte}
-                setEmpresaTransporte={setEmpresaTransporte}
-                sucursalEntrega={sucursalEntrega}
-                setSucursalEntrega={setSucursalEntrega}
-                observaciones={observaciones}
-                setObservaciones={setObservaciones}
-                showCantidad={false}
-                showCliente={false}
-              />
-            )}
-
-            {step === 4 && (
-              <RequerimientoStepConfirmacion
-                cuentaSeleccionada={cuentaSeleccionada}
-                product={product}
-                cantidadUnidades={cantidadUnidades}
-                cantidadKg={cantidadKg}
-                prioridad={prioridad}
-                fechaEntrega={fechaEntrega}
-                descripcion={descripcion}
-                observaciones={observaciones}
-                lugarEntrega={lugarEntrega}
-                material={material}
-                aptoAlimento={aptoAlimento}
-                micraje={micraje}
-                colorBolsa={colorBolsa}
-                opacidad={opacidad}
-                capas={capas}
-                variantesColor={variantesColor}
-                tratamientosAcabadosEspeciales={
-                  tratamientosAcabadosEspeciales
-                }
-                impresion={impresion}
-                colorImpresion={colorImpresion}
-                tipoImpresion={tipoImpresion}
-                tratamientoImpresion={tratamientoImpresion}
-                caraImpresion={caraImpresion}
-                posicionImpresion={posicionImpresion}
-                distanciaImpresionSuperior={
-                  distanciaImpresionSuperior
-                }
-                distanciaImpresionInferior={
-                  distanciaImpresionInferior
-                }
-                distanciaImpresionIzquierda={
-                  distanciaImpresionIzquierda
-                }
-                distanciaImpresionDerecha={
-                  distanciaImpresionDerecha
-                }
-                otrasCaracteristicas={otrasCaracteristicas}
-                anchoDoblado={anchoDoblado}
-                anchoDesdoblado={anchoDesdoblado}
-                largoDoblado={largoDoblado}
-                largoDesdoblado={largoDesdoblado}
-                fuelle={fuelle}
-                fuelleIzquierdo={fuelleIzquierdo}
-                fuelleDerecho={fuelleDerecho}
-                fuelleInferior={fuelleInferior}
-                fuelleSuperior={fuelleSuperior}
-                tipoTroquel={tipoTroquel}
-                tipoSello={tipoSello}
-                tipoPestana={tipoPestana}
-                anchoBobina={anchoBobina}
-                diametro={diametro}
-                diametroNucleo={diametroNucleo}
-                tipoNucleo={tipoNucleo}
-                peso={peso}
-                longitud={longitud}
-              />
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Navegación */}
-      {!analizandoViabilidad &&
-        !resultadoViabilidad &&
-        !errorViabilidad && (
-          modoCatalogoExistente && step === 3 ? <div className="flex justify-between border-t border-border px-6 py-4"><button type="button" onClick={() => setStep(1)} className="rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-secondary">Volver al catálogo</button><button type="button" onClick={() => void guardarCotizacion()} disabled={formalizarCotizacion.isPending || !cuentaComercialId || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim() || Number(linea.precio_lista) < 0)} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50">{formalizarCotizacion.isPending ? "Guardando…" : "Guardar cotización"}</button></div> : !modoCatalogoExistente && (step !== 1 || esProductoNuevo) && <RequerimientoNavigation
-            step={step}
-            onNext={nextStep}
-            onPrevious={previousStep}
-            onCancel={resetWizard}
-            onSubmit={handleAnalizarViabilidad}
-            submitting={evaluarViabilidad.isPending}
-          />
-        )}
+        {/* Navegación */}
+        {!analizandoViabilidad &&
+          !resultadoViabilidad &&
+          !errorViabilidad && (
+            modoCatalogoExistente && step === 3 ? <div className="flex justify-between border-t border-border px-6 py-4"><button type="button" onClick={() => setStep(1)} className="rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-secondary">Volver al catálogo</button><button type="button" onClick={() => void guardarCotizacion()} disabled={formalizarCotizacion.isPending || !cuentaComercialId || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim() || Number(linea.precio_lista) < 0)} className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50">{formalizarCotizacion.isPending ? "Guardando…" : "Guardar cotización"}</button></div> : !modoCatalogoExistente && (step !== 1 || esProductoNuevo) && <RequerimientoNavigation
+              step={step}
+              onNext={nextStep}
+              onPrevious={previousStep}
+              onCancel={resetWizard}
+              onSubmit={handleAnalizarViabilidad}
+              submitting={evaluarViabilidad.isPending}
+            />
+          )}
 
       </>}
 
@@ -1918,7 +1918,10 @@ const iniciarPreparacionOferta = () => {
       <ProductoComercialWizardModal
         open={mostrarNuevoProducto}
         onClose={() => setMostrarNuevoProducto(false)}
-        onSuccess={(producto: ProductoComercialCreado) => {
+        onSuccess={(
+          producto: ProductoComercialCreado,
+          datosCantidad
+        ) => {
           const version = producto.versiones[0];
           if (!version) {
             mostrarToast("Producto creado", "No se recibió una versión técnica; no se añadió al carrito.");
@@ -1930,11 +1933,11 @@ const iniciarPreparacionOferta = () => {
               key: `producto-${version.id}`,
               tipo_producto: product === "bag" ? "bolsa" : "bobina",
               producto_version_id: version.id,
-              cantidad: "1",
+              cantidad: datosCantidad.cantidad,
               precio_lista: "",
               descuento_porcentaje: "0",
               costo_estimado: null,
-              unidad_comercial: producto.unidad_medida,
+              unidad_comercial: datosCantidad.unidad_comercial,
               peso_kg: null,
               nombre: producto.nombre,
               codigo: producto.codigo,

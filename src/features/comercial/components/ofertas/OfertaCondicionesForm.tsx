@@ -1,4 +1,5 @@
 import type { ChangeEvent } from "react";
+import { useEffect } from "react";
 import type { DepartamentoBolivia, TipoLugarEntrega, UbicacionCuentaComercial } from "../../comercial.types";
 
 export interface OfertaCondiciones {
@@ -40,18 +41,50 @@ export default function OfertaCondicionesForm({
 }) {
   const update = (field: keyof OfertaCondiciones) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     onChange({ ...value, [field]: event.target.value });
-  const calcularFecha = () => {
+  useEffect(() => {
     const plazo = Number(value.plazo_entrega_dias);
-    if (!Number.isInteger(plazo) || plazo < 0 || plazo > 3650) return;
+
+    if (
+      value.plazo_entrega_dias === "" ||
+      !Number.isInteger(plazo) ||
+      plazo < 0 ||
+      plazo > 3650
+    ) {
+      return;
+    }
+
     const date = new Date();
     date.setHours(12, 0, 0, 0);
+
     let elapsed = 0;
+
     while (elapsed < plazo) {
       date.setDate(date.getDate() + 1);
-      if (value.tipo_dias === "calendario" || ![0, 6].includes(date.getDay())) elapsed += 1;
+
+      if (
+        value.tipo_dias === "calendario" ||
+        ![0, 6].includes(date.getDay())
+      ) {
+        elapsed += 1;
+      }
     }
-    onChange({ ...value, fecha_entrega_comprometida: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` });
-  };
+
+    const fechaCalculada = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
+
+    if (value.fecha_entrega_comprometida !== fechaCalculada) {
+      onChange({
+        ...value,
+        fecha_entrega_comprometida: fechaCalculada,
+      });
+    }
+  }, [
+    value.plazo_entrega_dias,
+    value.tipo_dias,
+  ]);
   const fechaRegistro = registroAutomatico ? new Date(registroAutomatico).toLocaleString("es-BO") : "—";
 
   return <div className="min-w-0">
@@ -65,7 +98,16 @@ export default function OfertaCondicionesForm({
       <label><span className={label}>Plazo de entrega (días)</span><input className={control} type="number" min="0" max="3650" value={value.plazo_entrega_dias} onChange={update("plazo_entrega_dias")} disabled={disabled} /></label>
       <label><span className={label}>Tipo de días</span><select className={control} value={value.tipo_dias} onChange={update("tipo_dias")} disabled={disabled}><option value="calendario">Calendario</option><option value="habiles">Hábiles</option></select></label>
       <label><span className={label}>Inicio del plazo</span><select className={control} value={value.inicio_plazo} onChange={update("inicio_plazo")} disabled={disabled}><option value="confirmacion">Desde confirmación</option><option value="anticipo">Desde anticipo</option><option value="emision">Desde emisión</option></select></label>
-      <label><span className={label}>Fecha de entrega comprometida</span><input className={control} type="date" value={value.fecha_entrega_comprometida} onChange={update("fecha_entrega_comprometida")} disabled={disabled} /></label>
+      <label>
+        <span className={label}>Fecha de entrega comprometida</span>
+        <input
+          className={control}
+          type="date"
+          value={value.fecha_entrega_comprometida}
+          readOnly
+          disabled={disabled}
+        />
+      </label>
       <label><span className={label}>Lugar de entrega</span><select className={control} value={value.tipo_lugar_entrega} onChange={update("tipo_lugar_entrega")} disabled={disabled}><option value="casa_matriz">Casa Matriz INPLAZ</option><option value="cliente">Almacén del cliente</option><option value="envio_interior">Envío nacional</option><option value="sucursal">Sucursal INPLAZ</option></select></label>
       <label><span className={label}>Departamento destino</span><select className={control} value={value.departamento_destino} onChange={update("departamento_destino")} disabled={disabled}><option value="">Seleccionar</option>{departamentos.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
       <label><span className={label}>Ciudad destino</span><input className={control} value={value.ciudad_destino} onChange={update("ciudad_destino")} disabled={disabled} /></label>
@@ -73,6 +115,17 @@ export default function OfertaCondicionesForm({
       <label><span className={label}>Sucursal INPLAZ</span><select className={control} value={value.sucursal_inplaz} onChange={update("sucursal_inplaz")} disabled={disabled}><option value="">Sin sucursal</option><option>Casa Matriz · El Alto</option><option>La Paz · Montes</option><option>Santa Cruz · Av. Paragua</option></select></label>
     </div>
     <label className="mt-1 block"><span className={label}>Observaciones comerciales</span><textarea className={`${control} min-h-16 resize-y`} value={value.observaciones_comerciales} onChange={update("observaciones_comerciales")} disabled={disabled} /></label>
-    {!disabled && <div className="mt-1 flex flex-wrap gap-2"><button type="button" onClick={calcularFecha} disabled={!value.plazo_entrega_dias || saving} className="rounded-lg border border-slate-300 px-3 py-2 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Calcular fecha de entrega</button><button type="button" onClick={onSave} disabled={saving} className="rounded-lg bg-blue-700 px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50">{saving ? "Guardando…" : "Guardar condiciones"}</button></div>}
+    {!disabled && (
+      <div className="mt-1 flex justify-end">
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          className="rounded-lg bg-blue-700 px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
+        >
+          {saving ? "Guardando…" : "Guardar condiciones"}
+        </button>
+      </div>
+    )}
   </div>;
 }
