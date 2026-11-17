@@ -784,7 +784,30 @@ export default function ProductoComercialWizardModal({
     return () => window.clearTimeout(timer);
   }, [open, producto, productoDetalle, categories]);
 
+  // Reiniciar estados cuando se abre el modal para crear un producto nuevo.
+  useEffect(() => {
+    if (!open || producto) return;
 
+    setStep(0);
+    setForm(initialForm);
+    setQuantityUnit("unidad");
+
+    // Limpiar referencias y errores
+    setReferenceId("");
+    setError("");
+
+    // Limpiar evaluación de viabilidad
+    setFeasibility(null);
+    setEvaluatedKey("");
+    setFeasibilityError(null);
+    setChecking(false);
+
+    // Limpiar cálculos de peso
+    setWeights(null);
+    setCalculatingWeight(false);
+    setWeightError("");
+  }, [open, producto]);
+  
   // Vista previa: usa el endpoint y las reglas de viabilidad existentes.
   // La evaluación no guarda producto ni crea registros de evaluación.
   const payload = useMemo<EvaluarViabilidadPayload | null>(() => {
