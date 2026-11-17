@@ -1915,40 +1915,84 @@ export default function RequerimientosPage() {
         description={toastDescription}
         onClose={() => setToast(false)}
       />
+
       <ProductoComercialWizardModal
         open={mostrarNuevoProducto}
+        modo="solicitud_comercial"
         onClose={() => setMostrarNuevoProducto(false)}
-        onSuccess={(
-          producto: ProductoComercialCreado,
-          datosCantidad
-        ) => {
-          const version = producto.versiones[0];
-          if (!version) {
-            mostrarToast("Producto creado", "No se recibió una versión técnica; no se añadió al carrito.");
+        onSolicitudCreada={(request, datosCantidad) => {
+          const tipoProducto = request.especificacion_bolsa
+            ? "bolsa"
+            : request.especificacion_bobina
+              ? "bobina"
+              : null;
+
+          if (!tipoProducto) {
+            mostrarToast(
+              "Error en la especificación",
+              "No se pudo determinar si el producto es una bolsa o una bobina."
+            );
             return;
           }
-          setLineasCotizacion((actuales) => {
-            if (actuales.some((linea) => linea.producto_version_id === version.id)) return actuales;
-            return [...actuales, {
-              key: `producto-${version.id}`,
-              tipo_producto: product === "bag" ? "bolsa" : "bobina",
-              producto_version_id: version.id,
-              cantidad: datosCantidad.cantidad,
-              precio_lista: "",
-              descuento_porcentaje: "0",
-              costo_estimado: null,
-              unidad_comercial: datosCantidad.unidad_comercial,
-              peso_kg: null,
-              nombre: producto.nombre,
-              codigo: producto.codigo,
-            }];
-          });
-          setModoCatalogoExistente(true);
-          setEsProductoNuevo(false);
-          mostrarToast("Producto añadido", `${producto.codigo} se añadió al carrito. Completa cantidad y precio.`);
+
+          const nuevaLinea: CotizacionLineaBorrador = {
+            key: `solicitud-${Date.now()}`,
+            tipo_producto: tipoProducto,
+
+            // Todavía no existe una versión oficial.
+            producto_version_id: undefined,
+
+            // Especificación técnica preliminar.
+            especificacion: {
+              categoria_producto: request.producto.categoria,
+              ...request.version,
+            },
+
+            // Especificaciones particulares.
+            especificacion_bolsa:
+              tipoProducto === "bolsa"
+                ? request.especificacion_bolsa
+                : undefined,
+
+            especificacion_bobina:
+              tipoProducto === "bobina"
+                ? request.especificacion_bobina
+                : undefined,
+
+            cantidad: datosCantidad.cantidad,
+            precio_lista: "",
+            descuento_porcentaje: "0",
+            costo_estimado: null,
+            unidad_comercial: datosCantidad.unidad_comercial,
+
+            peso_kg:
+              tipoProducto === "bobina"
+                ? String(request.especificacion_bobina?.peso ?? "") || null
+                : null,
+
+            nombre: request.producto.nombre,
+            codigo: "Pendiente de confirmación",
+          };
+
+          setLineasCotizacion((actuales) => [
+            ...actuales,
+            nuevaLinea,
+          ]);
+
+          // Es un producto nuevo, no uno del catálogo.
+          setModoCatalogoExistente(false);
+          setEsProductoNuevo(true);
+          setProductoSeleccionado(null);
+
+          mostrarToast(
+            "Producto solicitado",
+            `${request.producto.nombre} se añadió a la cotización como especificación pendiente.`
+          );
+
           setMostrarNuevoProducto(false);
         }}
       />
+
     </div>
   );
 }

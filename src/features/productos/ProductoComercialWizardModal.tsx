@@ -488,13 +488,27 @@ type DatosCantidadProducto = {
   unidad_comercial: "unidad" | "kg" | "bobina";
 };
 
+type ProductoComercialWizardMode =
+  | "catalogo"
+  | "solicitud_comercial";
+
 type ProductoComercialWizardModalProps = {
   open: boolean;
   onClose: () => void;
+
+  // Creación oficial desde el módulo Productos.
   onSuccess?: (
     producto: ProductoComercialCreado,
     datosCantidad: DatosCantidadProducto
   ) => void;
+
+  // Devolución de datos preliminares al módulo Comercial.
+  onSolicitudCreada?: (
+    datos: ProductoComercialCreate,
+    datosCantidad: DatosCantidadProducto
+  ) => void;
+
+  modo?: ProductoComercialWizardMode;
   producto?: Producto | null;
 };
 
@@ -502,6 +516,8 @@ export default function ProductoComercialWizardModal({
   open,
   onClose,
   onSuccess,
+  onSolicitudCreada,
+  modo = "catalogo",
   producto,
 }: ProductoComercialWizardModalProps) {
   // Estado de navegación y datos temporales de esta creación.
@@ -807,7 +823,7 @@ export default function ProductoComercialWizardModal({
     setCalculatingWeight(false);
     setWeightError("");
   }, [open, producto]);
-  
+
   // Vista previa: usa el endpoint y las reglas de viabilidad existentes.
   // La evaluación no guarda producto ni crea registros de evaluación.
   const payload = useMemo<EvaluarViabilidadPayload | null>(() => {
@@ -1191,23 +1207,70 @@ export default function ProductoComercialWizardModal({
       ...(productType === "bolsa" ? { presentacion: { unidades_por_fajo: Number(form.unitsPerPack) || 0, fajos_por_bulto: Number(form.fajosPerBundle) || 0, paquetes_por_jaba: Number(form.packagesPerJaba) || 0, jabas_por_bulto: Number(form.jabasPerBundle) || 0 } } : {}),
     };
     try {
-      const guardado = producto
-        ? await update.mutateAsync({ id: producto.id, data: request })
-        : await create.mutateAsync(request);
-      const unidadComercial =
-        quantityUnit === "rollos" ? "bobina" : quantityUnit;
-
-      onSuccess?.(guardado, {
+      const datosCantidad: DatosCantidadProducto = {
         cantidad: form.quantity,
-        unidad_comercial: unidadComercial,
-      });
+        unidad_comercial:
+          quantityUnit === "rollos" ? "bobina" : quantityUnit,
+      };
+
+      // ==========================================
+      // MODO COMERCIAL: NO CREAR PRODUCTO OFICIAL
+      // ==========================================
+      if (modo === "solicitud_comercial") {
+
+        if (producto) {
+          throw new Error(
+            "No se puede editar un producto oficial desde el registro de una solicitud comercial."
+          );
+        }
+
+        if (!onSolicitudCreada) {
+          throw new Error(
+            "No se configuró el receptor de la especificación comercial."
+          );
+        }
+
+        // Devolvemos los datos técnicos al módulo Comercial.
+        // No ejecutamos ninguna petición para crear Producto.
+        onSolicitudCreada(request, datosCantidad);
+
+        onClose();
+        return;
+      }
+
+      // ==========================================
+      // MODO CATÁLOGO: COMPORTAMIENTO ACTUAL
+      // ==========================================
+      const guardado = producto
+        ? await update.mutateAsync({
+          id: producto.id,
+          data: request,
+        })
+        : await create.mutateAsync(request);
+
+      onSuccess?.(guardado, datosCantidad);
 
       onClose();
-    }
-    catch (e) {
-      const response = (e as { response?: { data?: Record<string, unknown> } }).response?.data;
-      const detail = response ? Object.values(response).flat().map(String).join(" ") : "";
-      setError(detail || "No se pudo guardar el producto comercial. Revisa los datos e inténtalo otra vez.");
+
+    } catch (e) {
+      const response = (
+        e as {
+          response?: {
+            data?: Record<string, unknown>;
+          };
+        }
+      ).response?.data;
+
+      const detail = response
+        ? Object.values(response).flat().map(String).join(" ")
+        : "";
+
+      setError(
+        detail ||
+        (e instanceof Error
+          ? e.message
+          : "No se pudo guardar el producto comercial. Revisa los datos e inténtalo otra vez.")
+      );
     }
   };
 
