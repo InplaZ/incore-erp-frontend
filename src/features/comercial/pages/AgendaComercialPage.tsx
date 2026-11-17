@@ -69,15 +69,15 @@ function getActivityEstadoLabel(estado: EstadoActividad) {
 }
 
 function getActivityIcon(tipo: TipoActividad) {
-  const icons: Record<TipoActividad, typeof Phone> = {
+  const icons: Partial<Record<TipoActividad, typeof Phone>> = {
     llamada: Phone,
+    whatsapp: Phone,
+    correo: Phone,
     reunion: UsersRound,
-    cotizacion: ClipboardList,
-    seguimiento: CalendarDays,
-    confirmacion: CalendarDays,
+    visita: Truck,
   };
 
-  return icons[tipo];
+  return icons[tipo] ?? Phone;
 }
 
 function formatActivityTime(date: string) {
@@ -218,18 +218,6 @@ export default function AgendaComercialPage() {
           ? actividadesVencidas
           : actividadesCompletadas;
 
-  const clientesPorContactar = useMemo(() => {
-    const clientesIds = actividadesConCliente
-      .filter(
-        (actividad) =>
-          actividad.estado === "pendiente" ||
-          actividad.estado === "en_proceso"
-      )
-      .map((actividad) => actividad.cuenta_comercial);
-
-    return new Set(clientesIds).size;
-  }, [actividadesConCliente]);
-
   const [showRegistrarComunicacion, setShowRegistrarComunicacion] = useState(false)
   const [actividadComunicacion, setActividadComunicacion] =
     useState<ActividadComercial | null>(null);
@@ -281,24 +269,29 @@ export default function AgendaComercialPage() {
           icon={CalendarDays}
           label="Actividades hoy"
           value={actividadesHoy.length.toString()}
+          detail="Programadas para hoy"
         />
 
         <MetricCard
           icon={NotepadText}
           label="Proximos"
           value={actividadesProximas.length.toString()}
+          detail="Fechas futuras"
         />
 
         <MetricCard
           icon={CircleAlert}
           label="Atrasados"
           value={actividadesVencidas.length.toString()}
+          detail="Requieren atención"
+          negative
         />
 
         <MetricCard
           icon={BoxesIcon}
           label="Total"
           value={actividades.length.toString()}
+          detail="Todas las actividades"
         />
       </div>
 
@@ -425,9 +418,22 @@ export default function AgendaComercialPage() {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {activity.descripcion}
-                      </p>
+                      {activity.solicitud_comercial ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(`/requerimientos/${activity.solicitud_comercial}`)
+                          }
+                          className="block w-full truncate text-left text-sm font-medium text-foreground hover:text-primary hover:underline"
+                          title="Abrir detalle de la oferta"
+                        >
+                          {activity.descripcion}
+                        </button>
+                      ) : (
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {activity.descripcion}
+                        </p>
+                      )}
 
                       <p className="truncate text-xs text-muted-foreground">
                         {activity.clienteNombre}
@@ -481,12 +487,6 @@ export default function AgendaComercialPage() {
               label="Nueva oferta"
               onClick={() => navigate("/requerimientos")}
             />
-            <QuickAction
-              icon={Phone}
-              label="Programar actividad"
-              onClick={() => setShowNuevaActividad(true)}
-            />
-
             <QuickAction
               icon={Truck}
               label="Revisar envíos"
@@ -617,51 +617,4 @@ function QuickAction({
   );
 }
 
-function ContactRow({
-  initials,
-  name,
-  note,
-  priority,
-}: {
-  initials: string;
-  name: string;
-  note: string;
-  priority: string;
-}) {
-  return (
-    <button className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-secondary">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-        {initials}
-      </div>
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">
-          {name}
-        </p>
-
-        <p className="truncate text-xs text-muted-foreground">{note}</p>
-      </div>
-
-      <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground">
-        {priority}
-      </span>
-
-      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-    </button>
-  );
-}
-
-function StatusRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-muted-foreground">{label}</span>
-      <strong className="text-foreground">{value}</strong>
-    </div>
-  );
-}
