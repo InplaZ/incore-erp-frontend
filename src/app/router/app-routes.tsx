@@ -43,6 +43,10 @@ const NotFoundPage = lazy(
   () => import("../../pages/not-found/not-found-page"),
 );
 
+const CotizadorPage = lazy(
+  () => import("../../features/cotizador/CotizadorPage"),
+);
+
 export const appRoutes: AppRoute[] = [
   // ============================================================
   // PUBLIC ROUTES
@@ -93,6 +97,10 @@ export const appRoutes: AppRoute[] = [
       {
         path: "/produccion/revisiones-tecnicas",
         element: <RevisionTecnicaPage />,
+      },
+      {
+        path: "/cotizador",
+        element: <CotizadorPage />,
       },
       ...comercialRoutes,
     ],

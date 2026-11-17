@@ -1,4 +1,4 @@
-import { Home, PanelsTopLeft, BriefcaseBusiness, Package, UserPlus2, PhoneCallIcon, ShoppingCart, Workflow, Factory, CalculatorIcon } from "lucide-react";
+import { Home, PanelsTopLeft, BriefcaseBusiness, Package, UserPlus2, PhoneCallIcon, ShoppingCart, Workflow, Factory, CalculatorIcon, HandCoins } from "lucide-react";
 
 import type { SidebarItem } from "../../components/navigation";
 
@@ -93,5 +93,11 @@ export const navigationItems: NavigationItem[] = [
     label: "Usuario", //Como se ve en el navar
     href: "/admin", //usuarios 
     icon: <PanelsTopLeft className="size-5" />,
+  },
+  {
+    id: "cotizador",
+    label: "Cotizador",
+    href: "/cotizador",
+    icon: <HandCoins className="size-5" />,
   },
 ];
