@@ -3,7 +3,7 @@
 // TIPOS GENERALES
 // ============================================================
 
-export type TipoMaterialCotizador = "PEBD" | "PEAD" | "PP" | "OTRO";
+export type TipoMaterialCotizador = "PEBD" | "PEAD" | "PP" | "BOPP" | "OTRO";
 export type CategoriaMaterialCotizador = "COLOR" | "ESPECIAL";
 
 export interface MaterialCotizador {

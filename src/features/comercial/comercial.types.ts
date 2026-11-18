@@ -656,6 +656,7 @@ export interface EspecificacionProductoSolicitado
   colores_cara_a: number | null;
   colores_cara_b: number | null;
   material: MaterialProducto;
+  material_cotizador: number | null;
   apto_alimento: boolean;
   micraje: string | null;
   color_bolsa: string;
@@ -682,6 +683,7 @@ export interface EspecificacionProductoSolicitadoCreate
   solicitud_comercial: number;
   categoria_producto: number;
   material: MaterialProducto;
+  material_cotizador?: number | null;
   capas: TipoCapa;
   apto_alimento: boolean;
   micraje?: string | null;
@@ -721,6 +723,7 @@ export interface EspecificacionProductoSolicitadoVersion
   colores_cara_a: number | null;
   colores_cara_b: number | null;
   material: MaterialProducto;
+  material_cotizador: number | null;
   apto_alimento: boolean;
   micraje: string | null;
   color_bolsa: string;

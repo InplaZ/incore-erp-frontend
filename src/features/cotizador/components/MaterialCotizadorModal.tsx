@@ -23,7 +23,7 @@ interface MaterialCotizadorModalProps {
   open: boolean;
   onClose: () => void;
   material: MaterialCotizador | null;
-  onSuccess: () => void;
+  onSuccess: (material: MaterialCotizador) => void;
 }
 
 interface MaterialForm {
@@ -103,7 +103,14 @@ export default function MaterialCotizadorModal({
       setError("Ingresa el nombre del material.");
       return;
     }
-
+    if (!form.tipo_material) {
+      setError("Selecciona el tipo de material.");
+      return;
+    }
+    if (!form.categoria) {
+      setError("Selecciona la categoría del material.");
+      return;
+    }
     if (
       !form.costo_por_kg.trim() ||
       !Number.isFinite(costo) ||
@@ -112,7 +119,6 @@ export default function MaterialCotizadorModal({
       setError("Ingresa un costo por kilogramo válido.");
       return;
     }
-
     if (
       !form.orden.trim() ||
       !Number.isInteger(orden) ||
@@ -132,16 +138,11 @@ export default function MaterialCotizadorModal({
     };
 
     try {
-      if (material) {
-        await update.mutateAsync({
-          id: material.id,
-          data: payload,
-        });
-      } else {
-        await create.mutateAsync(payload);
-      }
+      const guardado = material
+        ? await update.mutateAsync({ id: material.id, data: payload })
+        : await create.mutateAsync(payload);
 
-      onSuccess();
+      onSuccess(guardado);
       onClose();
     } catch (e) {
       setError(
@@ -150,19 +151,10 @@ export default function MaterialCotizadorModal({
           : "No se pudo guardar el material. Verifica los datos e inténtalo nuevamente.",
       );
     }
-    if (!form.tipo_material) {
-      setError("Selecciona el tipo de material.");
-      return;
-    }
-
-    if (!form.categoria) {
-      setError("Selecciona la categoría del material.");
-      return;
-    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5">
       <section
         role="dialog"
         aria-modal="true"

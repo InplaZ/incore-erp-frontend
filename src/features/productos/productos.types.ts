@@ -30,6 +30,7 @@ export interface ProductoComercialCreate {
   };
   version: {
     material: string;
+    material_cotizador?: number | null;
     capas: string;
     cara_impresion?: string | null;
     tratamiento_impresion?: string;

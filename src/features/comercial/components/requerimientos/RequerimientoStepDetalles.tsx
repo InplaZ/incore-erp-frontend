@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import type { MaterialCotizador } from "@/features/cotizador/cotizador.types";
 import type {
   MaterialProducto,
   Opacidad,
@@ -50,6 +51,10 @@ interface RequerimientoStepDetallesProps {
   // Información general
   material: MaterialProducto;
   setMaterial: (value: MaterialProducto) => void;
+  materialCotizadorId: number | null;
+  setMaterialCotizadorId: (value: number | null) => void;
+  materialesCotizador: MaterialCotizador[];
+  cargandoMaterialesCotizador: boolean;
   micraje: string;
   setMicraje: (value: string) => void;
   colorBolsa: string;
@@ -303,6 +308,12 @@ export default function RequerimientoStepDetalles(
     cantidadUnidades,
     material,
     setMaterial,
+    materialCotizadorId,
+    setMaterialCotizadorId,
+    materialesCotizador,
+    cargandoMaterialesCotizador,
+    esProductoNuevo,
+    setColorBolsa,
     micraje,
     setMicraje,
     variantesColor,
@@ -530,38 +541,62 @@ export default function RequerimientoStepDetalles(
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
 
-              <Field
-                label="Material"
-                value={material}
-                onChange={(v) =>
-                  setMaterial(
-                    v as MaterialProducto,
-                  )
-                }
-                type="select"
-                options={[
-                  {
-                    value: "PEAD",
-                    label: "PEAD",
-                  },
-                  {
-                    value: "PEBD",
-                    label: "PEBD",
-                  },
-                  {
-                    value: "PP",
-                    label: "PP",
-                  },
-                  {
-                    value: "BOPP",
-                    label: "BOPP",
-                  },
-                  {
-                    value: "OTRO",
-                    label: "Otro",
-                  },
-                ]}
-              />
+              {esProductoNuevo ? (
+                <div>
+                  <Field
+                    label="Color / material"
+                    value={materialCotizadorId?.toString() ?? ""}
+                    onChange={(value) => {
+                      const id = value ? Number(value) : null;
+                      setMaterialCotizadorId(id);
+                      const seleccionado = materialesCotizador.find(
+                        (item) => item.id === id,
+                      );
+                      if (seleccionado) {
+                        setMaterial(seleccionado.tipo_material as MaterialProducto);
+                        setColorBolsa(seleccionado.nombre);
+                      } else {
+                        setColorBolsa("");
+                      }
+                    }}
+                    type="select"
+                    options={[
+                      {
+                        value: "",
+                        label: cargandoMaterialesCotizador
+                          ? "Cargando materiales..."
+                          : "Seleccionar material",
+                      },
+                      ...materialesCotizador
+                        .filter((item) => item.activo && item.tipo_material)
+                        .map((item) => ({
+                          value: String(item.id),
+                          label: `${item.nombre} · ${item.tipo_material}`,
+                        })),
+                    ]}
+                    hint="El tipo de plástico se asigna automáticamente desde el catálogo del Cotizador."
+                  />
+                  {materialCotizadorId !== null && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Tipo de material: <strong>{material}</strong>
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <Field
+                  label="Material"
+                  value={material}
+                  onChange={(value) => setMaterial(value as MaterialProducto)}
+                  type="select"
+                  options={[
+                    { value: "PEAD", label: "PEAD" },
+                    { value: "PEBD", label: "PEBD" },
+                    { value: "PP", label: "PP" },
+                    { value: "BOPP", label: "BOPP" },
+                    { value: "OTRO", label: "Otro" },
+                  ]}
+                />
+              )}
 
               <Field
                 label="Tipo de capa"

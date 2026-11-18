@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, X } from "lucide-react";
+import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Plus, Search, X } from "lucide-react";
 import { useProducto, useProductos, useProductosCategorias, useCreateProductoComercial, useUpdateProductoComercial } from "@/features/productos/productos.hooks";
 import type { ProductoComercialCreado, Producto, ProductoComercialDetalle } from "@/features/productos/productos.types";
 import { viabilidadApi } from "@/features/viabilidad/viabilidad.api";
@@ -7,6 +7,9 @@ import type { EvaluarViabilidadPayload, EvaluarViabilidadResponse } from "@/feat
 import ViabilidadPreviaPanel from "@/features/viabilidad/requerimientos/ViabilidadPreviaPanel";
 import type { ProductoComercialCreate } from "./productos.types";
 import { api } from "@/api/api.config";
+import { useMaterialesCotizador } from "@/features/cotizador/cotizador.hooks";
+import type { MaterialCotizador } from "@/features/cotizador/cotizador.types";
+import MaterialCotizadorModal from "@/features/cotizador/components/MaterialCotizadorModal";
 const steps = [
   "Aplicación",
   "Características físicas",
@@ -30,6 +33,7 @@ type Wizard = {
   categoria: string;
   application: string; use: string; content: string; food: boolean;
   material: string; layers: string; micraje: string; color: string;
+  materialCotizadorId: string;
   width: string; widthFlat: string; length: string; foldLength: string;
   fuelle: boolean;
   sides: string[];
@@ -77,6 +81,7 @@ type Wizard = {
 const initialForm: Wizard = {
   productType: "bolsa", categoria: "", application: "Comercio y supermercados",
   use: "", content: "", food: false, material: "PEBD", layers: "monocapa", micraje: "", color: "",
+  materialCotizadorId: "",
   width: "", widthFlat: "", length: "", foldLength: "",
   fuelle: false,
   sides: [],
@@ -122,7 +127,6 @@ const initialForm: Wizard = {
 
 // Opciones de presentación del formulario. Los valores enviados al backend
 // permanecen separados de las etiquetas legibles que ve el usuario.
-const materials = ["PEBD", "PEAD", "PP", "BOPP", "OTRO"];
 const layers = [["monocapa", "Monocapa"], ["bicapa", "Bicapa"], ["tricapa", "Tricapa"]];
 const applications = ["Empaque primario alimenticio", "Empaque secundario alimenticio", "Empaque industrial", "Agricultura y horticultura", "Comercio y supermercados", "Textil y confecciones", "Presentación de marca", "Agrupación y transporte", "Higiene y limpieza", "Otros usos"];
 const sides = ["Arriba", "Abajo", "Izquierda", "Derecha"];
@@ -535,12 +539,49 @@ export default function ProductoComercialWizardModal({
   const [weights, setWeights] = useState<PesosProductoResponse | null>(null);
   const [calculatingWeight, setCalculatingWeight] = useState(false);
   const [weightError, setWeightError] = useState("");
+  const [materialSearch, setMaterialSearch] = useState("");
+  const [materialSelectorOpen, setMaterialSelectorOpen] = useState(false);
+  const [materialModalOpen, setMaterialModalOpen] = useState(false);
 
   const create = useCreateProductoComercial();
   const update = useUpdateProductoComercial();
   const { data: productoDetalle, isLoading: cargandoDetalle } = useProducto(producto?.id ?? 0, open && Boolean(producto));
   const { data: categories = [] } = useProductosCategorias();
   const { data: products = [] } = useProductos();
+  // El catálogo de materiales solo se consulta en el flujo de solicitud comercial.
+  const {
+    data: materialesCotizador = [],
+    isLoading: cargandoMaterialesCotizador,
+    isError: errorMaterialesCotizador,
+  } = useMaterialesCotizador(open && modo === "solicitud_comercial");
+  const materialesLista = useMemo(() => {
+    // El endpoint puede responder como lista directa o como paginación DRF.
+    if (Array.isArray(materialesCotizador)) return materialesCotizador;
+    const paginados = (materialesCotizador as unknown as { results?: MaterialCotizador[] })?.results;
+    return Array.isArray(paginados) ? paginados : [];
+  }, [materialesCotizador]);
+
+  const materialesDisponibles = useMemo(
+    () => materialesLista.filter(
+      (item) => item.activo && Boolean(item.tipo_material),
+    ),
+    [materialesLista],
+  );
+  const materialCotizadorSeleccionado = useMemo(
+    () => materialesDisponibles.find(
+      (item) => item.id === Number(form.materialCotizadorId),
+    ) ?? null,
+    [materialesDisponibles, form.materialCotizadorId],
+  );
+  const materialesFiltrados = useMemo(() => {
+    const termino = materialSearch.trim().toLocaleLowerCase();
+    if (!termino) return materialesDisponibles;
+    return materialesDisponibles.filter((item) =>
+      `${item.nombre} ${item.tipo_material} ${item.categoria}`
+        .toLocaleLowerCase()
+        .includes(termino),
+    );
+  }, [materialesDisponibles, materialSearch]);
   const categoryId = Number(form.categoria) || undefined;
   const commercialProducts = useMemo(() => products.filter(p => p.estado_homologacion === "homologado"), [products]);
 
@@ -806,6 +847,9 @@ export default function ProductoComercialWizardModal({
 
     setStep(0);
     setForm(initialForm);
+    setMaterialSearch("");
+    setMaterialSelectorOpen(false);
+    setMaterialModalOpen(false);
     setQuantityUnit("unidad");
 
     // Limpiar referencias y errores
@@ -1163,6 +1207,9 @@ export default function ProductoComercialWizardModal({
       producto: { categoria: categoryId, subcategoria: subcategoriaActual, nombre: nombreGenerado, descripcion: descripcionFinal, unidad_medida: form.unit },
       version: {
         material: form.material, capas: form.layers, apto_alimento: form.food, micraje: form.micraje || null,
+        ...(modo === "solicitud_comercial"
+          ? { material_cotizador: Number(form.materialCotizadorId) }
+          : {}),
         color_bolsa: form.color, impresion: form.impression, tipo_impresion: form.printType,
         cara_impresion: form.impression ? form.printFace : null, tratamiento_impresion: form.printTreatment,
         color_impresion: form.printColors.split(",").map(v => v.trim()).filter(Boolean), diseno: Number(form.designId) || null,
@@ -1287,6 +1334,9 @@ export default function ProductoComercialWizardModal({
     }
 
     if (stepToValidate === 1) {
+      if (modo === "solicitud_comercial" && !materialCotizadorSeleccionado) {
+        return "Selecciona un color o material activo del catálogo del Cotizador.";
+      }
       if (!form.material || !form.layers) {
         return "Selecciona el material y el número de capas.";
       }
@@ -1410,23 +1460,171 @@ export default function ProductoComercialWizardModal({
     </div>;
 
     if (step === 1) return <div className="space-y-5">{sectionTitle("Material y dimensiones", "Especificación asociada a la primera versión del producto")}
+
+      {/* FILA 1: MATERIAL Y CAPAS */}
       <div className="grid gap-4 sm:grid-cols-3">
-        {field("Material", "material", {
-          options: materials,
-          required: true,
-        })}
+        {modo === "solicitud_comercial" ? (
+          <div className="relative block sm:col-span-2">
+            <span className={labelClass}>Color o material *</span>
+
+            <div className="flex items-stretch gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                <input
+                  className={`${inputClass} pl-9`}
+                  value={
+                    materialSelectorOpen
+                      ? materialSearch
+                      : (materialCotizadorSeleccionado?.nombre ?? materialSearch)
+                  }
+                  placeholder={
+                    cargandoMaterialesCotizador
+                      ? "Cargando materiales..."
+                      : "Buscar color o material..."
+                  }
+                  disabled={cargandoMaterialesCotizador || errorMaterialesCotizador}
+                  onFocus={() => {
+                    setMaterialSearch("");
+                    setMaterialSelectorOpen(true);
+                  }}
+                  onChange={(event) => {
+                    setMaterialSearch(event.target.value);
+                    setMaterialSelectorOpen(true);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setMaterialSelectorOpen(false);
+                    }
+
+                    if (event.key === "Enter" && materialesFiltrados.length === 1) {
+                      event.preventDefault();
+
+                      const seleccionado = materialesFiltrados[0];
+
+                      setForm((current) => ({
+                        ...current,
+                        materialCotizadorId: String(seleccionado.id),
+                        material: seleccionado.tipo_material || "",
+                        color: seleccionado.nombre,
+                      }));
+
+                      setMaterialSearch(seleccionado.nombre);
+                      setMaterialSelectorOpen(false);
+                    }
+                  }}
+                  aria-label="Buscar color o material"
+                  aria-expanded={materialSelectorOpen}
+                  aria-controls="material-cotizador-options"
+                  role="combobox"
+                  aria-autocomplete="list"
+                />
+
+                {materialSelectorOpen && (
+                  <div
+                    id="material-cotizador-options"
+                    role="listbox"
+                    className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
+                  >
+                    {materialesFiltrados.length > 0 ? (
+                      materialesFiltrados.map((item: MaterialCotizador) => (
+                        <button
+                          type="button"
+                          key={item.id}
+                          role="option"
+                          aria-selected={item.id === Number(form.materialCotizadorId)}
+                          onClick={() => {
+                            setForm((current) => ({
+                              ...current,
+                              materialCotizadorId: String(item.id),
+                              material: item.tipo_material || "",
+                              color: item.nombre,
+                            }));
+
+                            setMaterialSearch(item.nombre);
+                            setMaterialSelectorOpen(false);
+                          }}
+                          className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-blue-50"
+                        >
+                          <span className="font-medium text-slate-700">
+                            {item.nombre}
+                          </span>
+                          <span className="shrink-0 text-xs text-slate-500">
+                            {item.tipo_material}
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-3 text-sm text-slate-500">
+                        No se encontraron materiales con “{materialSearch}”.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMaterialSelectorOpen(false);
+                  setMaterialModalOpen(true);
+                }}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                title="Agregar material al catálogo"
+                aria-label="Agregar nuevo material"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Agregar</span>
+              </button>
+            </div>
+
+            {errorMaterialesCotizador && (
+              <p className="mt-1 text-xs text-red-600" role="alert">
+                No se pudo cargar el catálogo de materiales del Cotizador.
+              </p>
+            )}
+
+            {!cargandoMaterialesCotizador &&
+              !errorMaterialesCotizador &&
+              materialesDisponibles.length === 0 && (
+                <p className="mt-1 text-xs text-amber-700" role="alert">
+                  No hay materiales activos con tipo de plástico configurado.
+                </p>
+              )}
+
+            {materialCotizadorSeleccionado && (
+              <p className="mt-1 text-xs text-slate-500">
+                Tipo de material asignado automáticamente:{" "}
+                <strong>{materialCotizadorSeleccionado.tipo_material}</strong>
+              </p>
+            )}
+          </div>
+        ) : (
+          <>
+            {field("Material", "material", {
+              options: ["PEBD", "PEAD", "PP", "BOPP", "OTRO"],
+              required: true,
+            })}
+
+            {field("Color", "color")}
+          </>
+        )}
 
         {field("Capas", "layers", {
           options: layers.map(([v]) => v),
           required: true,
         })}
+      </div>
+
+
+      {/* FILA 2: ESPESOR Y DIMENSIONES */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
 
         {field("Espesor (micras)", "micraje", {
           type: "number",
           required: true,
+          placeholder: "Ej. 50",
         })}
-
-        {field("Color", "color")}
 
         {form.productType === "bolsa" ? (
           <>
@@ -1436,62 +1634,10 @@ export default function ProductoComercialWizardModal({
               placeholder: "Ej. 50",
             })}
 
-
-            {bolsaDimensiones.hayFuelleAncho && (
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold text-blue-700">
-                  Ancho doblado calculado (cm)
-                </span>
-                <input
-                  className="w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-semibold text-blue-800 outline-none cursor-not-allowed"
-                  type="number"
-                  value={bolsaDimensiones.anchoDoblado ?? ""}
-                  readOnly
-                  aria-label="Ancho doblado calculado de bolsa"
-                />
-                <span className="mt-1 block text-xs text-blue-600">
-                  Calculado automáticamente restando los fuelles izquierdo y derecho.
-                </span>
-              </label>
-            )}
-
-
-            {bolsaDimensiones.error && (form.fuelle || form.widthFlat.trim()) && (
-              <p className="text-xs text-red-600 sm:col-span-3" role="alert">
-                {bolsaDimensiones.error}
-              </p>
-            )}
-
-
-            {bolsaDimensiones.hayFuelleLargo && (
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold text-blue-700">
-                  Largo doblado calculado (cm)
-                </span>
-
-                <input
-                  className="w-full cursor-not-allowed rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-semibold text-blue-800 outline-none"
-                  type="number"
-                  value={bolsaDimensiones.largoDoblado ?? ""}
-                  readOnly
-                  aria-label="Largo doblado calculado de bolsa"
-                />
-
-                <span className="mt-1 block text-xs text-blue-600">
-                  Calculado automáticamente restando los fuelles superior e inferior.
-                </span>
-
-                {bolsaDimensiones.largoError && (
-                  <span className="mt-1 block text-xs text-red-600" role="alert">
-                    {bolsaDimensiones.largoError}
-                  </span>
-                )}
-              </label>
-            )}
-
             {field("Largo desdoblado (cm)", "foldLength", {
               type: "number",
               required: true,
+              placeholder: "Ej. 60",
             })}
           </>
         ) : (
@@ -1499,15 +1645,69 @@ export default function ProductoComercialWizardModal({
             {field("Ancho de bobina (cm)", "width", {
               type: "number",
               required: true,
+              placeholder: "Ej. 100",
             })}
 
             {field("Metros por rollo (m)", "meters", {
               type: "number",
               required: true,
+              placeholder: "Ej. 500",
             })}
           </>
         )}
       </div>
+
+      {/* DIMENSIONES DOBLADAS CALCULADAS */}
+      {form.productType === "bolsa" && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+          {bolsaDimensiones.hayFuelleAncho && (
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-blue-700">
+                Ancho doblado calculado (cm)
+              </span>
+              <input
+                className="w-full cursor-not-allowed rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-semibold text-blue-800"
+                type="number"
+                value={bolsaDimensiones.anchoDoblado ?? ""}
+                readOnly
+              />
+              <span className="mt-1 block text-xs text-blue-600">
+                Resultado automático según los fuelles laterales.
+              </span>
+            </label>
+          )}
+
+          {bolsaDimensiones.hayFuelleLargo && (
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-blue-700">
+                Largo doblado calculado (cm)
+              </span>
+              <input
+                className="w-full cursor-not-allowed rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-semibold text-blue-800"
+                type="number"
+                value={bolsaDimensiones.largoDoblado ?? ""}
+                readOnly
+              />
+              <span className="mt-1 block text-xs text-blue-600">
+                Resultado automático según los fuelles superior e inferior.
+              </span>
+            </label>
+          )}
+
+          {bolsaDimensiones.error && (
+            <p className="text-xs text-red-600 sm:col-span-2" role="alert">
+              {bolsaDimensiones.error}
+            </p>
+          )}
+
+          {bolsaDimensiones.largoError && (
+            <p className="text-xs text-red-600 sm:col-span-2" role="alert">
+              {bolsaDimensiones.largoError}
+            </p>
+          )}
+        </div>
+      )}
 
       {
         form.productType === "bolsa" && (
@@ -2394,5 +2594,22 @@ export default function ProductoComercialWizardModal({
         )}
       </footer>
     </div>
+    {modo === "solicitud_comercial" && (
+      <MaterialCotizadorModal
+        open={materialModalOpen}
+        material={null}
+        onClose={() => setMaterialModalOpen(false)}
+        onSuccess={(nuevoMaterial) => {
+          setForm((current) => ({
+            ...current,
+            materialCotizadorId: String(nuevoMaterial.id),
+            material: nuevoMaterial.tipo_material || "",
+            color: nuevoMaterial.nombre,
+          }));
+          setMaterialSearch(nuevoMaterial.nombre);
+          setMaterialSelectorOpen(false);
+        }}
+      />
+    )}
   </div>;
 }

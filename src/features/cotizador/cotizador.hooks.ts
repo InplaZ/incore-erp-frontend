@@ -68,10 +68,11 @@ export const cotizadorQueryKeys = {
 // MATERIALES
 // ============================================================
 
-export function useMaterialesCotizador() {
+export function useMaterialesCotizador(enabled = true) {
   return useQuery<MaterialCotizador[]>({
     queryKey: cotizadorQueryKeys.materiales(),
     queryFn: () => materialesCotizadorApi.list(),
+    enabled,
   });
 }
 

@@ -46,6 +46,8 @@ import type {
 import {
   useProductosCategorias,
 } from "@/features/productos/productos.hooks";
+import { useMaterialesCotizador } from "@/features/cotizador/cotizador.hooks";
+import type { MaterialCotizador } from "@/features/cotizador/cotizador.types";
 import type { ProductType } from "@/features/comercial/comercial.types";
 import RequerimientoStepBusquedaProducto from "../components/requerimientos/RequerimientoStepBusquedaProducto";
 import RequerimientoStepDetalles from "../components/requerimientos/RequerimientoStepDetalles";
@@ -87,6 +89,19 @@ type CotizacionLineaBorrador = NonNullable<FormalizarCotizacionWizardPayload["de
   persistida?: boolean;
   backendDetailId?: number;
 };
+
+function extraerMaterialesCotizador(data: unknown): MaterialCotizador[] {
+  if (Array.isArray(data)) return data as MaterialCotizador[];
+  if (
+    data &&
+    typeof data === "object" &&
+    "results" in data &&
+    Array.isArray(data.results)
+  ) {
+    return data.results as MaterialCotizador[];
+  }
+  return [];
+}
 
 interface PesosProductoResponse {
   peso_unitario_kg: string | null;
@@ -155,6 +170,7 @@ export default function RequerimientosPage() {
   const actualizarVersion = useUpdateCotizacionVersion();
   const crearVersionCotizacion = useCrearCotizacionVersion();
   const [step, setStep] = useState<RequirementStep>(1);
+  const materialesCotizadorQuery = useMaterialesCotizador(step === 2);
   /*
    * Cliente
    */
@@ -246,6 +262,9 @@ export default function RequerimientosPage() {
 
   const [material, setMaterial] =
     useState<MaterialProducto>("PEBD");
+
+  const [materialCotizadorId, setMaterialCotizadorId] =
+    useState<number | null>(null);
 
   const [micraje, setMicraje] =
     useState("");
@@ -688,6 +707,7 @@ export default function RequerimientosPage() {
 
     setDescripcion(producto.producto_nombre);
 
+    setMaterialCotizadorId(null);
     setMaterial(producto.material);
 
     setMicraje(
@@ -797,11 +817,15 @@ export default function RequerimientosPage() {
       if (esProductoNuevo && !categoriaSeleccionada) {
         throw new Error("No se encontró la categoría de producto seleccionada.");
       }
+      if (esProductoNuevo && !materialCotizadorId) {
+        throw new Error("Debe seleccionar un color o material del catálogo del Cotizador.");
+      }
 
       const tipoProducto = product === "bag" ? "bolsa" : "bobina";
       const especificacion = esProductoNuevo ? {
         categoria_producto: categoriaSeleccionada!.id,
         material,
+        material_cotizador: materialCotizadorId,
         capas: capas || "monocapa",
         apto_alimento: aptoAlimento,
         micraje: micraje || null,
@@ -1089,6 +1113,7 @@ export default function RequerimientosPage() {
      */
     setDescripcion("");
     setMaterial("PEBD");
+    setMaterialCotizadorId(null);
     setMicraje("");
     setColorBolsa("");
     setVariantesColor([]);
@@ -1158,7 +1183,7 @@ export default function RequerimientosPage() {
         ? { producto_version: productoSeleccionado.version_id, previsualizar: true }
         : null;
     }
-    if (!categoriaSeleccionada || !product) return null;
+    if (!categoriaSeleccionada || !product || !materialCotizadorId) return null;
 
     const tipoProducto = product === "bag" ? "bolsa" : "bobina";
     return {
@@ -1216,7 +1241,7 @@ export default function RequerimientosPage() {
     };
   }, [
     esProductoNuevo, productoSeleccionado, categoriaSeleccionada?.id, product,
-    material, capas, aptoAlimento, micraje, colorBolsa, impresion,
+    material, materialCotizadorId, capas, aptoAlimento, micraje, colorBolsa, impresion,
     tipoImpresion, tratamientoImpresion, posicionImpresion, caraImpresion,
     distanciaImpresionSuperior, distanciaImpresionInferior,
     distanciaImpresionIzquierda, distanciaImpresionDerecha, otrasCaracteristicas,
@@ -1637,6 +1662,10 @@ export default function RequerimientosPage() {
 
                   material={material}
                   setMaterial={setMaterial}
+                  materialCotizadorId={materialCotizadorId}
+                  setMaterialCotizadorId={setMaterialCotizadorId}
+                  materialesCotizador={extraerMaterialesCotizador(materialesCotizadorQuery.data)}
+                  cargandoMaterialesCotizador={materialesCotizadorQuery.isLoading}
 
                   micraje={micraje}
                   setMicraje={setMicraje}
