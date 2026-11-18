@@ -11,6 +11,9 @@ import {
   parametrosCotizadorApi,
   margenesComercialesApi,
   calculosCotizadorApi,
+  type MaterialCotizadorInput,
+  type TarifaImpresionInput,
+  type MargenComercialInput,
 } from "./cotizador.api";
 
 import type {
@@ -60,6 +63,7 @@ export const cotizadorQueryKeys = {
     [...cotizadorQueryKeys.calculos(), id] as const,
 };
 
+
 // ============================================================
 // MATERIALES
 // ============================================================
@@ -79,6 +83,73 @@ export function useMaterialCotizador(id: number) {
   });
 }
 
+// REGISTRAR MATERIAL
+export function useCreateMaterialCotizador() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: MaterialCotizadorInput) =>
+      materialesCotizadorApi.create(data),
+
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: cotizadorQueryKeys.materiales(),
+      });
+
+      queryClient.setQueryData(
+        cotizadorQueryKeys.material(data.id),
+        data,
+      );
+    },
+  });
+}
+
+// EDITAR MATERIAL
+export function useUpdateMaterialCotizador() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<MaterialCotizadorInput>;
+    }) => materialesCotizadorApi.update(id, data),
+
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: cotizadorQueryKeys.materiales(),
+      });
+
+      queryClient.setQueryData(
+        cotizadorQueryKeys.material(data.id),
+        data,
+      );
+    },
+  });
+}
+
+// ELIMINAR MATERIAL
+export function useDeleteMaterialCotizador() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) =>
+      materialesCotizadorApi.delete(id),
+
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({
+        queryKey: cotizadorQueryKeys.materiales(),
+      });
+
+      queryClient.removeQueries({
+        queryKey: cotizadorQueryKeys.material(id),
+      });
+    },
+  });
+}
+
 // ============================================================
 // TARIFAS DE IMPRESIÓN
 // ============================================================
@@ -95,6 +166,53 @@ export function useTarifaImpresion(id: number) {
     queryKey: cotizadorQueryKeys.tarifaImpresion(id),
     queryFn: () => tarifasImpresionApi.get(id),
     enabled: !!id,
+  });
+}
+
+// REGISTRAR TARIFA
+export function useCreateTarifaImpresion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: TarifaImpresionInput) =>
+      tarifasImpresionApi.create(data),
+
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: cotizadorQueryKeys.tarifasImpresion(),
+      });
+
+      queryClient.setQueryData(
+        cotizadorQueryKeys.tarifaImpresion(data.id),
+        data,
+      );
+    },
+  });
+}
+
+// EDITAR TARIFA
+export function useUpdateTarifaImpresion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<TarifaImpresionInput>;
+    }) => tarifasImpresionApi.update(id, data),
+
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: cotizadorQueryKeys.tarifasImpresion(),
+      });
+
+      queryClient.setQueryData(
+        cotizadorQueryKeys.tarifaImpresion(data.id),
+        data,
+      );
+    },
   });
 }
 
@@ -158,6 +276,52 @@ export function useMargenComercial(id: number) {
     queryKey: cotizadorQueryKeys.margen(id),
     queryFn: () => margenesComercialesApi.get(id),
     enabled: !!id,
+  });
+}
+// REGISTRAR MARGEN COMERCIAL
+export function useCreateMargenComercial() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: MargenComercialInput) =>
+      margenesComercialesApi.create(data),
+
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: cotizadorQueryKeys.margenes(),
+      });
+
+      queryClient.setQueryData(
+        cotizadorQueryKeys.margen(data.id),
+        data,
+      );
+    },
+  });
+}
+
+// EDITAR MARGEN COMERCIAL
+export function useUpdateMargenComercial() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<MargenComercialInput>;
+    }) => margenesComercialesApi.update(id, data),
+
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: cotizadorQueryKeys.margenes(),
+      });
+
+      queryClient.setQueryData(
+        cotizadorQueryKeys.margen(data.id),
+        data,
+      );
+    },
   });
 }
 
