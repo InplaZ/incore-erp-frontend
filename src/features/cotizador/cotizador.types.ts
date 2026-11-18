@@ -3,10 +3,15 @@
 // TIPOS GENERALES
 // ============================================================
 
+export type TipoMaterialCotizador = "PEBD" | "PEAD" | "PP" | "OTRO";
+export type CategoriaMaterialCotizador = "COLOR" | "ESPECIAL";
+
 export interface MaterialCotizador {
   id: number;
   nombre: string;
   costo_por_kg: string;
+  tipo_material: TipoMaterialCotizador | "";
+  categoria: CategoriaMaterialCotizador | "";
   activo: boolean;
   orden: number;
   created_at: string;

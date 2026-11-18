@@ -16,7 +16,12 @@ import type {
 
 export type MaterialCotizadorInput = Pick<
   MaterialCotizador,
-  "nombre" | "costo_por_kg" | "activo" | "orden"
+  | "nombre"
+  | "costo_por_kg"
+  | "tipo_material"
+  | "categoria"
+  | "activo"
+  | "orden"
 >;
 
 export const materialesCotizadorApi = {

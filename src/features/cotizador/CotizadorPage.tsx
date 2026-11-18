@@ -732,8 +732,8 @@ export default function CotizadorPage() {
                         {/* FACTURA */}
                         <label
                             className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition ${factura
-                                    ? "border-primary/40 bg-primary/5"
-                                    : "border-border hover:bg-secondary/30"
+                                ? "border-primary/40 bg-primary/5"
+                                : "border-border hover:bg-secondary/30"
                                 }`}
                         >
                             <input
@@ -925,8 +925,8 @@ export default function CotizadorPage() {
                                         </span>
                                         <span
                                             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${resultadoActual.factura
-                                                    ? "bg-primary/10 text-primary"
-                                                    : "bg-secondary text-muted-foreground"
+                                                ? "bg-primary/10 text-primary"
+                                                : "bg-secondary text-muted-foreground"
                                                 }`}
                                         >
                                             {resultadoActual.factura
@@ -1010,7 +1010,15 @@ export default function CotizadorPage() {
                         <CatalogRow
                             key={material.id}
                             title={material.nombre}
-                            subtitle={`${formatoMoneda(material.costo_por_kg)} / kg`}
+                            subtitle={[
+                                material.tipo_material || "Sin clasificar",
+                                material.categoria === "COLOR"
+                                    ? "Color"
+                                    : material.categoria === "ESPECIAL"
+                                        ? "Especial"
+                                        : "Sin categoría",
+                                `${formatoMoneda(material.costo_por_kg)} / kg`,
+                            ].join(" · ")}
                             active={material.activo}
                             menuOpen={menuMaterialId === material.id}
                             onToggleMenu={() =>
@@ -1438,8 +1446,8 @@ function StepItem({ done, label }: { done: boolean; label: string }) {
         <li className="flex items-center gap-2">
             <span
                 className={`flex h-4 w-4 items-center justify-center rounded-full border transition ${done
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-background text-transparent"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-transparent"
                     }`}
             >
                 <CheckCircle2 className="h-3 w-3" />

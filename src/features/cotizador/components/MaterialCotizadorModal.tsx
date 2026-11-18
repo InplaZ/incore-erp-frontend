@@ -7,7 +7,11 @@ import {
   useUpdateMaterialCotizador,
 } from "../cotizador.hooks";
 
-import type { MaterialCotizador } from "../cotizador.types";
+import type {
+  MaterialCotizador,
+  TipoMaterialCotizador,
+  CategoriaMaterialCotizador,
+} from "../cotizador.types";
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15";
@@ -25,6 +29,8 @@ interface MaterialCotizadorModalProps {
 interface MaterialForm {
   nombre: string;
   costo_por_kg: string;
+  tipo_material: TipoMaterialCotizador | "";
+  categoria: CategoriaMaterialCotizador | "";
   orden: string;
   activo: boolean;
 }
@@ -32,6 +38,8 @@ interface MaterialForm {
 const initialForm: MaterialForm = {
   nombre: "",
   costo_por_kg: "",
+  tipo_material: "",
+  categoria: "",
   orden: "1",
   activo: true,
 };
@@ -58,6 +66,8 @@ export default function MaterialCotizadorModal({
       setForm({
         nombre: material.nombre,
         costo_por_kg: material.costo_por_kg,
+        tipo_material: material.tipo_material,
+        categoria: material.categoria,
         orden: String(material.orden),
         activo: material.activo,
       });
@@ -115,6 +125,8 @@ export default function MaterialCotizadorModal({
     const payload = {
       nombre,
       costo_por_kg: form.costo_por_kg.trim(),
+      tipo_material: form.tipo_material,
+      categoria: form.categoria,
       orden,
       activo: form.activo,
     };
@@ -137,6 +149,15 @@ export default function MaterialCotizadorModal({
           ? e.message
           : "No se pudo guardar el material. Verifica los datos e inténtalo nuevamente.",
       );
+    }
+    if (!form.tipo_material) {
+      setError("Selecciona el tipo de material.");
+      return;
+    }
+
+    if (!form.categoria) {
+      setError("Selecciona la categoría del material.");
+      return;
     }
   };
 
@@ -190,6 +211,43 @@ export default function MaterialCotizadorModal({
               value={form.nombre}
               onChange={(e) => updateField("nombre", e.target.value)}
             />
+          </Field>
+          <Field label="Tipo de material *">
+            <select
+              required
+              className={inputClass}
+              value={form.tipo_material}
+              onChange={(e) =>
+                updateField(
+                  "tipo_material",
+                  e.target.value as TipoMaterialCotizador | "",
+                )
+              }
+            >
+              <option value="">Selecciona un tipo</option>
+              <option value="PEBD">PEBD - Baja densidad</option>
+              <option value="PEAD">PEAD - Alta densidad</option>
+              <option value="PP">PP - Polipropileno</option>
+              <option value="OTRO">Otro</option>
+            </select>
+          </Field>
+
+          <Field label="Categoría *">
+            <select
+              required
+              className={inputClass}
+              value={form.categoria}
+              onChange={(e) =>
+                updateField(
+                  "categoria",
+                  e.target.value as CategoriaMaterialCotizador | "",
+                )
+              }
+            >
+              <option value="">Selecciona una categoría</option>
+              <option value="COLOR">Color</option>
+              <option value="ESPECIAL">Especial</option>
+            </select>
           </Field>
 
           <Field label="Costo por kilogramo (Bs) *">
