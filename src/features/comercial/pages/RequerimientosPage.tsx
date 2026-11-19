@@ -3,7 +3,7 @@
 //Guarda todos los datos del formulario
 //Decide que paso mostrar step1, ....
 /////////////////////////
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Toast from "@/components/ui/Toast";
@@ -46,7 +46,11 @@ import type {
 import {
   useProductosCategorias,
 } from "@/features/productos/productos.hooks";
-import { useMaterialesCotizador } from "@/features/cotizador/cotizador.hooks";
+import {
+  useMaterialesCotizador,
+  useMargenesComerciales,
+  useParametrosCotizador,
+} from "@/features/cotizador/cotizador.hooks";
 import type { MaterialCotizador } from "@/features/cotizador/cotizador.types";
 import type { ProductType } from "@/features/comercial/comercial.types";
 import RequerimientoStepBusquedaProducto from "../components/requerimientos/RequerimientoStepBusquedaProducto";
@@ -74,7 +78,6 @@ import NuevaCuentaComercialWizard from "../components/NuevaCuentaComercialWizard
 import OfertaComercialDetalle from "../components/ofertas/OfertaComercialDetalle";
 import CatalogoOfertaModal from "../components/ofertas/CatalogoOfertaModal";
 import RegistrarEnvioComercialModal, { type MedioEnvioComercial } from "../components/ofertas/RegistrarEnvioComercialModal";
-import type { ProductoComercialCreado } from "@/features/productos/productos.types";
 import OfertaCondicionesForm, { type OfertaCondiciones } from "../components/ofertas/OfertaCondicionesForm";
 import OfertaSeguimientoTimeline from "../components/ofertas/OfertaSeguimientoTimeline";
 import RegistrarComunicacionModal from "../components/RegistrarComunicacionModal";
@@ -88,6 +91,13 @@ type CotizacionLineaBorrador = NonNullable<FormalizarCotizacionWizardPayload["de
   archivo_color_impresion?: File | null;
   persistida?: boolean;
   backendDetailId?: number;
+  // Parámetros de cotización configurados por línea.
+  cotizador_margen_id?: string;
+  cotizador_mano_obra_kg?: string;
+  cotizador_costos_indirectos_kg?: string;
+  cotizador_factura?: boolean;
+  peso_unitario_kg?: string | null;
+  peso_total_kg?: string | null;
 };
 
 function extraerMaterialesCotizador(data: unknown): MaterialCotizador[] {
@@ -171,6 +181,10 @@ export default function RequerimientosPage() {
   const crearVersionCotizacion = useCrearCotizacionVersion();
   const [step, setStep] = useState<RequirementStep>(1);
   const materialesCotizadorQuery = useMaterialesCotizador(step === 2);
+  const { data: margenesCotizador = [] } = useMargenesComerciales();
+  const { data: parametrosCotizador = [] } = useParametrosCotizador();
+  const parametroManoObra = parametrosCotizador.find((item) => item.codigo === "mano_obra");
+  const parametroCostosIndirectos = parametrosCotizador.find((item) => item.codigo === "costos_indirectos");
   /*
    * Cliente
    */
@@ -223,6 +237,22 @@ export default function RequerimientosPage() {
   const [errorEnvio, setErrorEnvio] = useState("");
   const [ultimaVersionCotizacion, setUltimaVersionCotizacion] = useState<number | null>(null);
   const [lineasCotizacion, setLineasCotizacion] = useState<CotizacionLineaBorrador[]>([]);
+  const actualizarPesosLinea = useCallback(
+    (lineaKey: string, pesos: PesosProductoResponse | null) => {
+      setLineasCotizacion((items) =>
+        items.map((item) =>
+          item.key === lineaKey
+            ? {
+              ...item,
+              peso_unitario_kg: pesos?.peso_unitario_kg ?? null,
+              peso_kg: pesos?.peso_total_kg ?? null,
+            }
+            : item
+        )
+      );
+    },
+    []
+  );
   const [datosCotizacion, setDatosCotizacion] = useState<CotizacionMetaBorrador | null>(null);
 
   /*
@@ -490,6 +520,7 @@ export default function RequerimientosPage() {
           costo_estimado: item.cotizacionDetalle.costo_estimado,
           unidad_comercial: item.cotizacionDetalle.unidad_comercial || "unidad",
           peso_kg: item.cotizacionDetalle.peso_kg,
+          peso_unitario_kg: item.cotizacionDetalle.peso_unitario_kg,
           nombre: item.producto?.nombre || `Producto solicitado · ${item.categoria?.nombre || "sin categoría"}`,
           codigo: item.producto?.codigo || "Sin código definitivo",
         };
@@ -686,6 +717,10 @@ export default function RequerimientosPage() {
       costo_estimado: null,
       unidad_comercial: producto.unidad_medida,
       peso_kg: null,
+      cotizador_margen_id: "",
+      cotizador_mano_obra_kg: parametroManoObra?.valor ?? "",
+      cotizador_costos_indirectos_kg: parametroCostosIndirectos?.valor ?? "",
+      cotizador_factura: false,
       nombre: producto.producto_nombre,
       codigo: producto.producto_codigo,
     }]);
@@ -886,6 +921,10 @@ export default function RequerimientosPage() {
           ? (tipoProducto === "bobina" ? "kg" : "unidad")
           : productoSeleccionado!.unidad_medida,
         peso_kg: tipoProducto === "bobina" ? (peso || null) : null,
+        cotizador_margen_id: "",
+        cotizador_mano_obra_kg: parametroManoObra?.valor ?? "",
+        cotizador_costos_indirectos_kg: parametroCostosIndirectos?.valor ?? "",
+        cotizador_factura: false,
         nombre: esProductoNuevo
           ? descripcion.trim() || `Producto solicitado (${tipoProducto})`
           : productoSeleccionado!.producto_nombre,
@@ -996,7 +1035,7 @@ export default function RequerimientosPage() {
           moneda: datosCotizacion.moneda,
           condiciones: condicionesPayload,
         },
-        detalles: lineasPendientes.map(({ key: _key, nombre: _nombre, codigo: _codigo, archivo_color_impresion: _archivo, persistida: _persistida, ...linea }) => linea),
+        detalles: lineasPendientes.map(({ key: _key, nombre: _nombre, codigo: _codigo, archivo_color_impresion: _archivo, persistida: _persistida, cotizador_margen_id: _margen, cotizador_mano_obra_kg: _manoObra, cotizador_costos_indirectos_kg: _indirectos, cotizador_factura: _factura, ...linea }) => linea),
       };
       const resultado = await formalizarCotizacion.mutateAsync(envio ? { data: payload, evidencia } : payload);
       let archivoPendiente = false;
@@ -1069,6 +1108,7 @@ export default function RequerimientosPage() {
         precio_lista: linea.precio_lista,
         descuento_porcentaje: linea.descuento_porcentaje,
         unidad_comercial: linea.unidad_comercial,
+        peso_unitario_kg: linea.peso_unitario_kg,
         peso_kg: linea.peso_kg,
       });
       mostrarToast("Línea actualizada", "Se guardaron cantidad, unidad, precio y descuento.");
@@ -1407,6 +1447,28 @@ export default function RequerimientosPage() {
               : ofertaPersistida?.estado === "enviada" || ofertaPersistida?.estado === "aceptada";
             return <article key={linea.key} className="min-w-0 space-y-4 rounded-lg border border-slate-200 p-3 sm:p-4">
               <div className="min-w-0"><p className="break-words font-semibold text-slate-900">{linea.nombre}</p><p className="break-words text-xs text-slate-500">{linea.codigo} · {linea.tipo_producto === "bolsa" ? "Bolsa" : "Bobina"}</p></div>
+              <details className="rounded-lg border border-blue-200 bg-blue-50/50">
+                <summary className="cursor-pointer select-none px-3 py-3 text-sm font-semibold text-blue-900">Parámetros de cotización <span className="ml-1 text-xs font-normal text-blue-700">(configurar costos y margen)</span></summary>
+                <div className="grid grid-cols-1 gap-3 border-t border-blue-100 p-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <label className="text-xs text-slate-600">Margen comercial
+                    <select disabled={bloqueada} value={linea.cotizador_margen_id ?? ""} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, cotizador_margen_id: event.target.value } : item))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100">
+                      <option value="">Seleccionar margen</option>
+                      {margenesCotizador.filter((margen) => margen.activo).map((margen) => <option key={margen.id} value={String(margen.id)}>{margen.nombre} · {margen.porcentaje}%</option>)}
+                    </select>
+                  </label>
+                  <label className="text-xs text-slate-600">Mano de obra (Bs/kg)
+                    <input type="number" min="0" step="0.0001" disabled={bloqueada} value={linea.cotizador_mano_obra_kg || parametroManoObra?.valor || ""} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, cotizador_mano_obra_kg: event.target.value } : item))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100" placeholder="Bs/kg" />
+                  </label>
+                  <label className="text-xs text-slate-600">Costos indirectos (Bs/kg)
+                    <input type="number" min="0" step="0.0001" disabled={bloqueada} value={linea.cotizador_costos_indirectos_kg || parametroCostosIndirectos?.valor || ""} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, cotizador_costos_indirectos_kg: event.target.value } : item))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100" placeholder="Bs/kg" />
+                  </label>
+                  <label className="flex items-center gap-2 self-end rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700">
+                    <input type="checkbox" disabled={bloqueada} checked={linea.cotizador_factura ?? false} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, cotizador_factura: event.target.checked } : item))} className="h-4 w-4 rounded border-slate-300" />
+                    Incluir factura
+                  </label>
+                </div>
+                <p className="px-3 pb-3 text-[11px] text-slate-500">Los valores iniciales de mano de obra y costos indirectos se toman de los parámetros activos del Cotizador; puedes ajustarlos para esta línea.</p>
+              </details>
               <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <label className="min-w-0 text-xs text-slate-500">Cantidad<input type="number" min="0.01" step="0.01" disabled={bloqueada} value={linea.cantidad} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, cantidad: event.target.value } : item))} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100" /></label>
                 <label className="min-w-0 text-xs text-slate-500">Unidad<select disabled={bloqueada} value={linea.unidad_comercial} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, unidad_comercial: event.target.value } : item))} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100"><option value="unidad">Unidades</option><option value="kg">Kg</option><option value="bobina">Bobina</option><option value="fajo">Fajo</option><option value="metro">Metro</option></select></label>
@@ -1414,7 +1476,11 @@ export default function RequerimientosPage() {
                 <label className="min-w-0 text-xs text-slate-500">Descuento %<input type="number" min="0" max="100" step="0.01" disabled={bloqueada} value={linea.descuento_porcentaje} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, descuento_porcentaje: event.target.value } : item))} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100" /></label>
               </div>
               <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
-                <div className="min-w-0 flex-1"><p className="text-xs text-slate-500">Importe</p><p className="font-semibold text-slate-900">Bs {subtotal.toLocaleString("es-BO", { minimumFractionDigits: 2 })}</p>{linea.producto_version_id ? <PesoProductoCatalogo productoVersionId={linea.producto_version_id} cantidad={linea.cantidad} /> : linea.especificacion ? <PesoProductoNuevo tipoProducto={linea.tipo_producto} cantidad={linea.cantidad} especificacion={linea.especificacion} especificacionBolsa={linea.especificacion_bolsa} especificacionBobina={linea.especificacion_bobina} /> : null}</div>
+                <div className="min-w-0 flex-1"><p className="text-xs text-slate-500">Importe</p><p className="font-semibold text-slate-900">Bs {subtotal.toLocaleString("es-BO", { minimumFractionDigits: 2 })}</p>{linea.producto_version_id ? <PesoProductoCatalogo
+                  productoVersionId={linea.producto_version_id}
+                  cantidad={linea.cantidad}
+                  lineaKey={linea.key} onPesosChange={actualizarPesosLinea} /> : linea.especificacion ?
+                  <PesoProductoNuevo tipoProducto={linea.tipo_producto} cantidad={linea.cantidad} especificacion={linea.especificacion} especificacionBolsa={linea.especificacion_bolsa} especificacionBobina={linea.especificacion_bobina} lineaKey={linea.key} onPesosChange={actualizarPesosLinea} /> : null}</div>
                 {/**/}
                 <div className="flex shrink-0 flex-wrap gap-2">
                   {/*<button type="button" disabled={bloqueada || formalizarCotizacion.isPending} onClick={() => void actualizarLinea(linea)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-50">Actualizar</button>*/}
@@ -1576,7 +1642,11 @@ export default function RequerimientosPage() {
                       <div><p className="text-xs text-muted-foreground">Subtotal preliminar</p><p className="font-semibold">{datosCotizacion?.moneda ?? "BOB"} {subtotal.toFixed(2)}</p></div>
                       <button type="button" onClick={() => { setLineasCotizacion((items) => items.filter((item) => item.key !== linea.key)); if (lineasCotizacion.length === 1) setModoCatalogoExistente(false); }} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted">Quitar</button>
                       {linea.producto_version_id ? (
-                        <PesoProductoCatalogo productoVersionId={linea.producto_version_id} cantidad={linea.cantidad} />
+                        <PesoProductoCatalogo
+                          productoVersionId={linea.producto_version_id}
+                          cantidad={linea.cantidad}
+                          lineaKey={linea.key} onPesosChange={actualizarPesosLinea}
+                        />
                       ) : linea.especificacion ? (
                         <PesoProductoNuevo
                           tipoProducto={linea.tipo_producto}
@@ -1584,6 +1654,7 @@ export default function RequerimientosPage() {
                           especificacion={linea.especificacion}
                           especificacionBolsa={linea.especificacion_bolsa}
                           especificacionBobina={linea.especificacion_bobina}
+                          lineaKey={linea.key} onPesosChange={actualizarPesosLinea}
                         />
                       ) : (
                         <label className="text-xs text-muted-foreground lg:col-start-2">Peso total kg (opcional)
@@ -2026,7 +2097,17 @@ export default function RequerimientosPage() {
   );
 }
 
-function PesoProductoCatalogo({ productoVersionId, cantidad }: { productoVersionId: number; cantidad: string }) {
+function PesoProductoCatalogo({
+  productoVersionId,
+  cantidad,
+  lineaKey,
+  onPesosChange,
+}: {
+  productoVersionId: number;
+  cantidad: string;
+  lineaKey: string;
+  onPesosChange: (lineaKey: string, pesos: PesosProductoResponse | null) => void;
+}) {
   const [pesos, setPesos] = useState<PesosProductoResponse | null>(null);
   const [calculando, setCalculando] = useState(false);
   const cantidadNumerica = Number(cantidad);
@@ -2036,6 +2117,7 @@ function PesoProductoCatalogo({ productoVersionId, cantidad }: { productoVersion
     const temporizador = window.setTimeout(async () => {
       if (!cantidad.trim() || !Number.isFinite(cantidadNumerica) || cantidadNumerica <= 0) {
         setPesos(null);
+        onPesosChange(lineaKey, null);
         setCalculando(false);
         return;
       }
@@ -2045,11 +2127,15 @@ function PesoProductoCatalogo({ productoVersionId, cantidad }: { productoVersion
           "/comercial/cotizaciones/calcular-peso/",
           { producto_version_id: productoVersionId, cantidad },
         );
-        if (vigente) setPesos(resultado);
+        if (vigente) {
+          setPesos(resultado);
+          onPesosChange(lineaKey, resultado);
+        }
       } catch (error) {
         if (vigente) {
           console.error("No se pudo calcular el peso del producto", error);
           setPesos(null);
+          onPesosChange(lineaKey, null);
         }
       } finally {
         if (vigente) setCalculando(false);
@@ -2060,7 +2146,7 @@ function PesoProductoCatalogo({ productoVersionId, cantidad }: { productoVersion
       vigente = false;
       window.clearTimeout(temporizador);
     };
-  }, [productoVersionId, cantidad, cantidadNumerica]);
+  }, [productoVersionId, cantidad, cantidadNumerica, lineaKey, onPesosChange]);
 
   return (
     <div className="grid grid-cols-2 gap-2 lg:col-span-2 lg:col-start-2" aria-live="polite">
@@ -2080,12 +2166,16 @@ function PesoProductoNuevo({
   especificacion,
   especificacionBolsa,
   especificacionBobina,
+  lineaKey,
+  onPesosChange,
 }: {
   tipoProducto: "bolsa" | "bobina";
   cantidad: string;
   especificacion: Record<string, unknown>;
   especificacionBolsa?: Record<string, unknown>;
   especificacionBobina?: Record<string, unknown>;
+  lineaKey: string;
+  onPesosChange: (lineaKey: string, pesos: PesosProductoResponse | null) => void;
 }) {
   const [pesos, setPesos] = useState<PesosProductoResponse | null>(null);
   const [calculando, setCalculando] = useState(false);
@@ -2102,6 +2192,7 @@ function PesoProductoNuevo({
       const cantidadNumerica = Number(cantidad);
       if (!cantidad.trim() || !Number.isFinite(cantidadNumerica) || cantidadNumerica <= 0) {
         setPesos(null);
+        onPesosChange(lineaKey, null);
         setCalculando(false);
         return;
       }
@@ -2111,11 +2202,15 @@ function PesoProductoNuevo({
           "/comercial/cotizaciones/calcular-peso/",
           { cantidad, datos_especificacion: especificacionPayload },
         );
-        if (vigente) setPesos(resultado);
+        if (vigente) {
+          setPesos(resultado);
+          onPesosChange(lineaKey, resultado);
+        }
       } catch (error) {
         if (vigente) {
           console.error("No se pudo calcular el peso de la especificación nueva", error);
           setPesos(null);
+          onPesosChange(lineaKey, null);
         }
       } finally {
         if (vigente) setCalculando(false);
@@ -2125,7 +2220,7 @@ function PesoProductoNuevo({
       vigente = false;
       window.clearTimeout(temporizador);
     };
-  }, [cantidad, tipoProducto, especificacion, especificacionBolsa, especificacionBobina]);
+  }, [cantidad, tipoProducto, especificacion, especificacionBolsa, especificacionBobina, lineaKey, onPesosChange]);
 
   return (
     <div className="grid grid-cols-2 gap-2 lg:col-span-2 lg:col-start-2" aria-live="polite">

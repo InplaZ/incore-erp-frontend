@@ -366,6 +366,7 @@ export interface ProductoCotizadoEnSolicitud {
     | "precio_total"    
     | "precio_por_kg"
     | "unidad_comercial"
+    | "peso_unitario_kg"
     | "peso_kg"
   >;
   producto: {
@@ -1253,7 +1254,7 @@ export interface CotizacionVersion {
   created_at: string;
   updated_at: string;
   detalles?:Array<
-  Pick<CotizacionDetalle, "id" | "precio_por_kg" >
+  Pick<CotizacionDetalle, "id" | "precio_por_kg" | "peso_unitario_kg">
   >;
 }
 
@@ -1301,6 +1302,7 @@ export interface CotizacionDetalle {
   precio_unitario: string;
   precio_total: string;
   unidad_comercial: string;
+  peso_unitario_kg: string | null;
   peso_kg: string | null;
   precio_por_kg: string | null;
   created_at: string;
@@ -1316,6 +1318,7 @@ export interface CotizacionDetalleCreate {
   precio_lista: string;
   descuento_porcentaje?: string;
   unidad_comercial?: string;
+  peso_unitario_kg?: string | null;
   peso_kg?: string | null;
 }
 
@@ -1799,6 +1802,7 @@ export interface FormalizarCotizacionWizardPayload {
     descuento_porcentaje: string;
     costo_estimado?: string | null;
     unidad_comercial: string;
+    peso_unitario_kg?: string | null;
     peso_kg?: string | null;
   }>;
 }
