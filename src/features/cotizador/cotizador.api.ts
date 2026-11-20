@@ -58,7 +58,7 @@ export const materialesCotizadorApi = {
 
 export type TarifaImpresionInput = Pick<
   TarifaImpresion,
-  "nombre" | "costo_por_kg" | "activo" | "orden"
+  "nombre" | "categoria_colores" | "importe" | "activo"
 >;
 
 export const tarifasImpresionApi = {

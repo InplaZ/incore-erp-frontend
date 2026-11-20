@@ -320,8 +320,25 @@ export default function RequerimientoDetallePage() {
     const versionesCotizacion = versionesDisponibles;
     const borradorPendiente = versionesCotizacion[0]?.estado === "borrador" ? versionesCotizacion[0] : null;
     const versionSeleccionada = versionSeleccionadaActual;
-    const lineasVersionSeleccionada = (data.productosCotizados ?? []).filter((linea) => linea.cotizacionVersion.id === versionSeleccionada?.id);
-    const totalVersionSeleccionada = versionSeleccionada?.precio_total ?? "0.00";
+    const lineasVersionSeleccionada = (data.productosCotizados ?? []).filter(
+        (linea) => linea.cotizacionVersion.id === versionSeleccionada?.id
+    );
+
+    // Calcular el importe usando el peso total y el precio por kg.
+    const totalVersionSeleccionada = lineasVersionSeleccionada.reduce(
+        (total, linea) => {
+            const detalle = linea.cotizacionDetalle;
+
+            const pesoTotal = Number(detalle.peso_kg || 0);
+            const precioPorKg = Number(detalle.precio_lista || 0);
+            const descuento = Number(detalle.descuento_porcentaje || 0);
+
+            const importe = pesoTotal * precioPorKg * (1 - descuento / 100);
+
+            return total + importe;
+        },
+        0
+    );
     const evidenciaActual = eventosSeguimiento
         .filter((evento) => evento.version_id === versionSeleccionada?.id && evento.evidencias.length > 0)
         .flatMap((evento) => evento.evidencias.map((evidencia) => ({ medio: evento.canal || evento.categoria, detalle: evento.descripcion, archivo: evidencia.nombre })))[0] ?? null;
@@ -676,10 +693,58 @@ export default function RequerimientoDetallePage() {
             {errorAgregarProducto && !productoPendiente && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{errorAgregarProducto}</p>}
             {!lineasVersionSeleccionada.length ? <p className="py-12 text-center text-sm text-slate-500">Esta versión no tiene productos registrados.</p> : lineasVersionSeleccionada.map((linea) => {
                 const detalle = linea.cotizacionDetalle;
+                /**
                 const detalleVersion = versionSeleccionada?.detalles?.find(
                     (item) => item.id === detalle.id
                 );
-                const nombreProducto = linea.producto?.nombre || `Producto solicitado · especificación #${linea.especificacionProductoSolicitadoVersion?.id ?? "—"}`;
+                 */
+                const nombreProducto = (() => {
+                    // Si existe un producto del catálogo, conservar su nombre.
+                    if (linea.producto?.nombre) {
+                        return linea.producto.nombre;
+                    }
+
+                    const versionTecnica = linea.especificacionProductoSolicitadoVersion;
+                    if (!versionTecnica) {
+                        return `Producto solicitado · especificación #${linea.especificacionProductoSolicitadoVersion?.id ?? "—"}`;
+                    }
+
+                    const bolsa = versionTecnica.especificacionBolsa;
+                    const bobina = versionTecnica.especificacionBobina;
+
+                    const dimension = (valor: unknown) => {
+                        if (valor === null || valor === undefined || valor === "") return "";
+                        const numero = Number(valor);
+                        return Number.isFinite(numero) ? String(numero) : String(valor);
+                    };
+
+                    const medidas = bolsa
+                        ? [
+                            bolsa.ancho_desdoblado,
+                            versionTecnica.micraje,
+                            bolsa.largo_desdoblado,
+                        ]
+                        : [
+                            bobina?.ancho_desdoblado ?? bobina?.ancho_doblado,
+                            versionTecnica.micraje,
+                            bobina?.longitud,
+                        ];
+
+                    const dimensiones = medidas
+                        .map(dimension)
+                        .filter(Boolean)
+                        .join("X");
+
+                    return [
+                        bolsa ? "BLS" : "BOB",
+                        versionTecnica.material,
+                        versionTecnica.color_bolsa,
+                        dimensiones,
+                    ]
+                        .filter(Boolean)
+                        .join(" ")
+                        .toUpperCase();
+                })();
                 const especificacion = linea.especificacionProductoSolicitadoVersion;
                 const editing = lineaEditandoId === detalle.id && formLinea;
 
@@ -695,7 +760,7 @@ export default function RequerimientoDetallePage() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            {/* PRECIO POR KILOGRAMO */}
+                            {/* PRECIO POR KILOGRAMO 
                             <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-right">
                                 <p className="text-[10px] font-medium text-blue-600">
                                     Precio por kg
@@ -709,15 +774,42 @@ export default function RequerimientoDetallePage() {
                                         : "No disponible"}
                                 </p>
                             </div>
+                            */}
                         </div>
                     </div>
+
                     <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        <InfoItem label="Cantidad" value={`${detalle.cantidad} ${detalle.unidad_comercial}`} />
-                        <InfoItem label="Precio unitario" value={`${versionSeleccionada.moneda} ${Number(detalle.precio_lista).toLocaleString("es-BO", { minimumFractionDigits: 2 })}`} />
-                        <InfoItem label="Descuento" value={`${Number(detalle.descuento_porcentaje || 0).toFixed(2)}%`} />
-                        <InfoItem label="Importe" value={`${versionSeleccionada.moneda} ${Number(detalle.precio_total).toLocaleString("es-BO", { minimumFractionDigits: 2 })}`} />
+                        <InfoItem
+                            label="Cantidad"
+                            value={`${Number(detalle.peso_kg).toLocaleString("es-BO")} ${detalle.unidad_comercial}`}
+                        />
+
+                        <InfoItem
+                            label={`Precio por ${detalle.unidad_comercial === "kg" ? "kg" : "unidad"}`}
+                            value={`${versionSeleccionada.moneda === "BOB" ? "Bs" : versionSeleccionada.moneda} ${Number(detalle.precio_lista).toLocaleString("es-BO", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                            })}`}
+                        />
+
+                        <InfoItem
+                            label="Descuento"
+                            value={`${Number(detalle.descuento_porcentaje || 0).toFixed(2)}%`}
+                        />
+
+                        <InfoItem
+                            label="Importe"
+                            value={`${versionSeleccionada.moneda === "BOB" ? "Bs" : versionSeleccionada.moneda} ${(
+                                Number(detalle.peso_kg || 0) *
+                                Number(detalle.precio_lista || 0) *
+                                (1 - Number(detalle.descuento_porcentaje || 0) / 100)
+                            ).toLocaleString("es-BO", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                            })}`}
+                        />
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600"><span>Peso total: {detalle.peso_kg ? `${detalle.peso_kg} kg` : "No disponible"}</span>{especificacion && <span>Especificación técnica V{especificacion.version}{especificacion.especificacionBolsa ? ` · Bolsa ${especificacion.especificacionBolsa.ancho_doblado} × ${especificacion.especificacionBolsa.largo_doblado} cm` : especificacion.especificacionBobina ? ` · Bobina ${especificacion.especificacionBobina.ancho_desdoblado || especificacion.especificacionBobina.ancho_doblado} cm` : ""}</span>}{linea.productoVersion && <span>Versión de catálogo V{linea.productoVersion.numero_version}</span>}</div>
+                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600"><span>Unidades: {detalle.cantidad ? `${detalle.cantidad}` : "No disponible"}</span>{especificacion && <span>Especificación técnica V{especificacion.version}{especificacion.especificacionBolsa ? ` · Bolsa ${especificacion.especificacionBolsa.ancho_doblado} × ${especificacion.especificacionBolsa.largo_doblado} cm` : especificacion.especificacionBobina ? ` · Bobina ${especificacion.especificacionBobina.ancho_desdoblado || especificacion.especificacionBobina.ancho_doblado} cm` : ""}</span>}{linea.productoVersion && <span>Versión de catálogo V{linea.productoVersion.numero_version}</span>}</div>
                     {especificacion?.otras_caracteristicas && <p className="mt-2 whitespace-pre-wrap text-xs text-slate-500">{especificacion.otras_caracteristicas}</p>}
                     {esBorrador && <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => iniciarEdicionLinea(linea)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-blue-700">Actualizar</button><button type="button" onClick={() => void eliminarLinea(detalle.id)} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Quitar</button></div>}
                     {editing && <form onSubmit={(event) => { event.preventDefault(); void guardarEdicionLinea(linea); }} className="mt-4 space-y-4 rounded-lg border border-blue-200 bg-slate-50 p-3 sm:p-4">

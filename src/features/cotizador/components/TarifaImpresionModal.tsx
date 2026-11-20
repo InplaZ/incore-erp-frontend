@@ -4,6 +4,7 @@ import { Printer, X } from "lucide-react";
 
 import {
   useCreateTarifaImpresion,
+  useTarifasImpresion,
   useUpdateTarifaImpresion,
 } from "../cotizador.hooks";
 
@@ -24,15 +25,15 @@ interface TarifaImpresionModalProps {
 
 interface TarifaForm {
   nombre: string;
-  costo_por_kg: string;
-  orden: string;
+  categoria_colores: "" | "1" | "2" | "3" | "4" | "FULL";
+  importe: string;
   activo: boolean;
 }
 
 const initialForm: TarifaForm = {
   nombre: "",
-  costo_por_kg: "",
-  orden: "1",
+  categoria_colores: "",
+  importe: "",
   activo: true,
 };
 
@@ -43,6 +44,7 @@ export default function TarifaImpresionModal({
   onSuccess,
 }: TarifaImpresionModalProps) {
   const create = useCreateTarifaImpresion();
+  const { data: tarifasData } = useTarifasImpresion();
   const update = useUpdateTarifaImpresion();
 
   const isEditing = tarifa !== null;
@@ -57,8 +59,8 @@ export default function TarifaImpresionModal({
     if (tarifa) {
       setForm({
         nombre: tarifa.nombre,
-        costo_por_kg: tarifa.costo_por_kg,
-        orden: String(tarifa.orden),
+        categoria_colores: tarifa.categoria_colores ?? "",
+        importe: tarifa.importe,
         activo: tarifa.activo,
       });
     } else {
@@ -86,38 +88,39 @@ export default function TarifaImpresionModal({
     setError("");
 
     const nombre = form.nombre.trim();
-    const costo = Number(form.costo_por_kg);
-    const orden = Number(form.orden);
+    const importe = Number(form.importe);
 
     if (!nombre) {
       setError("Ingresa el nombre de la tarifa de impresión.");
       return;
     }
 
-    if (
-      !form.costo_por_kg.trim() ||
-      !Number.isFinite(costo) ||
-      costo < 0
-    ) {
-      setError("Ingresa un costo por kilogramo válido.");
+    if (!form.categoria_colores) {
+      setError("Selecciona la categoría de colores.");
       return;
     }
 
     if (
-      !form.orden.trim() ||
-      !Number.isInteger(orden) ||
-      orden < 0
+      !form.importe.trim() ||
+      !Number.isFinite(importe) ||
+      importe < 0
     ) {
-      setError(
-        "El orden debe ser un número entero mayor o igual a cero.",
-      );
+      setError("Ingresa un importe por cara válido, mayor o igual a cero.");
+      return;
+    }
+
+    const categoriaEnUso = tarifasData?.some(
+      (item) => item.id !== tarifa?.id && item.categoria_colores === form.categoria_colores,
+    );
+    if (categoriaEnUso) {
+      setError("Ya existe una tarifa con esa categoría. Cada categoría solo puede configurarse una vez.");
       return;
     }
 
     const payload = {
       nombre,
-      costo_por_kg: form.costo_por_kg.trim(),
-      orden,
+      categoria_colores: form.categoria_colores,
+      importe: form.importe.trim(),
       activo: form.activo,
     };
 
@@ -194,7 +197,23 @@ export default function TarifaImpresionModal({
             />
           </Field>
 
-          <Field label="Costo por kilogramo (Bs) *">
+          <Field label="Categoría de colores *">
+            <select
+              required
+              className={inputClass}
+              value={form.categoria_colores}
+              onChange={(e) => updateField("categoria_colores", e.target.value as TarifaForm["categoria_colores"])}
+            >
+              <option value="">Seleccionar categoría</option>
+              <option value="1">1 color</option>
+              <option value="2">2 colores</option>
+              <option value="3">3 colores</option>
+              <option value="4">4 colores</option>
+              <option value="FULL">FULL · más de 4 colores</option>
+            </select>
+          </Field>
+
+          <Field label="Importe fijo por cara (Bs) *">
             <input
               required
               type="number"
@@ -202,22 +221,10 @@ export default function TarifaImpresionModal({
               step="0.01"
               className={inputClass}
               placeholder="0.00"
-              value={form.costo_por_kg}
+              value={form.importe}
               onChange={(e) =>
-                updateField("costo_por_kg", e.target.value)
+                updateField("importe", e.target.value)
               }
-            />
-          </Field>
-
-          <Field label="Orden de visualización *">
-            <input
-              required
-              type="number"
-              min="0"
-              step="1"
-              className={inputClass}
-              value={form.orden}
-              onChange={(e) => updateField("orden", e.target.value)}
             />
           </Field>
 

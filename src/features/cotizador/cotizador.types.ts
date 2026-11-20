@@ -21,6 +21,8 @@ export interface MaterialCotizador {
 export interface TarifaImpresion {
   id: number;
   nombre: string;
+  categoria_colores: "1" | "2" | "3" | "4" | "FULL" | null;
+  importe: string;
   costo_por_kg: string;
   activo: boolean;
   orden: number;
@@ -56,7 +58,12 @@ export interface MargenComercial {
 
 export interface CalcularCotizacionRequest {
   material_id: number;
-  tarifa_impresion_id: number;
+  tarifa_impresion_id?: number;
+  tarifas_por_cara?: boolean;
+  impresion?: boolean;
+  cara_impresion?: "una_cara" | "dos_caras";
+  colores_cara_a?: number;
+  colores_cara_b?: number;
   margen_comercial_id: number;
   cantidad_kg: number;
   cliente_nombre?: string;

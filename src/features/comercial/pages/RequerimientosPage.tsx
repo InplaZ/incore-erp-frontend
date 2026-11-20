@@ -48,10 +48,11 @@ import {
 } from "@/features/productos/productos.hooks";
 import {
   useMaterialesCotizador,
+  useTarifasImpresion,
   useMargenesComerciales,
   useParametrosCotizador,
 } from "@/features/cotizador/cotizador.hooks";
-import type { MaterialCotizador } from "@/features/cotizador/cotizador.types";
+import type { MaterialCotizador, TarifaImpresion } from "@/features/cotizador/cotizador.types";
 import type { ProductType } from "@/features/comercial/comercial.types";
 import RequerimientoStepBusquedaProducto from "../components/requerimientos/RequerimientoStepBusquedaProducto";
 import RequerimientoStepDetalles from "../components/requerimientos/RequerimientoStepDetalles";
@@ -73,7 +74,6 @@ import ViabilidadAnalizando from "@/features/viabilidad/requerimientos/Viabilida
 import ViabilidadResultado from "@/features/viabilidad/requerimientos/ViabilidadResultado";
 import RequerimientoStepProducto from "@/features/comercial/components/requerimientos/RequerimientoStepProducto";
 import ProductoComercialWizardModal from "@/features/productos/ProductoComercialWizardModal";
-import NuevaOfertaModal from "../components/ofertas/NuevaOfertaModal";
 import NuevaCuentaComercialWizard from "../components/NuevaCuentaComercialWizard";
 import OfertaComercialDetalle from "../components/ofertas/OfertaComercialDetalle";
 import CatalogoOfertaModal from "../components/ofertas/CatalogoOfertaModal";
@@ -82,6 +82,7 @@ import OfertaCondicionesForm, { type OfertaCondiciones } from "../components/ofe
 import OfertaSeguimientoTimeline from "../components/ofertas/OfertaSeguimientoTimeline";
 import RegistrarComunicacionModal from "../components/RegistrarComunicacionModal";
 import NuevaActividadModal from "../components/actividades/NuevaActividadModal";
+import NuevaOfertaModal from "../components/ofertas/NuevaOfertaModal";
 export type RequirementStep = 1 | 2 | 3 | 4 | 5;
 
 type CotizacionLineaBorrador = NonNullable<FormalizarCotizacionWizardPayload["detalles"]>[number] & {
@@ -113,6 +114,38 @@ function extraerMaterialesCotizador(data: unknown): MaterialCotizador[] {
   return [];
 }
 
+function normalizarClaveCotizador(valor: unknown): string {
+  return String(valor ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLocaleLowerCase("es");
+}
+
+function resolverMaterialCotizador(
+  especificacion: Record<string, unknown> | undefined,
+  materiales: MaterialCotizador[],
+): MaterialCotizador | undefined {
+  const materialId = Number(especificacion?.material_cotizador ?? 0);
+  const vinculado = materiales.find((item) => item.id === materialId && item.activo);
+  if (vinculado) return vinculado;
+
+  // Algunas versiones históricas no tienen material_cotizador_id. En ese caso
+  // se usa el material de color solo si color y tipo de polímero coinciden de
+  // forma exacta y el resultado es único; nunca se elige una tarifa ambigua.
+  const color = normalizarClaveCotizador(especificacion?.color_bolsa);
+  const tipoMaterial = normalizarClaveCotizador(especificacion?.material);
+  if (!color) return undefined;
+
+  const coincidencias = materiales.filter((item) =>
+    item.activo &&
+    item.categoria === "COLOR" &&
+    normalizarClaveCotizador(item.nombre) === color &&
+    (!tipoMaterial || normalizarClaveCotizador(item.tipo_material) === tipoMaterial),
+  );
+  return coincidencias.length === 1 ? coincidencias[0] : undefined;
+}
+
 interface PesosProductoResponse {
   peso_unitario_kg: string | null;
   peso_total_kg: string | null;
@@ -129,7 +162,7 @@ interface CotizacionMetaBorrador extends CotizacionFormData {
 }
 
 function importeLineaCotizacion(linea: CotizacionLineaBorrador) {
-  return Number(linea.cantidad || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100);
+  return Number(linea.peso_kg || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100);
 }
 
 function numeroOfertaDesdeSolicitud(solicitudId: number) {
@@ -180,7 +213,8 @@ export default function RequerimientosPage() {
   const actualizarVersion = useUpdateCotizacionVersion();
   const crearVersionCotizacion = useCrearCotizacionVersion();
   const [step, setStep] = useState<RequirementStep>(1);
-  const materialesCotizadorQuery = useMaterialesCotizador(step === 2);
+  const materialesCotizadorQuery = useMaterialesCotizador(true);
+  const { data: tarifasImpresion = [] } = useTarifasImpresion();
   const { data: margenesCotizador = [] } = useMargenesComerciales();
   const { data: parametrosCotizador = [] } = useParametrosCotizador();
   const parametroManoObra = parametrosCotizador.find((item) => item.codigo === "mano_obra");
@@ -253,6 +287,74 @@ export default function RequerimientosPage() {
     },
     []
   );
+  // Recalcula el precio unitario con la fórmula del Cotizador. Las versiones
+  // históricas sin relación explícita pueden resolver el material por color y
+  // polímero únicamente si la coincidencia es exacta y no ambigua.
+  useEffect(() => {
+    if (!materialesCotizadorQuery.data || !margenesCotizador.length) return;
+
+    setLineasCotizacion((actuales) => {
+      let huboCambios = false;
+      const nuevas = actuales.map((linea) => {
+        const especificacion = linea.especificacion as unknown as Record<string, unknown> | undefined;
+        const material = resolverMaterialCotizador(especificacion, materialesCotizadorQuery.data);
+        const margen = margenesCotizador.find((item) => String(item.id) === String(linea.cotizador_margen_id));
+        const pesoTotal = Number(linea.peso_kg ?? linea.peso_total_kg ?? 0);
+        const cantidad = Number(linea.cantidad || 0);
+        const unidad = String(linea.unidad_comercial).toLowerCase();
+        const kilosCotizados = unidad === "kg" ? cantidad : pesoTotal;
+
+        if (!material || !margen || !kilosCotizados || !cantidad) return linea;
+
+        const impresion = especificacion?.impresion === true;
+        const cara = String(especificacion?.cara_impresion ?? "una_cara");
+        const coloresA = Number(especificacion?.colores_cara_a ?? 0);
+        const coloresB = Number(especificacion?.colores_cara_b ?? 0);
+        const tarifaPorColores = (colores: number): number | null => {
+          if (!Number.isFinite(colores) || colores < 1) return null;
+
+          const categoria =
+            colores <= 2 ? "1" :
+              colores === 3 ? "3" :
+                colores === 4 ? "4" :
+                  "FULL";
+
+          const tarifa = tarifasImpresion.find(
+            (item: TarifaImpresion) =>
+              item.activo && item.categoria_colores === categoria
+          );
+
+          return tarifa ? Number(tarifa.costo_por_kg) : null;
+        };
+        const tarifaA = impresion ? tarifaPorColores(coloresA) : 0;
+        const tarifaB = impresion && cara === "dos_caras" ? tarifaPorColores(coloresB) : 0;
+        
+        // No calcular un precio parcial si falta una tarifa configurada.
+        if (tarifaA === null || tarifaB === null) return linea;
+        const impresionKg = Number(tarifaA) + Number(tarifaB);
+        const manoObra = Number(linea.cotizador_mano_obra_kg || parametroManoObra?.valor || 0);
+        const indirectos = Number(linea.cotizador_costos_indirectos_kg || parametroCostosIndirectos?.valor || 0);
+        const costoBase = Number(material.costo_por_kg) + impresionKg + manoObra + indirectos;
+        
+        let precioKg = costoBase * (1 + Number(margen.porcentaje) / 100);
+        if (linea.cotizador_factura) {
+          const factor = Number(parametrosCotizador.find((item) => item.codigo === "factor_factura")?.valor ?? 1);
+          precioKg *= factor;
+        }
+        // La cotización se expresa por unidad comercial: kg conserva Bs/kg;
+        // unidad/bobina convierte usando el peso unitario calculado.
+        const pesoUnitario = Number(linea.peso_unitario_kg ?? (pesoTotal / cantidad));
+        const precioUnitario = unidad === "kg" ? precioKg : precioKg * pesoUnitario;
+        if (!Number.isFinite(precioUnitario) || precioUnitario <= 0) return linea;
+        const precioFormateado = precioUnitario.toFixed(2);
+        if (linea.precio_lista === precioFormateado) return linea;
+        huboCambios = true;
+        return { ...linea, precio_lista: precioFormateado };
+      });
+      return huboCambios ? nuevas : actuales;
+    });
+  }, [materialesCotizadorQuery.data, tarifasImpresion, margenesCotizador, parametrosCotizador, parametroManoObra?.valor, parametroCostosIndirectos?.valor, lineasCotizacion]);
+
   const [datosCotizacion, setDatosCotizacion] = useState<CotizacionMetaBorrador | null>(null);
 
   /*
@@ -711,6 +813,17 @@ export default function RequerimientosPage() {
       key: `catalogo-${producto.version_id}`,
       tipo_producto: producto.especificacion_bobina ? "bobina" : "bolsa",
       producto_version_id: producto.version_id,
+      // El cálculo automático necesita estos datos también para productos
+      // agregados directamente desde el catálogo (no solo desde el wizard).
+      especificacion: {
+        material_cotizador: producto.material_cotizador ?? null,
+        material: producto.material,
+        color_bolsa: producto.color_bolsa,
+        impresion: producto.impresion,
+        cara_impresion: producto.cara_impresion ?? "una_cara",
+        colores_cara_a: producto.colores_cara_a ?? null,
+        colores_cara_b: producto.colores_cara_b ?? null,
+      },
       cantidad: "",
       precio_lista: "",
       descuento_porcentaje: "0",
@@ -742,7 +855,7 @@ export default function RequerimientosPage() {
 
     setDescripcion(producto.producto_nombre);
 
-    setMaterialCotizadorId(null);
+    setMaterialCotizadorId(producto.material_cotizador ?? null);
     setMaterial(producto.material);
 
     setMicraje(
@@ -909,7 +1022,13 @@ export default function RequerimientosPage() {
         key: `${Date.now()}-${Math.random()}`,
         tipo_producto: tipoProducto,
         producto_version_id: esProductoNuevo ? undefined : productoSeleccionado!.version_id,
-        especificacion,
+        especificacion: esProductoNuevo ? especificacion : {
+          material_cotizador: productoSeleccionado!.material_cotizador ?? null,
+          impresion: productoSeleccionado!.impresion,
+          cara_impresion: productoSeleccionado!.cara_impresion ?? "una_cara",
+          colores_cara_a: productoSeleccionado!.colores_cara_a ?? null,
+          colores_cara_b: productoSeleccionado!.colores_cara_b ?? null,
+        },
         archivo_color_impresion: esProductoNuevo && impresion ? archivoColorImpresion : null,
         especificacion_bolsa: especificacionBolsa,
         especificacion_bobina: especificacionBobina,
@@ -1442,6 +1561,44 @@ export default function RequerimientosPage() {
         {!lineasCotizacion.length ? <div className="py-12 text-center text-sm text-slate-500">Agrega un producto homologado o crea uno comercial nuevo.</div> : <div className="space-y-3">
           {lineasCotizacion.map((linea) => {
             const subtotal = importeLineaCotizacion(linea);
+            const especificacionCotizador = linea.especificacion as unknown as Record<string, unknown> | undefined;
+            const materialCotizadorLinea = resolverMaterialCotizador(especificacionCotizador, materialesCotizadorQuery.data ?? []);
+            const margenCotizadorLinea = margenesCotizador.find((item) => String(item.id) === String(linea.cotizador_margen_id));
+            const pesoTotalCotizador = Number(linea.peso_kg ?? linea.peso_total_kg ?? 0);
+            const cantidadCotizador = Number(linea.cantidad || 0);
+            const kilosCotizados = String(linea.unidad_comercial).toLowerCase() === "kg" ? cantidadCotizador : pesoTotalCotizador;
+            const coloresA = Number(especificacionCotizador?.colores_cara_a ?? 0);
+            const coloresB = Number(especificacionCotizador?.colores_cara_b ?? 0);
+            const categoriaTarifaDisponible = (colores: number) => {
+              if (!Number.isFinite(colores) || colores < 1) return false;
+
+              const categoria =
+                colores <= 2 ? "1" :
+                  colores === 3 ? "3" :
+                    colores === 4 ? "4" :
+                      "FULL";
+
+              return tarifasImpresion.some(
+                (tarifa) =>
+                  tarifa.activo &&
+                  tarifa.categoria_colores === categoria
+              );
+            };
+            const impresion = especificacionCotizador?.impresion === true;
+            const caraImpresion = String(especificacionCotizador?.cara_impresion ?? "una_cara");
+            const faltaTarifaImpresion = impresion && (
+              !categoriaTarifaDisponible(coloresA) ||
+              (caraImpresion === "dos_caras" && !categoriaTarifaDisponible(coloresB))
+            );
+            const motivoPrecioPendiente = !materialCotizadorLinea
+              ? "No hay un material de cotización único que coincida con el color y el polímero del producto."
+              : !margenCotizadorLinea
+                ? "Selecciona un margen comercial para calcular el precio."
+                : !kilosCotizados || !cantidadCotizador
+                  ? "Ingresa la cantidad y espera el cálculo del peso para obtener el precio."
+                  : faltaTarifaImpresion
+                    ? "Configura las tarifas de impresión por color para cada cara impresa."
+                    : "Precio calculado automáticamente con los parámetros de cotización.";
             const bloqueada = versionEnEdicion
               ? versionEnEdicion.estado !== "borrador"
               : ofertaPersistida?.estado === "enviada" || ofertaPersistida?.estado === "aceptada";
@@ -1472,7 +1629,7 @@ export default function RequerimientosPage() {
               <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <label className="min-w-0 text-xs text-slate-500">Cantidad<input type="number" min="0.01" step="0.01" disabled={bloqueada} value={linea.cantidad} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, cantidad: event.target.value } : item))} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100" /></label>
                 <label className="min-w-0 text-xs text-slate-500">Unidad<select disabled={bloqueada} value={linea.unidad_comercial} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, unidad_comercial: event.target.value } : item))} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100"><option value="unidad">Unidades</option><option value="kg">Kg</option><option value="bobina">Bobina</option><option value="fajo">Fajo</option><option value="metro">Metro</option></select></label>
-                <label className="min-w-0 text-xs text-slate-500">Precio unitario Bs<input type="number" min="0" step="0.01" disabled={bloqueada} value={linea.precio_lista} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, precio_lista: event.target.value } : item))} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100" /></label>
+                <label className="min-w-0 text-xs text-slate-500">Precio Bs<input type="number" min="0" step="0.01" readOnly disabled={bloqueada} value={linea.precio_lista} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-sm text-slate-800" /><span className="mt-1 block text-[10px] text-slate-500">{motivoPrecioPendiente}</span></label>
                 <label className="min-w-0 text-xs text-slate-500">Descuento %<input type="number" min="0" max="100" step="0.01" disabled={bloqueada} value={linea.descuento_porcentaje} onChange={(event) => setLineasCotizacion((items) => items.map((item) => item.key === linea.key ? { ...item, descuento_porcentaje: event.target.value } : item))} className="mt-1 w-full min-w-0 rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-800 disabled:bg-slate-100" /></label>
               </div>
               <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">

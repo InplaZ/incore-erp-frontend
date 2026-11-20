@@ -755,6 +755,7 @@ export interface EspecificacionProductoSolicitadoVersionCreate
   version: number;
   categoria_producto: number;
   material: MaterialProducto;
+  material_cotizador?: number | null;
   capas: TipoCapa;
   apto_alimento: boolean;
   micraje?: string | null;
@@ -1621,9 +1622,13 @@ export interface ProductoBusquedaResultado {
   version_id: number;
   version_numero: number;
   material: MaterialProducto;
+  material_cotizador?: number | null;
   capas: TipoCapa | null;
   micraje: string | number | null;
   impresion: boolean;
+  cara_impresion?: CaraImpresion | null;
+  colores_cara_a?: number | null;
+  colores_cara_b?: number | null;
   color_bolsa: string;
   tipo_impresion: TipoImpresion | "";
   imagen: string | null;
