@@ -17,6 +17,7 @@ const ESTADOS_PEDIDO: Array<[EstadoFiltro, string]> = [
   ["comercial", "Borrador y confirmados"],
   ["borrador", "Borrador"],
   ["confirmado", "Confirmado"],
+  ["habilitado_produccion", "Habilitado para Producción"],
   ["confirmados", "Confirmados y posteriores"],
   ["en_produccion", "En producción"],
   ["finalizado", "Finalizado"],
@@ -44,9 +45,11 @@ function statusLabel(status: EstadoPedido) {
   return ({
     borrador: "Borrador",
     confirmado: "Confirmado",
+    habilitado_produccion: "Habilitado para Producción",
     en_produccion: "En producción",
     finalizado: "Finalizado",
     cancelado: "Cancelado",
+
   } satisfies Record<EstadoPedido, string>)[status];
 }
 
@@ -81,16 +84,32 @@ export default function PedidoPage() {
   const pageCount = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE));
 
   const handleConfirmOrder = async (pedido: Pedido) => {
-    setConfirmationFeedback(null);
-    try {
-      const result = await confirmOrder.mutateAsync({ pedidoId: pedido.id });
-      setConfirmationFeedback(result.notificacion_almacenes_enviada
-        ? { kind: "success", message: `${pedido.numero} fue confirmado comercialmente y se notificó a Almacenes.` }
-        : { kind: "warning", message: `${pedido.numero} fue confirmado, pero no se notificó a Almacenes porque el grupo aún no está configurado con usuarios activos.` });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "No se pudo confirmar el pedido.";
-      setConfirmationFeedback({ kind: "error", message });
+    const result = await confirmOrder.mutateAsync({
+      pedidoId: pedido.id,
+    });
+
+    if (result.flujo_directo_produccion) {
+      const cantidad = result.cantidad_ordenes_produccion ?? 0;
+
+      setConfirmationFeedback({
+        kind: "success",
+        message: `${pedido.numero} fue confirmado correctamente. Se generaron ${cantidad} órdenes de producción.`,
+      });
+
+      return;
     }
+
+    setConfirmationFeedback(
+      result.notificacion_almacenes_enviada
+        ? {
+          kind: "success",
+          message: `${pedido.numero} fue confirmado comercialmente y se notificó a Almacenes.`,
+        }
+        : {
+          kind: "warning",
+          message: `${pedido.numero} fue confirmado, pero no se notificó a Almacenes porque el grupo aún no está configurado con usuarios activos.`,
+        }
+    );
   };
 
   const applyFilters = (event: FormEvent<HTMLFormElement>) => {
@@ -196,7 +215,27 @@ function PedidoRow({ pedido, canApprove, isConfirming, onConfirm, onDetail }: { 
     <td className="px-3 py-3 text-center">{pedido.productos_count}</td>
     <td className="px-3 py-3"><div className="flex flex-wrap gap-2">
       <button type="button" onClick={onDetail} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs font-medium hover:bg-muted"><Eye className="h-3.5 w-3.5" />Ver</button>
-      {canApprove && pedido.estado === "borrador" && <button type="button" onClick={onConfirm} disabled={isConfirming || pedido.estado_revision_tecnica !== "aprobada"} title={pedido.estado_revision_tecnica !== "aprobada" ? "La revisión técnica vigente debe estar aprobada." : "Confirmar comercialmente"} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-2 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{isConfirming && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}Confirmar</button>}
+      {canApprove && pedido.estado === "borrador" && (
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={
+            isConfirming ||
+            !pedido.puede_confirmar_comercialmente
+          }
+          title={
+            !pedido.puede_confirmar_comercialmente
+              ? "Los productos deben estar homologados o contar con aprobación técnica."
+              : "Confirmar comercialmente"
+          }
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-2 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isConfirming && (
+            <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+          )}
+          Confirmar
+        </button>
+      )}
     </div></td>
   </tr>;
 }
@@ -211,6 +250,7 @@ function PedidoStatus({ status }: { status: EstadoPedido }) {
   const styles: Record<EstadoPedido, string> = {
     borrador: "bg-amber-100 text-amber-800",
     confirmado: "bg-emerald-100 text-emerald-800",
+    habilitado_produccion: "bg-blue-100 text-blue-800",
     en_produccion: "bg-blue-100 text-blue-800",
     finalizado: "bg-slate-100 text-slate-800",
     cancelado: "bg-rose-100 text-rose-800",

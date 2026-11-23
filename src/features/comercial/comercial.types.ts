@@ -1334,6 +1334,7 @@ export type CotizacionDetalleUpdate =
 export type EstadoPedido =
   | "borrador"
   | "confirmado"
+  | "habilitado_produccion"
   | "en_produccion"
   | "finalizado"
   | "cancelado";
@@ -1367,6 +1368,7 @@ export interface Pedido {
   habilitado_produccion_por?: number | null;
   fecha_habilitacion_produccion?: string | null;
   productos_count: number;
+  puede_confirmar_comercialmente: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -1377,6 +1379,9 @@ export interface ConfirmarPedidoResponse {
   pedido: number;
   estado: EstadoPedido;
   notificacion_almacenes_enviada: boolean;
+  flujo_directo_produccion?: boolean;
+  ordenes_produccion?: Array<{ id: number | null; numero: string | null; pedido_detalle: number }>;
+  cantidad_ordenes_produccion?: number;
 }
 
 export interface PedidoResumen {

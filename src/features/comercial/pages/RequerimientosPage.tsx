@@ -328,14 +328,14 @@ export default function RequerimientosPage() {
         };
         const tarifaA = impresion ? tarifaPorColores(coloresA) : 0;
         const tarifaB = impresion && cara === "dos_caras" ? tarifaPorColores(coloresB) : 0;
-        
+
         // No calcular un precio parcial si falta una tarifa configurada.
         if (tarifaA === null || tarifaB === null) return linea;
         const impresionKg = Number(tarifaA) + Number(tarifaB);
         const manoObra = Number(linea.cotizador_mano_obra_kg || parametroManoObra?.valor || 0);
         const indirectos = Number(linea.cotizador_costos_indirectos_kg || parametroCostosIndirectos?.valor || 0);
         const costoBase = Number(material.costo_por_kg) + impresionKg + manoObra + indirectos;
-        
+
         let precioKg = costoBase * (1 + Number(margen.porcentaje) / 100);
         if (linea.cotizador_factura) {
           const factor = Number(parametrosCotizador.find((item) => item.codigo === "factor_factura")?.valor ?? 1);
@@ -1154,7 +1154,36 @@ export default function RequerimientosPage() {
           moneda: datosCotizacion.moneda,
           condiciones: condicionesPayload,
         },
-        detalles: lineasPendientes.map(({ key: _key, nombre: _nombre, codigo: _codigo, archivo_color_impresion: _archivo, persistida: _persistida, cotizador_margen_id: _margen, cotizador_mano_obra_kg: _manoObra, cotizador_costos_indirectos_kg: _indirectos, cotizador_factura: _factura, ...linea }) => linea),
+        detalles: lineasPendientes.map((linea) => {
+          const {
+            key: _key,
+            nombre: _nombre,
+            codigo: _codigo,
+            archivo_color_impresion: _archivo,
+            persistida: _persistida,
+            cotizador_margen_id: _margen,
+            cotizador_mano_obra_kg: _manoObra,
+            cotizador_costos_indirectos_kg: _indirectos,
+            cotizador_factura: _factura,
+            especificacion,
+            especificacion_bolsa,
+            especificacion_bobina,
+            ...datosLinea
+          } = linea;
+
+          // Producto existente: enviar únicamente su versión de catálogo.
+          if (linea.producto_version_id) {
+            return datosLinea;
+          }
+
+          // Producto nuevo: conservar su especificación técnica.
+          return {
+            ...datosLinea,
+            especificacion,
+            especificacion_bolsa,
+            especificacion_bobina,
+          };
+        }),
       };
       const resultado = await formalizarCotizacion.mutateAsync(envio ? { data: payload, evidencia } : payload);
       let archivoPendiente = false;
