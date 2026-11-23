@@ -26,6 +26,7 @@ interface RegistrarComunicacionModalProps {
   cotizacionVersionInicial?: number | null;
   actividadComercialInicial?: number | null;
   accionInicial?: AccionCotizacion;
+  onSuccess?: (accion: AccionCotizacion) => void;
 }
 
 export default function RegistrarComunicacionModal({
@@ -35,6 +36,7 @@ export default function RegistrarComunicacionModal({
   cotizacionVersionInicial,
   actividadComercialInicial,
   accionInicial = "ninguna",
+  onSuccess,
 }: RegistrarComunicacionModalProps) {
   const createComunicacion = useCreateComunicacion();
   const { data: cotizacionVersion } = useCotizacionVersion(cotizacionVersionInicial ?? 0);
@@ -176,6 +178,7 @@ export default function RegistrarComunicacionModal({
     }
 
     try {
+      const accionFinal = esNegociacion ? "negociar" : cotizacionVersionInicial ? accionCotizacion : "ninguna";
       await createComunicacion.mutateAsync({
         solicitud_comercial: Number(solicitudComercial),
         tipo,
@@ -196,11 +199,7 @@ export default function RegistrarComunicacionModal({
           fecha_vencimiento_contrato: vencimientoContrato || null,
           documento_cuenta: contratoExistente ? Number(contratoExistente) : null,
         } : {}),
-        accion_cotizacion: esNegociacion
-          ? "negociar"
-          : cotizacionVersionInicial
-            ? accionCotizacion
-            : "ninguna",
+        accion_cotizacion: accionFinal,
       });
 
       // ========================================================
@@ -233,6 +232,7 @@ export default function RegistrarComunicacionModal({
       setObservacionesAceptacion("");
       setConfirmarAceptacion(false);
 
+      onSuccess?.(accionFinal);
       onClose();
     } catch (error) {
       const data = (error as { response?: { data?: { detail?: string; evidencia?: string[]; cotizacion?: string; motivo_rechazo?: string | string[] } } })?.response?.data;

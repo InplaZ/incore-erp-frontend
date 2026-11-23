@@ -30,6 +30,8 @@ import { api } from "@/api/api.config";
 import RegistrarComunicacionModal from "@/features/comercial/components/RegistrarComunicacionModal";
 import RegistrarEnvioComercialModal, { type MedioEnvioComercial } from "../components/ofertas/RegistrarEnvioComercialModal";
 import PdfPreviewModal from "@/features/productos/PDFPreViewModal";
+import Toast from "@/components/ui/Toast";
+import { useRevisionTecnicaCotizacion } from "@/features/produccion/revision-tecnica.hooks";
 
 function obtenerNumeroOfertaVisible(numero: string) {
     const coincidencia = numero.match(/^COT-\d{8}-(\d+)(-\d+)?$/i);
@@ -89,6 +91,7 @@ export default function RequerimientoDetallePage() {
     const [agregandoProducto, setAgregandoProducto] = useState(false);
     const [errorAgregarProducto, setErrorAgregarProducto] = useState("");
     const [errorAccionOferta, setErrorAccionOferta] = useState("");
+    const [toast, setToast] = useState<{ title: string; description: string } | null>(null);
     const [accionOferta, setAccionOferta] = useState<"enviar" | "aceptar" | "rechazar" | "cerrar" | null>(null);
     const [medioEnvioOferta, setMedioEnvioOferta] = useState<MedioEnvioComercial>("whatsapp");
     const [detalleEnvioOferta, setDetalleEnvioOferta] = useState("");
@@ -218,6 +221,7 @@ export default function RequerimientoDetallePage() {
         )
         : versionesDisponibles[0] ?? null;
     const { data: eventosSeguimiento = [] } = useOfertaSeguimiento(versionSeleccionadaActual?.id ?? 0);
+    const { data: revisionTecnica } = useRevisionTecnicaCotizacion(versionSeleccionadaActual?.id ?? null);
 
     const { data: categorias } = useProductosCategorias();
 
@@ -323,6 +327,16 @@ export default function RequerimientoDetallePage() {
     const lineasVersionSeleccionada = (data.productosCotizados ?? []).filter(
         (linea) => linea.cotizacionVersion.id === versionSeleccionada?.id
     );
+    const lineasNuevasVersion = lineasVersionSeleccionada.filter(
+        (linea) => Boolean(linea.especificacionProductoSolicitadoVersion)
+    );
+    const productosSinAprobacionTecnica = lineasNuevasVersion.filter((linea) =>
+        !revisionTecnica?.productos.some((item) =>
+            item.cotizacion_detalle === linea.cotizacionDetalle.id && item.estado === "aprobado"
+        )
+    );
+    const envioBloqueadoPorRevision = lineasNuevasVersion.length > 0 &&
+        (!revisionTecnica || productosSinAprobacionTecnica.length > 0);
 
     // Calcular el importe usando el peso total y el precio por kg.
     const totalVersionSeleccionada = lineasVersionSeleccionada.reduce(
@@ -447,7 +461,7 @@ export default function RequerimientoDetallePage() {
 
         setGuardandoLinea(true);
         try {
-            await api.patch(`/comercial/cotizaciones-detalles/${linea.cotizacionDetalle.id}/editar-version/`, {
+            const resultadoEdicion = await api.patch<{ cotizacion_version?: number }>(`/comercial/cotizaciones-detalles/${linea.cotizacionDetalle.id}/editar-version/`, {
                 cantidad: formLinea.cantidad,
                 precio_lista: formLinea.precio_lista,
                 descuento_porcentaje: formLinea.descuento_porcentaje,
@@ -459,6 +473,9 @@ export default function RequerimientoDetallePage() {
                 queryClient.invalidateQueries({ queryKey: comercialQueryKeys.solicitud(solicitudId) }),
                 queryClient.invalidateQueries({ queryKey: comercialQueryKeys.cotizacionesVersiones() }),
             ]);
+            if (hayCambioTecnico && resultadoEdicion?.cotizacion_version && resultadoEdicion.cotizacion_version !== versionSeleccionada?.id) {
+                seleccionarVersion(resultadoEdicion.cotizacion_version);
+            }
             setLineaEditandoId(null);
         } catch (error) {
             console.error("No se pudo guardar la modificación de la línea", error);
@@ -609,6 +626,7 @@ export default function RequerimientoDetallePage() {
             setAccionOferta(null);
             setDetalleEnvioOferta("");
             setArchivoEnvioOferta(null);
+            setToast({ title: "Cotización enviada", description: `La versión V${versionSeleccionada.version} se registró como enviada al cliente.` });
         } catch (error) {
             const response = (error as { response?: { data?: { mensaje?: string; detail?: string } } })?.response?.data;
             setErrorAccionOferta(response?.mensaje || response?.detail || "No se pudo registrar el envío de la oferta.");
@@ -650,7 +668,8 @@ export default function RequerimientoDetallePage() {
         const acciones = <div className="space-y-2">
             {errorAccionOferta && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{errorAccionOferta}</p>}
             <button type="button" onClick={() => void descargarPdfVersion()} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700">Ver PDF V{versionSeleccionada.version}</button>
-            {esBorrador && <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("enviar"); }} disabled={!lineasVersionSeleccionada.length} className="w-full rounded-lg bg-blue-700 px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-50">✓ Guardar y registrar envío</button>}
+            {esBorrador && <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("enviar"); }} disabled={!lineasVersionSeleccionada.length || envioBloqueadoPorRevision || (lineasNuevasVersion.length > 0 && revisionTecnica === undefined)} className="w-full rounded-lg bg-blue-700 px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-50">✓ Guardar y registrar envío</button>}
+            {esBorrador && envioBloqueadoPorRevision && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">El envío está bloqueado hasta que Producción apruebe: {productosSinAprobacionTecnica.map((linea) => linea.producto?.nombre || `Producto nuevo (${linea.cotizacionDetalle.id})`).join(", ") || "los productos nuevos"}.</p>}
             {esEnviada && <>
                 <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("aceptar"); }} className="w-full rounded-lg bg-emerald-700 px-3 py-2.5 text-xs font-semibold text-white">✓ Registrar aceptación del cliente</button>
                 <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("rechazar"); }} className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">Cerrar oportunidad</button>
@@ -910,11 +929,24 @@ export default function RequerimientoDetallePage() {
             {accionOferta && accionOferta !== "enviar" && <RegistrarComunicacionModal
                 open
                 onClose={() => setAccionOferta(null)}
+                onSuccess={(accion) => {
+                    const mensajes: Record<string, [string, string]> = {
+                        aceptar: ["Aceptación registrada", "Se registró la aceptación del cliente y se generó el pedido."],
+                        rechazar: ["Rechazo registrado", "Se guardó el motivo de rechazo de la cotización."],
+                        cerrar: ["Oportunidad cerrada", "Se actualizó el estado de la oportunidad."],
+                        negociar: ["Negociación registrada", "Se guardó la comunicación de negociación."],
+                        ninguna: ["Comunicación registrada", "La comunicación comercial se guardó correctamente."],
+                        enviar: ["Cotización enviada", "Se registró el envío al cliente."],
+                    };
+                    const [title, description] = mensajes[accion] ?? mensajes.ninguna;
+                    setToast({ title, description });
+                }}
                 solicitudInicial={solicitudId}
                 cotizacionVersionInicial={versionSeleccionada.id}
                 accionInicial={accionOferta}
             />}
             <NuevaActividadModal open={mostrarActividadOferta} onClose={() => setMostrarActividadOferta(false)} cuentaComercialInicial={solicitud.cuenta_comercial} solicitudInicial={solicitudId} cotizacionVersionInicial={versionSeleccionada.id} />
+            {toast && <Toast open title={toast.title} description={toast.description} onClose={() => setToast(null)} />}
             <CatalogoOfertaModal open={mostrarCatalogo} product={tipoProductoCatalogo} onProductType={setTipoProductoCatalogo} onClose={() => setMostrarCatalogo(false)} versionsInCart={lineasVersionSeleccionada.map((linea) => linea.productoVersion?.id ?? 0).filter(Boolean)} onCreate={() => { setMostrarCatalogo(false); setMostrarProductoWizard(true); }} onAdd={(producto: ProductoBusquedaResultado) => {
                 if (lineasVersionSeleccionada.some((linea) => linea.productoVersion?.id === producto.version_id)) {
                     setErrorAgregarProducto(`${producto.producto_codigo} ya forma parte de esta versión.`);

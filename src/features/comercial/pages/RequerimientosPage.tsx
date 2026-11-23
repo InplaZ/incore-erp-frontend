@@ -1219,7 +1219,7 @@ export default function RequerimientosPage() {
       const recordatorioRegistrado = envio?.recordatorio && resultado.envio?.fecha_recordatorio
         ? ` Recordatorio: ${new Date(resultado.envio.fecha_recordatorio).toLocaleString("es-BO", { dateStyle: "medium", timeStyle: "short" })}.`
         : "";
-      mostrarToast(archivoPendiente ? "Cotización creada; PDF pendiente" : envio ? "Envío comercial registrado" : "Borrador guardado", archivoPendiente ? `Cotización ${resultado.numero} creada, pero no se pudo adjuntar uno o más PDF. Edítala para cargarlos.` : envio ? `Cotización ${resultado.numero} V${resultado.version} registrada con estado ${resultado.estado}.${recordatorioRegistrado}` : `Cotización ${resultado.numero} V${resultado.version} quedó en estado ${resultado.estado}.`);
+      mostrarToast(archivoPendiente ? "Cotización creada; PDF pendiente" : resultado.pendiente_aprobacion_tecnica ? (envio ? "Envío bloqueado por revisión técnica" : "Borrador guardado") : envio ? "Envío comercial registrado" : "Borrador guardado", archivoPendiente ? `Cotización ${resultado.numero} creada, pero no se pudo adjuntar uno o más PDF. Edítala para cargarlos.` : resultado.pendiente_aprobacion_tecnica ? `Cotización ${resultado.numero} V${resultado.version} quedó como borrador. Pendientes: ${(resultado.productos_pendientes_tecnicos ?? []).join(", ") || "productos nuevos"}.` : envio ? `Cotización ${resultado.numero} V${resultado.version} registrada con estado ${resultado.estado}.${recordatorioRegistrado}` : `Cotización ${resultado.numero} V${resultado.version} quedó en estado ${resultado.estado}.`);
       if (resultado.solicitud_comercial && resultado.cotizacion_version) {
         navigate(`/requerimientos/${resultado.solicitud_comercial}?version=${resultado.cotizacion_version}`);
       }
@@ -1230,6 +1230,10 @@ export default function RequerimientosPage() {
       else mostrarToast("Error", message || "No se pudo guardar la cotización.");
     }
   };
+
+  const hayProductoNuevoSinGuardar = lineasCotizacion.some((linea) =>
+    !linea.persistida && !linea.producto_version_id && Boolean(linea.especificacion)
+  );
 
   const descargarPdf = async (versionId: number) => {
     try {
@@ -1580,10 +1584,11 @@ export default function RequerimientosPage() {
           onChange={setCondicionesOferta}
           onSave={() => void guardarCondiciones()}
         />}
-        aviso={!lineasCotizacion.length ? "Antes de enviar: Agrega al menos un producto" : undefined}
+        aviso={hayProductoNuevoSinGuardar ? "Guarda primero como borrador. Los productos nuevos requieren revisión técnica antes de habilitar el envío." : !lineasCotizacion.length ? "Antes de enviar: Agrega al menos un producto" : undefined}
         onBack={() => navigate("/requerimientoListPage")}
         onAddProduct={() => setMostrarCatalogo(true)}
         onSend={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }}
+        canSend={!hayProductoNuevoSinGuardar}
         onSaveDraft={lineasCotizacion.some((linea) => !linea.persistida) ? () => void guardarCotizacion() : undefined}
         onPdf={idVersionConsultada ? () => void descargarPdf(idVersionConsultada) : undefined}
       >
@@ -1679,6 +1684,18 @@ export default function RequerimientosPage() {
       {Boolean(accionComercial && idVersionConsultada && solicitudEnEdicion) && <RegistrarComunicacionModal
         open
         onClose={() => setAccionComercial(null)}
+        onSuccess={(accion) => {
+          const mensajes: Record<string, [string, string]> = {
+            aceptar: ["Aceptación registrada", "Se registró la aceptación del cliente y se inició la conversión del pedido."],
+            rechazar: ["Rechazo registrado", "Se guardó el motivo de rechazo de la cotización."],
+            cerrar: ["Oportunidad cerrada", "Se actualizó el estado de la oportunidad."],
+            negociar: ["Negociación registrada", "Se guardó la comunicación y la oferta quedó en negociación."],
+            ninguna: ["Comunicación registrada", "La comunicación comercial se guardó correctamente."],
+            enviar: ["Cotización enviada", "Se registró el envío al cliente."],
+          };
+          const [titulo, descripcion] = mensajes[accion] ?? mensajes.ninguna;
+          mostrarToast(titulo, descripcion);
+        }}
         solicitudInicial={solicitudEnEdicion!.solicitud.id}
         cotizacionVersionInicial={idVersionConsultada}
         accionInicial={accionComercial!}
@@ -1859,7 +1876,8 @@ export default function RequerimientosPage() {
               <h2 className="font-semibold">Acciones y estado</h2>
               <p className="text-xs text-muted-foreground">{cuentaSeleccionada ? nombreVisibleCliente(cuentaSeleccionada) : "Selecciona un cliente"} · {lineasCotizacion.length} productos</p>
               <div className="border-t border-border pt-4"><p className="text-xs text-muted-foreground">Valor actual</p><p className="mt-1 text-2xl font-bold">{datosCotizacion?.moneda ?? "BOB"} {lineasCotizacion.reduce((sum, linea) => sum + Number(linea.cantidad || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100), 0).toLocaleString("es-BO", { minimumFractionDigits: 2 })}</p><span className="mt-2 inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">Borrador: aún no enviado al cliente</span></div>
-              <button type="button" onClick={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }} disabled={formalizarCotizacion.isPending || !cuentaComercialId || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim())} className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">✓ Guardar y registrar envío</button>
+              <button type="button" onClick={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }} disabled={formalizarCotizacion.isPending || !cuentaComercialId || hayProductoNuevoSinGuardar || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim())} className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">✓ Guardar y registrar envío</button>
+              {hayProductoNuevoSinGuardar && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">Guarda primero como borrador. Los productos nuevos requieren revisión técnica antes de habilitar el envío.</p>}
               {!modoCatalogoExistente && <button type="button" onClick={() => void guardarCotizacion()} disabled={formalizarCotizacion.isPending || !cuentaComercialId} className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium">Guardar borrador</button>}
               {(!cuentaComercialId || !lineasCotizacion.length) && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">Selecciona el cliente y completa al menos un producto.</p>}
             </aside>

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { LoadingState } from "@/components/ui/States";
+import Toast from "@/components/ui/Toast";
 import type { EspecificacionTecnicaSnapshot, RevisionTecnicaOferta, SnapshotValor } from "@/features/comercial/comercial.types";
 import { useEvaluarProductoRevision, useRevisionTecnica, useRevisionesTecnicas } from "./revision-tecnica.hooks";
 import { useAuthStore } from "@/app/store/auth.store";
@@ -42,6 +43,7 @@ export default function RevisionTecnicaPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [observaciones, setObservaciones] = useState<Record<number, string>>({});
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [toast, setToast] = useState<{ title: string; description: string } | null>(null);
   const evaluate = useEvaluarProductoRevision();
   const canEvaluate = useAuthStore(state =>
     state.roles.some(role => role.name === "Jefe de Producción") &&
@@ -72,7 +74,12 @@ export default function RevisionTecnicaPage() {
     evaluate.reset();
     try {
       await evaluate.mutateAsync({ productoId, resultado, observacion });
-      setFeedback({ kind: "success", text: resultado === "aprobar" ? "Producto aprobado técnicamente." : "Observación registrada y enviada a Comercial." });
+      const title = resultado === "aprobar" ? "Producto aprobado" : "Producto observado";
+      const description = resultado === "aprobar"
+        ? "La aprobación técnica quedó registrada. Comercial podrá continuar cuando todos los productos estén aprobados."
+        : "La observación quedó registrada y se notificó a la ejecutiva comercial.";
+      setFeedback({ kind: "success", text: description });
+      setToast({ title, description });
       setObservaciones(current => ({ ...current, [productoId]: "" }));
     } catch (mutationError) {
       setFeedback({ kind: "error", text: errorMessage(mutationError) });
@@ -82,6 +89,7 @@ export default function RevisionTecnicaPage() {
   if (isLoading) return <LoadingState message="Cargando revisiones técnicas…" />;
 
   return <main className="mx-auto w-full max-w-[1500px] space-y-5 text-foreground">
+    {toast && <Toast open title={toast.title} description={toast.description} onClose={() => setToast(null)} />}
     <PageHeader
       title="Revisión técnica de ofertas"
       subtitle="Evalúa las especificaciones aceptadas, producto por producto."
@@ -110,7 +118,7 @@ export default function RevisionTecnicaPage() {
     {!isError && visible.length === 0 ? <Card className="p-10 text-center">
       <ClipboardCheck className="mx-auto h-8 w-8 text-muted-foreground" />
       <h2 className="mt-3 font-semibold">No hay revisiones {filter === "todas" ? "vigentes" : stateLabels[filter].toLowerCase()}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Las revisiones aparecen después de la aceptación del cliente.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Las revisiones de productos nuevos aparecen antes del envío de la cotización.</p>
     </Card> : <div className="grid gap-5 xl:grid-cols-[minmax(290px,0.75fr)_minmax(0,1.7fr)]">
       <section aria-label="Lista de revisiones" className="space-y-3">
         {visible.map(review => <button
@@ -120,11 +128,11 @@ export default function RevisionTecnicaPage() {
           className={`w-full rounded-xl border p-4 text-left transition hover:border-primary/40 hover:shadow-sm ${selected?.id === review.id ? "border-primary bg-primary/5" : "border-border bg-card"}`}
         >
           <div className="flex items-start justify-between gap-3">
-            <div><p className="font-semibold">{review.pedido.numero}</p><p className="mt-0.5 text-sm text-muted-foreground">{review.pedido.cliente}</p></div>
+          <div><p className="font-semibold">{review.pedido ? `Pedido ${review.pedido.numero}` : `Cotización ${review.cotizacion?.numero ?? ""}`}</p><p className="mt-0.5 text-sm text-muted-foreground">{review.pedido?.cliente ?? review.cotizacion?.cliente}</p></div>
             <StatusBadge status={review.estado} />
           </div>
-          <p className="mt-3 text-sm">{review.version_aceptada.cotizacion} · V{String(review.version_aceptada.numero).padStart(2, "0")}</p>
-          <div className="mt-1 flex justify-between gap-2 text-xs text-muted-foreground"><span>Aceptación: {dateTime(review.version_aceptada.fecha_aceptacion)}</span><span>{money(review.version_aceptada.precio_total, review.version_aceptada.moneda)}</span></div>
+          <p className="mt-3 text-sm">{review.cotizacion?.numero ?? review.version_aceptada?.cotizacion} · V{String(review.cotizacion?.version ?? review.version_aceptada?.numero ?? "—").padStart(2, "0")}</p>
+          <div className="mt-1 flex justify-between gap-2 text-xs text-muted-foreground"><span>{review.version_aceptada ? `Aceptación: ${dateTime(review.version_aceptada.fecha_aceptacion)}` : "Pendiente de envío"}</span><span>{money(review.cotizacion?.precio_total ?? review.version_aceptada?.precio_total ?? "0", review.cotizacion?.moneda ?? review.version_aceptada?.moneda ?? "BOB")}</span></div>
           <p className="mt-2 text-xs text-muted-foreground">{review.productos.filter(item => item.estado !== "pendiente").length} de {review.productos.length} productos evaluados</p>
         </button>)}
       </section>
@@ -135,7 +143,7 @@ export default function RevisionTecnicaPage() {
         setObservaciones={setObservaciones}
         feedback={feedback}
         isSaving={evaluate.isPending}
-        readOnly={!selected.version_aceptada.vigente}
+        readOnly={selected.version_aceptada ? !selected.version_aceptada.vigente : selected.cotizacion?.estado !== "borrador"}
         canEvaluate={canEvaluate}
         onEvaluate={submitEvaluation}
       />}
@@ -162,12 +170,12 @@ function ReviewDetail({
   return <section aria-label="Detalle de revisión" className="min-w-0 space-y-4">
     <Card className="p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><div className="flex items-center gap-2"><Factory className="h-5 w-5 text-primary" /><h2 className="text-lg font-semibold">Pedido {revision.pedido.numero}</h2></div><p className="mt-1 text-sm text-muted-foreground">{revision.pedido.cliente} · {revision.version_aceptada.cotizacion} / V{String(revision.version_aceptada.numero).padStart(2, "0")}</p></div>
+        <div><div className="flex items-center gap-2"><Factory className="h-5 w-5 text-primary" /><h2 className="text-lg font-semibold">{revision.pedido ? `Pedido ${revision.pedido.numero}` : `Cotización ${revision.cotizacion?.numero ?? ""}`}</h2></div><p className="mt-1 text-sm text-muted-foreground">{revision.pedido?.cliente ?? revision.cotizacion?.cliente} · V{String(revision.cotizacion?.version ?? revision.version_aceptada?.numero ?? "—").padStart(2, "0")}</p></div>
         <StatusBadge status={revision.estado} />
       </div>
       <div className="mt-4 grid gap-3 rounded-lg bg-muted/40 p-4 sm:grid-cols-2 lg:grid-cols-3">
-        <SummaryValue label="Aceptación del cliente" value={dateTime(revision.version_aceptada.fecha_aceptacion)} />
-        <SummaryValue label="Importe aceptado" value={money(revision.version_aceptada.precio_total, revision.version_aceptada.moneda)} />
+        <SummaryValue label={revision.version_aceptada ? "Aceptación del cliente" : "Estado comercial"} value={revision.version_aceptada ? dateTime(revision.version_aceptada.fecha_aceptacion) : "Pendiente de envío"} />
+        <SummaryValue label={revision.version_aceptada ? "Importe aceptado" : "Importe cotizado"} value={money(revision.cotizacion?.precio_total ?? revision.version_aceptada?.precio_total ?? "0", revision.cotizacion?.moneda ?? revision.version_aceptada?.moneda ?? "BOB")} />
         <SummaryValue label="Inicio de revisión" value={dateTime(revision.fecha_inicio)} />
       </div>
       {readOnly && <p className="mt-3 rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">Versión histórica: consulta de solo lectura.</p>}
@@ -180,7 +188,7 @@ function ReviewDetail({
       <div className="flex items-center justify-between"><h3 className="font-semibold">Productos de esta versión</h3><span className="text-xs text-muted-foreground">{revision.productos.length} producto(s)</span></div>
       {revision.productos.map(product => <Card key={product.id} className="overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-4">
-          <div><p className="font-semibold">{product.producto.nombre ?? "Producto"}</p><p className="mt-1 text-xs text-muted-foreground">{product.producto.codigo ? `${product.producto.codigo} · ` : ""}Detalle #{product.pedido_detalle}{product.producto.tipo === "solicitado" ? " · solicitado por cliente" : ""}</p></div>
+          <div><p className="font-semibold">{product.producto.nombre ?? "Producto"}</p><p className="mt-1 text-xs text-muted-foreground">{product.producto.codigo ? `${product.producto.codigo} · ` : ""}Detalle #{product.cotizacion_detalle ?? product.pedido_detalle}{product.producto.tipo === "solicitado" ? " · solicitado por cliente" : ""}</p></div>
           <StatusBadge status={product.estado} />
         </div>
         <div className="grid gap-4 p-4 md:grid-cols-2">

@@ -1417,7 +1417,8 @@ export type EstadoEvaluacionTecnica = "pendiente" | "aprobado" | "observado";
 export interface RevisionTecnicaProducto {
   id: number;
   revision: number;
-  pedido_detalle: number;
+  cotizacion_detalle: number | null;
+  pedido_detalle: number | null;
   producto: EspecificacionTecnicaSnapshot;
   estado: EstadoEvaluacionTecnica;
   observacion_tecnica: string;
@@ -1428,13 +1429,15 @@ export interface RevisionTecnicaProducto {
 
 export interface RevisionTecnicaOferta {
   id: number;
-  pedido_version_aceptada: number;
+  cotizacion_version: number | null;
+  pedido_version_aceptada: number | null;
   pedido: {
     id: number;
     numero: string;
     estado: EstadoPedido;
     cliente: string;
-  };
+  } | null;
+  cotizacion: { id: number; numero: string; version_id: number; version: number; cliente: string; moneda: "BOB" | "USD"; precio_total: string; estado: EstadoCotizacionVersion } | null;
   version_aceptada: {
     id: number;
     cotizacion: string;
@@ -1443,7 +1446,7 @@ export interface RevisionTecnicaOferta {
     moneda: "BOB" | "USD";
     precio_total: string;
     vigente: boolean;
-  };
+  } | null;
   estado: EstadoRevisionTecnica;
   responsable_produccion: number | null;
   observacion_general: string;
@@ -1819,6 +1822,10 @@ export interface FormalizarCotizacionWizardPayload {
 
 export interface FormalizarCotizacionWizardResponse {
   exito: boolean;
+  mensaje?: string;
+  pendiente_aprobacion_tecnica?: boolean;
+  revision_tecnica?: number;
+  productos_pendientes_tecnicos?: string[];
   solicitud_comercial: number;
   actividad_creada: boolean;
   cotizacion: number;

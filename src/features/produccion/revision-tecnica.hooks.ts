@@ -22,6 +22,18 @@ export function useRevisionTecnica(id: number | null) {
   });
 }
 
+export function useRevisionTecnicaCotizacion(versionId: number | null) {
+  return useQuery({
+    queryKey: [...revisionTecnicaQueryKeys.all, "cotizacion", versionId],
+    queryFn: async () => {
+      const revisiones = await revisionesTecnicasApi.list({ vigente: true, cotizacion_version: versionId! });
+      return revisiones[0] ?? null;
+    },
+    enabled: versionId !== null,
+    refetchInterval: 10000,
+  });
+}
+
 export function useEvaluarProductoRevision() {
   const queryClient = useQueryClient();
   return useMutation({

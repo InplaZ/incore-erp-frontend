@@ -2,7 +2,7 @@ import { api } from "@/api/api.config";
 import type { RevisionTecnicaOferta, RevisionTecnicaProducto } from "@/features/comercial/comercial.types";
 
 export const revisionesTecnicasApi = {
-  list: (params?: { vigente?: boolean; estado?: string }) =>
+  list: (params?: { vigente?: boolean; estado?: string; cotizacion_version?: number }) =>
     api.get<RevisionTecnicaOferta[]>("/produccion/revisiones-tecnicas/", { params }),
 
   get: (id: number) =>

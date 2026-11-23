@@ -282,6 +282,33 @@ function PedidoStatus({ status }: { status: EstadoPedido }) {
   return <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>{statusLabel(status)}</span>;
 }
 
+function ProductIdentification({ line }: { line: PedidoConDetalles["detalles"][number] }) {
+  // El backend entrega el estado vigente del catálogo en producto_version.
+  // El snapshot se conserva como respaldo para registros históricos.
+  const codigo = line.producto_version?.codigo ?? line.especificacion_snapshot?.codigo;
+  const numeroVersion =
+    line.producto_version?.numero_version ??
+    line.especificacion_producto_solicitado_version?.version;
+  const estadoRaw =
+    line.producto_version?.estado_homologacion ??
+    line.especificacion_snapshot?.estado_homologacion;
+
+  const estadoNormalizado = String(estadoRaw ?? "").trim().toLowerCase().replaceAll("_", " ");
+  const estadoHomologacion = !estadoNormalizado
+    ? "Homologación no disponible"
+    : estadoNormalizado === "homologado"
+      ? "Homologado"
+      : estadoNormalizado === "rechazado"
+        ? "Rechazado"
+        : "No homologado";
+
+  return <p className="mt-1 text-xs text-muted-foreground">
+    {codigo ? `Nro ${codigo}` : "Sin código"}
+    {" - V"}{numeroVersion ?? "—"}
+    {" - "}{estadoHomologacion}
+  </p>;
+}
+
 function ConfirmarPedidoModal({
   pedidoId, pedido, ejecutivaNombre, isSubmitting, onClose, onConfirm,
 }: {
@@ -323,7 +350,7 @@ function ConfirmarPedidoModal({
             : isError || !data ? <p role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">No fue posible cargar las características. No se puede confirmar el pedido.</p>
               : data.detalles.length === 0 ? <p role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">El pedido no tiene productos vigentes para revisar.</p>
                 : <div className="space-y-3">{data.detalles.map((line, index) => <article key={line.id} className="rounded-xl border border-border p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Producto {index + 1}</p><h4 className="mt-1 font-semibold">{line.especificacion_snapshot?.nombre || line.especificacion_snapshot?.descripcion || line.producto_version?.nombre || line.especificacion_producto_solicitado_version?.categoria || "Producto solicitado"}</h4><p className="mt-1 text-xs text-muted-foreground">{line.especificacion_snapshot?.codigo || line.producto_version?.codigo || "Sin código"} · {line.producto_version ? `Producto homologado · Versión V${line.producto_version.numero_version}` : `Especificación solicitada · V${line.especificacion_producto_solicitado_version?.version ?? "—"}`}</p></div><span className="rounded-lg bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">{line.cantidad} {line.unidad_comercial}</span></div>
+                  <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Producto {index + 1}</p><h4 className="mt-1 font-semibold">{line.especificacion_snapshot?.nombre || line.especificacion_snapshot?.descripcion || line.producto_version?.nombre || line.especificacion_producto_solicitado_version?.categoria || "Producto solicitado"}</h4><ProductIdentification line={line} /></div><span className="rounded-lg bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">{line.cantidad} {line.unidad_comercial}</span></div>
                   <AcceptedSpecification line={line} />
                   <div className="mt-3 grid gap-2 border-t border-border pt-3 sm:grid-cols-3"><DetailValue label="Peso estimado" value={line.peso_kg != null ? `${line.peso_kg} kg` : "No especificado"} /><DetailValue label="Precio unitario" value={money(line.precio_unitario, currency)} /><DetailValue label="Subtotal" value={money(line.precio_total, currency)} /></div>
                   {line.observaciones && <p className="mt-3 whitespace-pre-wrap text-xs text-muted-foreground">Observaciones del producto: {line.observaciones}</p>}
@@ -374,8 +401,7 @@ function PedidoDetailModal({ pedidoId, onClose }: { pedidoId: number; onClose: (
             <div><div className="mb-3 flex items-center gap-2"><PackageCheck className="h-4 w-4 text-primary" /><h3 className="font-semibold">Productos ({data.cantidad_detalles})</h3></div>
               {data.detalles.length ? <div className="space-y-3">{data.detalles.map(line => <article key={line.id} className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div><p className="font-medium">{line.especificacion_snapshot?.nombre || line.especificacion_snapshot?.descripcion || line.producto_version?.nombre || line.especificacion_producto_solicitado_version?.categoria || "Producto solicitado"}</p><p className="mt-1 text-xs text-muted-foreground">{line.especificacion_snapshot?.codigo ? `${line.especificacion_snapshot.codigo} · ` : line.producto_version?.codigo ? `${line.producto_version.codigo} · ` : ""}{line.especificacion_snapshot?.tipo === "solicitado" ? "Especificación solicitada" : line.especificacion_snapshot?.tipo === "catalogo" ? "Producto de catálogo" : line.producto_version ? `Versión de producto V${line.producto_version.numero_version}` : line.especificacion_producto_solicitado_version ? `Especificación solicitada V${line.especificacion_producto_solicitado_version.version}` : "Sin código de catálogo"}</p></div>
-                  {line.especificacion_snapshot?.estado_homologacion && <span className="rounded-full bg-muted px-2.5 py-1 text-xs">Homologación: {line.especificacion_snapshot.estado_homologacion}</span>}
+                  <div><ProductIdentification line={line} /></div>
                 </div>
                 <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
                   <DetailValue label="Cantidad" value={`${line.cantidad} ${line.unidad_comercial || line.producto_version?.unidad_medida || ""}`} />

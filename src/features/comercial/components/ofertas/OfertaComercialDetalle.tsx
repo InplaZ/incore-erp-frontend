@@ -26,6 +26,7 @@ export default function OfertaComercialDetalle({
   onAddProduct,
   onSend,
   onSaveDraft,
+  canSend = true,
   onPdf,
   allowAddProduct = true,
   allowVersionsTab = true,
@@ -54,6 +55,7 @@ export default function OfertaComercialDetalle({
   onAddProduct: () => void;
   onSend: () => void;
   onSaveDraft?: () => void;
+  canSend?: boolean;
   onPdf?: () => void;
   allowAddProduct?: boolean;
   allowVersionsTab?: boolean;
@@ -95,7 +97,7 @@ export default function OfertaComercialDetalle({
         )}
         {evidenciaRegistrada && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-[10px] text-emerald-900"><p className="font-semibold">Evidencia: {evidenciaRegistrada.medio}{evidenciaRegistrada.archivo ? ` · ${evidenciaRegistrada.archivo}` : ""}</p><p className="mt-1 break-words">{evidenciaRegistrada.detalle}</p></div>}
         {acciones ?? (pestañaActiva === "seguimiento" ? accionesSeguimiento : pestañaActiva === "versiones" ? accionesVersiones : <>
-          <button type="button" onClick={onSend} disabled={!cantidad} className="w-full rounded-lg bg-blue-700 px-4 py-3 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">✓ Guardar y registrar envío</button>
+          <button type="button" onClick={onSend} disabled={!cantidad || !canSend} className="w-full rounded-lg bg-blue-700 px-4 py-3 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">✓ Guardar y registrar envío</button>
           {onSaveDraft && <button type="button" onClick={onSaveDraft} disabled={!cantidad} className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50">Guardar borrador</button>}
           {onPdf && <button type="button" onClick={onPdf} className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700">↓ PDF para enviar</button>}
           {aviso && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">{aviso}</p>}
