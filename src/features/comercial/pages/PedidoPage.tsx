@@ -60,6 +60,9 @@ export default function PedidoPage() {
   const [appliedFilters, setAppliedFilters] = useState<PedidoFilters>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const [selectedPedidoId, setSelectedPedidoId] = useState<number | null>(null);
+  const [approvalPedidoId, setApprovalPedidoId] = useState<number | null>(null);
+  const [approvalPedido, setApprovalPedido] = useState<Pedido | null>(null);
+  const currentUser = useAuthStore(state => state.user);
   const [filterError, setFilterError] = useState("");
   const [confirmationFeedback, setConfirmationFeedback] = useState<{ kind: "success" | "warning" | "error"; message: string } | null>(null);
   // /usuarios/me/ serializa el codename Django sin el prefijo de aplicación.
@@ -83,33 +86,46 @@ export default function PedidoPage() {
   const orders = data?.results ?? [];
   const pageCount = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE_SIZE));
 
-  const handleConfirmOrder = async (pedido: Pedido) => {
-    const result = await confirmOrder.mutateAsync({
-      pedidoId: pedido.id,
-    });
+  useEffect(() => {
+    if (!confirmationFeedback) return;
+    const timeout = window.setTimeout(() => setConfirmationFeedback(null), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [confirmationFeedback]);
 
-    if (result.flujo_directo_produccion) {
-      const cantidad = result.cantidad_ordenes_produccion ?? 0;
-
-      setConfirmationFeedback({
-        kind: "success",
-        message: `${pedido.numero} fue confirmado correctamente. Se generaron ${cantidad} órdenes de producción.`,
+  const handleConfirmOrder = async (pedido: Pedido, observaciones: string) => {
+    try {
+      const result = await confirmOrder.mutateAsync({
+        pedidoId: pedido.id,
+        observaciones,
+        confirmacionAceptada: true,
       });
+      setApprovalPedidoId(null);
+      setApprovalPedido(null);
 
-      return;
-    }
-
-    setConfirmationFeedback(
-      result.notificacion_almacenes_enviada
-        ? {
+      if (result.flujo_directo_produccion) {
+        const cantidad = result.cantidad_ordenes_produccion ?? 0;
+        setConfirmationFeedback({
           kind: "success",
-          message: `${pedido.numero} fue confirmado comercialmente y se notificó a Almacenes.`,
-        }
-        : {
-          kind: "warning",
-          message: `${pedido.numero} fue confirmado, pero no se notificó a Almacenes porque el grupo aún no está configurado con usuarios activos.`,
-        }
-    );
+          message: `${pedido.numero} fue confirmado correctamente. Se generaron ${cantidad} órdenes de producción.`,
+        });
+        return;
+      }
+
+      setConfirmationFeedback(
+        result.notificacion_almacenes_enviada
+          ? {
+            kind: "success",
+            message: `${pedido.numero} fue confirmado comercialmente y se notificó a Almacenes.`,
+          }
+          : {
+            kind: "warning",
+            message: `${pedido.numero} fue confirmado, pero no se notificó a Almacenes porque el grupo aún no está configurado con usuarios activos.`,
+          }
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo confirmar el pedido. Verifica los datos e inténtalo nuevamente.";
+      setConfirmationFeedback({ kind: "error", message });
+    }
   };
 
   const applyFilters = (event: FormEvent<HTMLFormElement>) => {
@@ -145,7 +161,7 @@ export default function PedidoPage() {
     </section>
 
     {isSummaryError && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">No se pudo cargar el resumen financiero.</p>}
-    {confirmationFeedback && <p role={confirmationFeedback.kind === "error" ? "alert" : "status"} className={`rounded-lg border p-3 text-sm ${confirmationFeedback.kind === "error" ? "border-destructive/30 bg-destructive/5 text-destructive" : confirmationFeedback.kind === "warning" ? "border-amber-300 bg-amber-50 text-amber-950" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{confirmationFeedback.message}</p>}
+    {confirmationFeedback && <div role={confirmationFeedback.kind === "error" ? "alert" : "status"} className={`fixed right-5 top-5 z-[70] flex max-w-md items-start gap-3 rounded-xl border p-4 text-sm shadow-xl ${confirmationFeedback.kind === "error" ? "border-destructive/30 bg-background text-destructive" : confirmationFeedback.kind === "warning" ? "border-amber-300 bg-amber-50 text-amber-950" : "border-emerald-200 bg-background text-emerald-800"}`}><BadgeCheck className="mt-0.5 h-5 w-5 shrink-0" /><span>{confirmationFeedback.message}</span><button type="button" aria-label="Cerrar notificación" onClick={() => setConfirmationFeedback(null)} className="ml-2 text-muted-foreground hover:text-foreground">×</button></div>}
 
     <Card className="overflow-hidden">
       <form onSubmit={applyFilters} className="grid gap-3 border-b border-border p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.5fr)_minmax(190px,1fr)_minmax(145px,1fr)_minmax(145px,1fr)_auto] lg:items-end">
@@ -175,7 +191,7 @@ export default function PedidoPage() {
             {isLoading ? <tr><td colSpan={12} className="px-4 py-12 text-center text-muted-foreground">Cargando pedidos…</td></tr>
               : isError ? <tr><td colSpan={12} role="alert" className="px-4 py-12 text-center text-destructive">No se pudieron cargar los pedidos. {(error as Error)?.message}</td></tr>
                 : orders.length === 0 ? <tr><td colSpan={12} className="px-4 py-12 text-center text-muted-foreground">No hay pedidos comerciales para estos filtros.</td></tr>
-                  : orders.map(order => <PedidoRow key={order.id} pedido={order} canApprove={canApproveCommercially} isConfirming={confirmOrder.isPending} onConfirm={() => void handleConfirmOrder(order)} onDetail={() => setSelectedPedidoId(order.id)} />)}
+                  : orders.map(order => <PedidoRow key={order.id} pedido={order} canApprove={canApproveCommercially} isConfirming={confirmOrder.isPending} onConfirm={() => { setApprovalPedido(order); setApprovalPedidoId(order.id); }} onDetail={() => setSelectedPedidoId(order.id)} />)}
           </tbody>
         </table>
       </div>
@@ -190,6 +206,14 @@ export default function PedidoPage() {
     </Card>
 
     {selectedPedidoId !== null && <PedidoDetailModal pedidoId={selectedPedidoId} onClose={() => setSelectedPedidoId(null)} />}
+    {approvalPedidoId !== null && approvalPedido && <ConfirmarPedidoModal
+      pedidoId={approvalPedidoId}
+      pedido={approvalPedido}
+      ejecutivaNombre={[currentUser?.first_name, currentUser?.last_name].filter(Boolean).join(" ") || currentUser?.username || "Usuario autenticado"}
+      isSubmitting={confirmOrder.isPending}
+      onClose={() => { if (!confirmOrder.isPending) { setApprovalPedidoId(null); setApprovalPedido(null); } }}
+      onConfirm={observaciones => void handleConfirmOrder(approvalPedido, observaciones)}
+    />}
   </main>;
 }
 
@@ -256,6 +280,65 @@ function PedidoStatus({ status }: { status: EstadoPedido }) {
     cancelado: "bg-rose-100 text-rose-800",
   };
   return <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>{statusLabel(status)}</span>;
+}
+
+function ConfirmarPedidoModal({
+  pedidoId, pedido, ejecutivaNombre, isSubmitting, onClose, onConfirm,
+}: {
+  pedidoId: number; pedido: Pedido; ejecutivaNombre: string; isSubmitting: boolean;
+  onClose: () => void; onConfirm: (observaciones: string) => void;
+}) {
+  const { data, isLoading, isError } = usePedidoConDetalles(pedidoId);
+  const [observaciones, setObservaciones] = useState("");
+  const [aceptacion, setAceptacion] = useState(false);
+  const order = data?.pedido;
+  const version = order?.version_cotizacion_vigente ?? order?.cotizacion_version;
+
+  const numeroVersion =
+    order?.version_cotizacion_vigente?.numero ??
+    order?.cotizacion_version?.version ??
+    pedido.version_numero;
+  const currency = version?.moneda ?? pedido.moneda;
+  const canSubmit = Boolean(data && !isLoading && !isError && data.detalles.length > 0 && aceptacion && !isSubmitting);
+
+  return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-3 sm:p-5" onMouseDown={event => { if (event.target === event.currentTarget && !isSubmitting) onClose(); }}>
+    <section role="dialog" aria-modal="true" aria-labelledby="confirm-order-title" className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+      <header className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+        <div><div className="flex flex-wrap items-center gap-2"><h2 id="confirm-order-title" className="text-lg font-semibold">Revisión y confirmación comercial</h2><span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">Revisión previa a producción</span></div><p className="mt-1 text-sm text-muted-foreground">Verifica cuidadosamente las características que serán utilizadas para fabricar el pedido.</p></div>
+        <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50">Cerrar</button>
+      </header>
+      <div className="flex-1 space-y-5 overflow-y-auto p-5">
+        <div className="grid gap-3 rounded-xl bg-muted/40 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <DetailValue label="Pedido" value={pedido.numero} />
+          <DetailValue label="Cliente" value={order?.cuenta_comercial.nombre || pedido.cliente_nombre} />
+          <DetailValue
+            label="Oferta / versión"
+            value={`${order?.cotizacion_version.cotizacion_numero ?? pedido.cotizacion_numero} / V${String(numeroVersion).padStart(2, "0")}`}
+          />
+          <DetailValue label="Entrega comprometida" value={formatDate(order?.fecha_entrega_comprometida ?? pedido.fecha_entrega_comprometida)} />
+        </div>
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2"><div><h3 className="font-semibold">Características de fabricación</h3><p className="text-xs text-muted-foreground">Datos de la versión aceptada. Solo lectura.</p></div><span className="text-xs text-muted-foreground">{data?.cantidad_detalles ?? 0} producto(s)</span></div>
+          {isLoading ? <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Cargando especificaciones aceptadas…</p>
+            : isError || !data ? <p role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">No fue posible cargar las características. No se puede confirmar el pedido.</p>
+              : data.detalles.length === 0 ? <p role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">El pedido no tiene productos vigentes para revisar.</p>
+                : <div className="space-y-3">{data.detalles.map((line, index) => <article key={line.id} className="rounded-xl border border-border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Producto {index + 1}</p><h4 className="mt-1 font-semibold">{line.especificacion_snapshot?.nombre || line.especificacion_snapshot?.descripcion || line.producto_version?.nombre || line.especificacion_producto_solicitado_version?.categoria || "Producto solicitado"}</h4><p className="mt-1 text-xs text-muted-foreground">{line.especificacion_snapshot?.codigo || line.producto_version?.codigo || "Sin código"} · {line.producto_version ? `Producto homologado · Versión V${line.producto_version.numero_version}` : `Especificación solicitada · V${line.especificacion_producto_solicitado_version?.version ?? "—"}`}</p></div><span className="rounded-lg bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">{line.cantidad} {line.unidad_comercial}</span></div>
+                  <AcceptedSpecification line={line} />
+                  <div className="mt-3 grid gap-2 border-t border-border pt-3 sm:grid-cols-3"><DetailValue label="Peso estimado" value={line.peso_kg != null ? `${line.peso_kg} kg` : "No especificado"} /><DetailValue label="Precio unitario" value={money(line.precio_unitario, currency)} /><DetailValue label="Subtotal" value={money(line.precio_total, currency)} /></div>
+                  {line.observaciones && <p className="mt-3 whitespace-pre-wrap text-xs text-muted-foreground">Observaciones del producto: {line.observaciones}</p>}
+                </article>)}</div>}
+        </section>
+        <section className="rounded-xl border border-border p-4">
+          <h3 className="font-semibold">Constancia de aprobación comercial</h3><p className="mt-1 text-xs text-muted-foreground">La identidad y la fecha/hora se registrarán desde la sesión y el servidor.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2"><DetailValue label="Ejecutiva responsable" value={ejecutivaNombre} /><DetailValue label="Fecha y hora" value="Se registrará al confirmar" /></div>
+          <label className="mt-4 block space-y-1 text-xs font-medium text-muted-foreground">Observaciones (opcional)<textarea value={observaciones} onChange={event => setObservaciones(event.target.value)} rows={3} maxLength={1000} placeholder="Añadir observaciones sobre la confirmación…" className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30" /></label>
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg bg-muted/40 p-3 text-sm"><input type="checkbox" checked={aceptacion} onChange={event => setAceptacion(event.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" /><span>Confirmo que he revisado las características y cantidades de los productos, así como las condiciones comerciales, y autorizo la confirmación de este pedido para continuar con el proceso productivo.</span></label>
+        </section>
+      </div>
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/20 px-5 py-4"><p className="max-w-xl text-xs text-muted-foreground">Si detectas un dato incorrecto, cancela y solicita la corrección antes de aprobar. Las características mostradas no se modifican desde aquí.</p><div className="flex gap-2"><button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Cancelar</button><button type="button" onClick={() => onConfirm(observaciones.trim())} disabled={!canSubmit} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting && <LoaderCircle className="h-4 w-4 animate-spin" />}Confirmar pedido</button></div></footer>
+    </section>
+  </div>;
 }
 
 function PedidoDetailModal({ pedidoId, onClose }: { pedidoId: number; onClose: () => void }) {

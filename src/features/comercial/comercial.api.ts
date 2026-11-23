@@ -904,10 +904,11 @@ export const pedidosApi = {
   confirmar: async (
     pedidoId: number,
     observaciones?: string,
+    confirmacionAceptada = false,
   ): Promise<ConfirmarPedidoResponse> => {
     return api.post<ConfirmarPedidoResponse>(
       `/comercial/pedidos/${pedidoId}/confirmar/`,
-      { observaciones },
+      { observaciones, confirmacion_aceptada: confirmacionAceptada },
     );
   },
 

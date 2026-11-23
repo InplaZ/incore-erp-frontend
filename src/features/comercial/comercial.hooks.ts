@@ -1499,13 +1499,16 @@ export function useConfirmarPedido() {
     mutationFn: ({
       pedidoId,
       observaciones,
+      confirmacionAceptada,
     }: {
       pedidoId: number;
       observaciones?: string;
+      confirmacionAceptada: boolean;
     }) =>
       pedidosApi.confirmar(
         pedidoId,
         observaciones,
+        confirmacionAceptada,
       ),
 
     onSuccess: (_, variables) => {
