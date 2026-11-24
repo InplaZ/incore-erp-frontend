@@ -55,6 +55,17 @@ export default function RequerimientoStepBusquedaProducto({
   const [micraje, setMicraje] = useState("");
   const [capas, setCapas] = useState<TipoCapa | "">("");
   const [impresion, setImpresion] = useState<boolean | "">("");
+  const [fuelle, setFuelle] = useState<boolean | "">("");
+  const [tipoTroquel, setTipoTroquel] = useState("");
+  const [bolsaFiltros, setBolsaFiltros] = useState({
+    anchoDesdoblado: "",
+    largoDesdoblado: "",
+  });
+  const [bobinaFiltros, setBobinaFiltros] = useState({
+    ancho: "",
+    largo: "",
+    longitud: "",
+  });
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [productoDetalle, setProductoDetalle] = useState<ProductoBusquedaResultado | null>(null);
 
@@ -73,13 +84,34 @@ export default function RequerimientoStepBusquedaProducto({
       micraje: micraje || undefined,
       capas: capas || undefined,
       impresion: impresion === "" ? undefined : impresion,
+      ...(product === "bag" ? {
+        // Para una medida exacta reutilizamos el rango existente enviando mínimo = máximo.
+        ancho_bolsa_min: bolsaFiltros.anchoDesdoblado || undefined,
+        ancho_bolsa_max: bolsaFiltros.anchoDesdoblado || undefined,
+        largo_bolsa_min: bolsaFiltros.largoDesdoblado || undefined,
+        largo_bolsa_max: bolsaFiltros.largoDesdoblado || undefined,
+        fuelle: fuelle === "" ? undefined : fuelle,
+        tipo_troquel: tipoTroquel || undefined,
+      } : {}),
+      ...(product === "roll" ? {
+        // Los filtros son valores exactos: mínimo y máximo reciben la misma medida.
+        ancho_bobina_min: bobinaFiltros.ancho || undefined,
+        ancho_bobina_max: bobinaFiltros.ancho || undefined,
+        largo_bobina_min: bobinaFiltros.largo || undefined,
+        largo_bobina_max: bobinaFiltros.largo || undefined,
+        longitud_min: bobinaFiltros.longitud || undefined,
+        longitud_max: bobinaFiltros.longitud || undefined,
+      } : {}),
     },
     !!categoria
   );
 
   const productos = catalogoData?.productos || [];
   const cantidad = catalogoData?.cantidad || 0;
-  const filtrosActivos = Boolean(busqueda || material || micraje || capas || impresion !== "");
+  const filtrosEspecificosActivos = product === "bag"
+    ? Object.values(bolsaFiltros).some(Boolean) || fuelle !== "" || Boolean(tipoTroquel)
+    : Object.values(bobinaFiltros).some(Boolean);
+  const filtrosActivos = Boolean(busqueda || material || micraje || capas || impresion !== "" || filtrosEspecificosActivos);
   const tipoProductoLabel = product === "bag" ? "bolsas" : "bobinas";
 
   const handleLimpiarFiltros = () => {
@@ -88,6 +120,10 @@ export default function RequerimientoStepBusquedaProducto({
     setMicraje("");
     setCapas("");
     setImpresion("");
+    setFuelle("");
+    setTipoTroquel("");
+    setBolsaFiltros({ anchoDesdoblado: "", largoDesdoblado: "" });
+    setBobinaFiltros({ ancho: "", largo: "", longitud: "" });
   };
 
   return (
@@ -150,13 +186,13 @@ export default function RequerimientoStepBusquedaProducto({
               Filtros
               {filtrosActivos && (
                 <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
-                  {[material, micraje, capas, impresion !== "" ? "impresion" : ""].filter(Boolean).length + (busqueda ? 1 : 0)}
+                  {[material, micraje, capas, impresion !== "" ? "impresion" : "", filtrosEspecificosActivos ? "especificos" : ""].filter(Boolean).length + (busqueda ? 1 : 0)}
                 </span>
               )}
             </button>
         </div>
 
-          {/* Filtros existentes: no se añaden parámetros que el backend no soporte */}
+          {/* Filtros generales y filtros específicos según el tipo de producto */}
           {mostrarFiltros && (
             <div className="rounded-lg border border-border bg-background p-3">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -246,6 +282,62 @@ export default function RequerimientoStepBusquedaProducto({
                 </div>
               </div>
 
+              {product === "bag" && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <h4 className="mb-3 text-sm font-semibold text-foreground">Características de bolsa</h4>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <NumberField
+                      id="catalogo-ancho-desdoblado"
+                      label="Ancho desdoblado (cm)"
+                      value={bolsaFiltros.anchoDesdoblado}
+                      onChange={(value) => setBolsaFiltros((prev) => ({ ...prev, anchoDesdoblado: value }))}
+                    />
+                    <NumberField
+                      id="catalogo-largo-desdoblado"
+                      label="Largo desdoblado (cm)"
+                      value={bolsaFiltros.largoDesdoblado}
+                      onChange={(value) => setBolsaFiltros((prev) => ({ ...prev, largoDesdoblado: value }))}
+                    />
+                    <div className="space-y-1.5">
+                      <label htmlFor="catalogo-fuelle" className="text-xs font-semibold text-muted-foreground">¿Tiene fuelle?</label>
+                      <select id="catalogo-fuelle" value={fuelle === "" ? "" : fuelle ? "true" : "false"} onChange={(event) => setFuelle(event.target.value === "" ? "" : event.target.value === "true")} className={inputClassName}>
+                        <option value="">Todos</option><option value="true">Sí</option><option value="false">No</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="catalogo-tipo-troquel" className="text-xs font-semibold text-muted-foreground">Tipo de troquel</label>
+                      <input
+                        id="catalogo-tipo-troquel"
+                        type="text"
+                        value={tipoTroquel}
+                        onChange={(event) => setTipoTroquel(event.target.value)}
+                        placeholder="Ej. camiseta"
+                        className={inputClassName}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {product === "roll" && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <h4 className="mb-3 text-sm font-semibold text-foreground">Características de bobina</h4>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <NumberField
+                      id="catalogo-ancho-bobina"
+                      label="Ancho (cm)"
+                      value={bobinaFiltros.ancho}
+                      onChange={(value) => setBobinaFiltros((prev) => ({ ...prev, ancho: value }))}
+                    />
+                    <NumberField
+                      id="catalogo-longitud-bobina"
+                      label="Longitud (m)"
+                      value={bobinaFiltros.longitud}
+                      onChange={(value) => setBobinaFiltros((prev) => ({ ...prev, longitud: value }))}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
       </section>
@@ -257,6 +349,12 @@ export default function RequerimientoStepBusquedaProducto({
           {micraje && <ActiveFilter label={`${micraje} µm`} onRemove={() => setMicraje("")} />}
           {capas && <ActiveFilter label={formatLabel(capas)} onRemove={() => setCapas("")} />}
           {impresion !== "" && <ActiveFilter label={impresion ? "Con impresión" : "Sin impresión"} onRemove={() => setImpresion("")} />}
+          {filtrosEspecificosActivos && <ActiveFilter label={product === "bag" ? "Filtros de bolsa" : "Filtros de bobina"} onRemove={() => {
+            setFuelle("");
+            setTipoTroquel("");
+            setBolsaFiltros({ anchoDesdoblado: "", largoDesdoblado: "" });
+            setBobinaFiltros({ ancho: "", largo: "", longitud: "" });
+          }} />}
           <button type="button" onClick={handleLimpiarFiltros} className="px-2 py-1 text-xs font-medium text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary">Limpiar todo</button>
         </div>
       )}
@@ -422,6 +520,23 @@ export default function RequerimientoStepBusquedaProducto({
           </aside>
         </div>
       )}
+    </div>
+  );
+}
+
+function NumberField({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="text-xs font-semibold text-muted-foreground">{label}</label>
+      <input
+        id={id}
+        type="number"
+        min="0"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Ingresar medida"
+        className={inputClassName}
+      />
     </div>
   );
 }

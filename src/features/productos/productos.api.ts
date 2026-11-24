@@ -1,3 +1,4 @@
+
 import { api } from "@/api/api.config";
 
 import type {
@@ -5,7 +6,61 @@ import type {
   BuscarCatalogoResponse,
   BuscarSimilaresResponse,
 } from "@/features/comercial/comercial.types";
-import type { Producto, ProductoCategoria, ProductoSubcategoria, ProductoComercialCreate, ProductoComercialDetalle } from "./productos.types";
+
+import type { ApiQueryParams } from "@/api/api.types";
+
+import type {
+  Producto,
+  ProductoCategoria,
+  ProductoSubcategoria,
+  ProductoComercialCreate,
+  ProductoComercialDetalle,
+} from "./productos.types";
+
+// ============================================================
+// PARÁMETROS DE BÚSQUEDA DEL CATÁLOGO
+// ============================================================
+
+export interface BuscarCatalogoParams extends ApiQueryParams {
+  // Filtros generales
+  categoria?: string;
+  subcategoria?: number;
+  q?: string;
+  material?: string;
+  micraje?: string | number;
+  capas?: string;
+  impresion?: boolean;
+
+  // Filtros específicos para bolsas
+  ancho_bolsa_min?: string | number;
+  ancho_bolsa_max?: string | number;
+  largo_bolsa_min?: string | number;
+  largo_bolsa_max?: string | number;
+  tipo_troquel?: string;
+  tipo_sello?: string;
+  fuelle?: boolean;
+  pestana?: string;
+
+  // Filtros específicos para bobinas
+  ancho_bobina_min?: string | number;
+  ancho_bobina_max?: string | number;
+  largo_bobina_min?: string | number;
+  largo_bobina_max?: string | number;
+  diametro_min?: string | number;
+  diametro_max?: string | number;
+  diametro_nucleo_min?: string | number;
+  diametro_nucleo_max?: string | number;
+  tipo_nucleo?: string;
+  configuracion_pelicula?: string;
+  peso_min?: string | number;
+  peso_max?: string | number;
+  longitud_min?: string | number;
+  longitud_max?: string | number;
+
+  // Paginación
+  pagina?: number;
+  por_pagina?: number;
+}
 
 // ============================================================
 // CATEGORÍAS DE PRODUCTOS
@@ -63,17 +118,9 @@ export const productosApi = {
   ) =>
     api.patch(`/productos/especificaciones-bobina/${id}/`, data),
 
-  buscarCatalogo: async (params: {
-    categoria?: string;
-    subcategoria?: number;
-    q?: string;
-    material?: string;
-    micraje?: string | number;
-    capas?: string;
-    impresion?: boolean;
-    pagina?: number;
-    por_pagina?: number;
-  }): Promise<BuscarCatalogoResponse> =>
+  buscarCatalogo: async (
+    params: BuscarCatalogoParams
+  ): Promise<BuscarCatalogoResponse> =>
     api.get("/productos/busqueda-productos/catalogo/", { params }),
 
   buscarSimilares: async (data: {
@@ -82,6 +129,10 @@ export const productosApi = {
   }): Promise<BuscarSimilaresResponse> =>
     api.post("/productos/busqueda-productos/buscar_similares/", data),
 };
+
+// ============================================================
+// SUBCATEGORÍAS DE PRODUCTOS
+// ============================================================
 
 export const productosSubcategoriasApi = {
   list: async (categoria?: number): Promise<ProductoSubcategoria[]> =>

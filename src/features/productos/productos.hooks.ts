@@ -1,6 +1,19 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { productosCategoriasApi, productosApi, productosSubcategoriasApi } from "./productos.api";
-import type { Producto, ProductoComercialCreate } from "./productos.types";
+
+import {
+  productosCategoriasApi,
+  productosApi,
+  productosSubcategoriasApi,
+} from "./productos.api";
+
+import type { BuscarCatalogoParams } from "./productos.api";
+
+import type {
+  Producto,
+  ProductoComercialCreate,
+} from "./productos.types";
+
 import type {
   BuscarSimilaresResponse,
   ProductoVersion,
@@ -16,15 +29,7 @@ export const productosQueryKeys = {
   categorias: () =>
     [...productosQueryKeys.all, "categorias"] as const,
 
-  catalogo: (params: {
-    subcategoria?: number;  
-    categoria?: string;
-    q?: string;
-    material?: string;
-    micraje?: string | number;
-    capas?: string;
-    impresion?: boolean;
-  }) =>
+  catalogo: (params: BuscarCatalogoParams) =>
     [...productosQueryKeys.all, "catalogo", params] as const,
 
   producto: (id: number) =>
@@ -52,17 +57,7 @@ export function useProductosCategorias() {
 // ============================================================
 
 export function useBuscarProductosCatalogo(
-  params: {
-    categoria?: string;
-    subcategoria?: number;
-    q?: string;
-    material?: string;
-    micraje?: string | number;
-    capas?: string;
-    impresion?: boolean;
-    pagina?: number;
-    por_pagina?: number;
-  },
+  params: BuscarCatalogoParams,
   enabled = true
 ) {
   return useQuery({
@@ -83,6 +78,7 @@ export function useProducto(id: number, enabled = true) {
     enabled: enabled && !!id,
   });
 }
+
 // ============================================================
 // LISTADO GENERAL DE PRODUCTOS
 // ============================================================
@@ -93,6 +89,7 @@ export function useProductos() {
     queryFn: () => productosApi.list(),
   });
 }
+
 // ============================================================
 // VERSIÓN DE PRODUCTO
 // ============================================================
@@ -110,10 +107,14 @@ export function useProductoVersion(id: number, enabled = true) {
 // ============================================================
 
 export function useBuscarProductosSimilares() {
-  return useMutation<BuscarSimilaresResponse, Error, {
-    especificacion_producto_id?: number;
-    especificacion_producto_solicitado_version_id?: number;
-  }>({
+  return useMutation<
+    BuscarSimilaresResponse,
+    Error,
+    {
+      especificacion_producto_id?: number;
+      especificacion_producto_solicitado_version_id?: number;
+    }
+  >({
     mutationFn: (data) =>
       productosApi.buscarSimilares(data),
   });
@@ -154,6 +155,7 @@ export function useUpdateEspecificacionBobina() {
     }) => productosApi.updateEspecificacionBobina(id, data),
   });
 }
+
 export function useCreateProducto() {
   const queryClient = useQueryClient();
 
@@ -173,7 +175,9 @@ export function useCreateProductoComercial() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: ProductoComercialCreate) => productosApi.createComercial(data),
+    mutationFn: (data: ProductoComercialCreate) =>
+      productosApi.createComercial(data),
+
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: productosQueryKeys.all,
@@ -184,12 +188,24 @@ export function useCreateProductoComercial() {
 
 export function useUpdateProductoComercial() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: ProductoComercialCreate }) =>
-      productosApi.updateComercial(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: ProductoComercialCreate;
+    }) => productosApi.updateComercial(id, data),
+
     onSuccess: (_producto, variables) => {
-      queryClient.invalidateQueries({ queryKey: productosQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: productosQueryKeys.producto(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: productosQueryKeys.all,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: productosQueryKeys.producto(variables.id),
+      });
     },
   });
 }
