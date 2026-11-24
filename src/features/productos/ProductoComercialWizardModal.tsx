@@ -942,14 +942,13 @@ export default function ProductoComercialWizardModal({
   const weightPayload = payload?.datos_especificacion ?? null;
   const isReadyForFeasibility = Boolean(open && payload && form.material && form.layers && form.micraje);
 
-  // Calcula el peso usando el endpoint existente; no duplica la fórmula en el frontend.
+
+  // Calcula el peso utilizando el mismo endpoint de RequerimientosPage.
   useEffect(() => {
     let vigente = true;
 
     const cantidad = Number(form.quantity);
 
-    // Para convertir desde kg, consultamos primero el peso de una unidad.
-    const cantidadParaCalculo = quantityUnit === "kg" ? 1 : cantidad;
 
     if (
       !open ||
@@ -974,46 +973,32 @@ export default function ProductoComercialWizardModal({
       setWeightError("");
 
       try {
-        console.log(
-          "PAYLOAD PESO:",
-          JSON.stringify(
-            {
-              cantidad,
-              datos_especificacion: weightPayload,
-            },
-            null,
-            2,
-          ),
-        );
         const resultado = await api.post<PesosProductoResponse>(
           "/comercial/cotizaciones/calcular-peso/",
           {
-            cantidad: cantidadParaCalculo,
+            cantidad: cantidad,
             datos_especificacion: weightPayload,
           },
         );
 
-        console.log("Respuesta del cálculo de peso:", resultado);
-        console.log("Payload enviado:", {
-          cantidad,
-          datos_especificacion: weightPayload,
-        });
-
         if (vigente) {
-          const datos = resultado;
+          setWeights(resultado);
 
-          setWeights(datos);
-
-          if (!datos.exito || datos.peso_unitario_kg == null || datos.peso_total_kg == null) {
+          if (
+            !resultado.exito ||
+            resultado.peso_unitario_kg == null ||
+            resultado.peso_total_kg == null
+          ) {
             setWeightError(
-              datos.mensaje || "El servidor no devolvió los pesos calculados.",
+              resultado.mensaje || "El servidor no devolvió los pesos calculados.",
             );
           } else {
             setWeightError("");
           }
         }
-      } catch {
+      } catch (error) {
         if (vigente) {
+          console.error("No se pudo calcular el peso de la especificación", error);
           setWeights(null);
           setWeightError(
             "No se pudo calcular el peso. Verifica los datos de la especificación.",
@@ -1022,7 +1007,7 @@ export default function ProductoComercialWizardModal({
       } finally {
         if (vigente) setCalculatingWeight(false);
       }
-    }, 400);
+    }, 250);
 
     return () => {
       vigente = false;
@@ -1035,12 +1020,14 @@ export default function ProductoComercialWizardModal({
     form.material,
     form.micraje,
     form.width,
+    form.widthFlat,
     form.foldLength,
     form.meters,
     form.productType,
     quantityUnit,
     weightPayload,
   ]);
+
   useEffect(() => {
     if (!isReadyForFeasibility || !payload) return;
     const controller = new AbortController();
@@ -2314,11 +2301,11 @@ export default function ProductoComercialWizardModal({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-xs font-semibold text-emerald-800">
-                {quantityUnit === "kg" ? "Peso solicitado" : "Peso unitario"}
+                {quantityUnit === "kg" ? "Peso unitario" : "Peso calculado"}
               </p>
 
               <p className="mt-1 text-xl font-bold text-emerald-950">
-                {quantityUnit === "kg"
+                {quantityUnit !== "kg"
                   ? `${Number(form.quantity).toLocaleString("es-BO", {
                     maximumFractionDigits: 3,
                   })} kg`
@@ -2330,11 +2317,11 @@ export default function ProductoComercialWizardModal({
 
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-xs font-semibold text-emerald-800">
-                {quantityUnit === "kg" ? "Cantidad estimada" : "Peso total"}
+                {quantityUnit === "kg" ? "Peso total" : "Cantidad estimada"}
               </p>
 
               <p className="mt-1 text-xl font-bold text-emerald-950">
-                {quantityUnit === "kg"
+                {quantityUnit !== "kg"
                   ? `${Math.round(
                     Number(form.quantity) /
                     Number(weights.peso_unitario_kg)
