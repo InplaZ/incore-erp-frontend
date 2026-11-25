@@ -330,13 +330,20 @@ export default function RequerimientoDetallePage() {
     const lineasNuevasVersion = lineasVersionSeleccionada.filter(
         (linea) => Boolean(linea.especificacionProductoSolicitadoVersion)
     );
-    const productosSinAprobacionTecnica = lineasNuevasVersion.filter((linea) =>
+    const lineasNoViables = lineasNuevasVersion.filter(
+        (linea) => linea.resultado_viabilidad?.trim().toLowerCase() === "no_viable"
+    );
+    const lineasSinEvaluacionViabilidad = lineasNuevasVersion.filter((linea) => {
+        const resultado = linea.resultado_viabilidad?.trim().toLowerCase();
+        return resultado !== "viable" && resultado !== "no_viable";
+    });
+    const productosSinAprobacionTecnica = lineasNoViables.filter((linea) =>
         !revisionTecnica?.productos.some((item) =>
             item.cotizacion_detalle === linea.cotizacionDetalle.id && item.estado === "aprobado"
         )
     );
-    const envioBloqueadoPorRevision = lineasNuevasVersion.length > 0 &&
-        (!revisionTecnica || productosSinAprobacionTecnica.length > 0);
+    const envioBloqueadoPorRevision =
+        lineasSinEvaluacionViabilidad.length > 0 || productosSinAprobacionTecnica.length > 0;
 
     // Calcular el importe usando el peso total y el precio por kg.
     const totalVersionSeleccionada = lineasVersionSeleccionada.reduce(
@@ -668,8 +675,9 @@ export default function RequerimientoDetallePage() {
         const acciones = <div className="space-y-2">
             {errorAccionOferta && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{errorAccionOferta}</p>}
             <button type="button" onClick={() => void descargarPdfVersion()} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700">Ver PDF V{versionSeleccionada.version}</button>
-            {esBorrador && <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("enviar"); }} disabled={!lineasVersionSeleccionada.length || envioBloqueadoPorRevision || (lineasNuevasVersion.length > 0 && revisionTecnica === undefined)} className="w-full rounded-lg bg-blue-700 px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-50">✓ Guardar y registrar envío</button>}
-            {esBorrador && envioBloqueadoPorRevision && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">El envío está bloqueado hasta que Producción apruebe: {productosSinAprobacionTecnica.map((linea) => linea.producto?.nombre || `Producto nuevo (${linea.cotizacionDetalle.id})`).join(", ") || "los productos nuevos"}.</p>}
+            {esBorrador && <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("enviar"); }} disabled={!lineasVersionSeleccionada.length || envioBloqueadoPorRevision || (lineasNoViables.length > 0 && revisionTecnica === undefined)} className="w-full rounded-lg bg-blue-700 px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-50">✓ Guardar y registrar envío</button>}
+            {esBorrador && lineasSinEvaluacionViabilidad.length > 0 && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">El envío está bloqueado porque falta la evaluación automática de viabilidad de: {lineasSinEvaluacionViabilidad.map((linea) => linea.producto?.nombre || `Producto nuevo (${linea.cotizacionDetalle.id})`).join(", ")}.</p>}
+            {esBorrador && productosSinAprobacionTecnica.length > 0 && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">El envío está bloqueado hasta que Producción apruebe: {productosSinAprobacionTecnica.map((linea) => linea.producto?.nombre || `Producto nuevo (${linea.cotizacionDetalle.id})`).join(", ")}.</p>}
             {esEnviada && <>
                 <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("aceptar"); }} className="w-full rounded-lg bg-emerald-700 px-3 py-2.5 text-xs font-semibold text-white">✓ Registrar aceptación del cliente</button>
                 <button type="button" onClick={() => { setErrorAccionOferta(""); setAccionOferta("rechazar"); }} className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">Cerrar oportunidad</button>

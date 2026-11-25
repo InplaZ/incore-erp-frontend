@@ -355,6 +355,7 @@ export interface RequerimientoDetalle {
 export interface ProductoCotizadoEnSolicitud {
   cotizacion: Cotizacion;
   cotizacionVersion: CotizacionVersion;
+  resultado_viabilidad: string | null;
   cotizacionDetalle: Pick<
     CotizacionDetalle,
     | "id"
