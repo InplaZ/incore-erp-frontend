@@ -509,7 +509,8 @@ type ProductoComercialWizardModalProps = {
   // Devolución de datos preliminares al módulo Comercial.
   onSolicitudCreada?: (
     datos: ProductoComercialCreate,
-    datosCantidad: DatosCantidadProducto
+    datosCantidad: DatosCantidadProducto,
+    resultadoViabilidad: EvaluarViabilidadResponse | null
   ) => void;
 
   modo?: ProductoComercialWizardMode;
@@ -1264,9 +1265,12 @@ export default function ProductoComercialWizardModal({
           );
         }
 
-        // Devolvemos los datos técnicos al módulo Comercial.
-        // No ejecutamos ninguna petición para crear Producto.
-        onSolicitudCreada(request, datosCantidad);
+        // Devolvemos los datos técnicos y la evaluación correspondiente
+        // exactamente a la especificación actual. Nunca reutilizar un
+        // resultado anterior ni considerar viable una evaluación pendiente.
+        const resultadoActual =
+          !checking && evaluatedKey === payloadKey ? feasibility : null;
+        onSolicitudCreada(request, datosCantidad, resultadoActual);
 
         onClose();
         return;

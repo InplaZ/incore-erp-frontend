@@ -92,6 +92,11 @@ type CotizacionLineaBorrador = NonNullable<FormalizarCotizacionWizardPayload["de
   archivo_color_impresion?: File | null;
   persistida?: boolean;
   backendDetailId?: number;
+  // Resultado de la preevaluación local. Solo se usa para controlar acciones
+  // antes de persistir la línea; nunca se envía como dato del backend.
+  resultado_viabilidad?: "viable" | "no_viable" | "pendiente" | string | null;
+  // Motivos técnicos concretos de la preevaluación, solo para informar al usuario.
+  detalle_viabilidad?: string[];
   // Parámetros de cotización configurados por línea.
   cotizador_margen_id?: string;
   cotizador_mano_obra_kg?: string;
@@ -100,6 +105,62 @@ type CotizacionLineaBorrador = NonNullable<FormalizarCotizacionWizardPayload["de
   peso_unitario_kg?: string | null;
   peso_total_kg?: string | null;
 };
+
+const nombresProcesosViabilidad: Record<string, string> = {
+  extrusion: "Extrusión",
+  flexografia: "Flexografía",
+  confeccion: "Confección",
+};
+
+function formatearValorViabilidad(valor: unknown): string {
+  if (valor == null || valor === "") return "No especificado";
+  if (typeof valor === "object") {
+    const rango = valor as { min?: unknown; max?: unknown };
+    if ("min" in rango || "max" in rango) {
+      return `${rango.min ?? "—"} a ${rango.max ?? "—"}`;
+    }
+    return JSON.stringify(valor);
+  }
+  return String(valor);
+}
+
+function obtenerDetalleProblemasViabilidad(
+  resultado: EvaluarViabilidadResponse | null,
+): string[] {
+  if (!resultado || (resultado.estado_global ?? (resultado.viable_global ? "viable" : "no_viable")) !== "no_viable") return [];
+
+  const problemas: string[] = [];
+  for (const proceso of resultado.procesos_no_viables ?? []) {
+    const detalle = resultado.resultados_por_proceso?.[proceso];
+    const maquinas = [
+      ...(detalle?.resultados_evaluacion ?? detalle?.resultados ?? []),
+      ...(detalle?.no_viables ?? []),
+    ];
+    let encontroCriterio = false;
+
+    for (const maquina of maquinas) {
+      const criterios = maquina.criterios ?? maquina.criterios_evaluados ?? [];
+      for (const criterio of criterios) {
+        if (criterio.cumple !== false) continue;
+        encontroCriterio = true;
+        const nombreCriterio = criterio.criterio
+          .replaceAll("_", " ")
+          .replace(/^./, (letra) => letra.toUpperCase());
+        const valores = criterio.valor_solicitado != null || criterio.valor_capacidad != null
+          ? ` (solicitado: ${formatearValorViabilidad(criterio.valor_solicitado)}; capacidad: ${formatearValorViabilidad(criterio.valor_capacidad)})`
+          : "";
+        const equipo = maquina.equipo ? `${maquina.equipo} · ` : "";
+        problemas.push(`${nombresProcesosViabilidad[proceso.toLowerCase()] ?? proceso}: ${equipo}${nombreCriterio}. ${criterio.mensaje ?? "No cumple la capacidad técnica registrada."}${valores}`);
+      }
+    }
+
+    if (!encontroCriterio) {
+      problemas.push(`${nombresProcesosViabilidad[proceso.toLowerCase()] ?? proceso}: no se encontró una máquina con capacidad compatible para este proceso.`);
+    }
+  }
+
+  return [...new Set(problemas)];
+}
 
 function extraerMaterialesCotizador(data: unknown): MaterialCotizador[] {
   if (Array.isArray(data)) return data as MaterialCotizador[];
@@ -694,6 +755,13 @@ export default function RequerimientosPage() {
     () => lineasCotizacion.reduce((total, linea) => total + importeLineaCotizacion(linea), 0),
     [lineasCotizacion],
   );
+  // Solo se puede registrar el envío directamente cuando todos los productos
+  // nuevos tienen una evaluación automática favorable. Los no_viables (o sin
+  // resultado) deben guardarse como borrador para revisión de Producción.
+  const hayProductoNuevoSinViabilidadFavorable = lineasCotizacion.some((linea) => {
+    if (linea.producto_version_id) return false;
+    return linea.resultado_viabilidad?.trim().toLowerCase() !== "viable";
+  });
 
   const guardarCondiciones = async () => {
     if (!condicionesOferta.fecha_entrega_comprometida) {
@@ -1048,6 +1116,12 @@ export default function RequerimientosPage() {
           ? descripcion.trim() || `Producto solicitado (${tipoProducto})`
           : productoSeleccionado!.producto_nombre,
         codigo: esProductoNuevo ? "Sin código definitivo" : productoSeleccionado!.producto_codigo,
+        resultado_viabilidad: esProductoNuevo
+          ? (resultadoViabilidad?.estado_global ?? (resultadoViabilidad?.viable_global === true ? "viable" : resultadoViabilidad?.viable_global === false ? "no_viable" : "pendiente"))
+          : null,
+        detalle_viabilidad: esProductoNuevo
+          ? obtenerDetalleProblemasViabilidad(resultadoViabilidad)
+          : [],
       };
       setLineasCotizacion((actuales) => [...actuales, linea]);
       setDatosCotizacion((actual) => actual ?? {
@@ -1165,6 +1239,8 @@ export default function RequerimientosPage() {
             cotizador_mano_obra_kg: _manoObra,
             cotizador_costos_indirectos_kg: _indirectos,
             cotizador_factura: _factura,
+            resultado_viabilidad: _resultadoViabilidad,
+            detalle_viabilidad: _detalleViabilidad,
             especificacion,
             especificacion_bolsa,
             especificacion_bobina,
@@ -1230,10 +1306,6 @@ export default function RequerimientosPage() {
       else mostrarToast("Error", message || "No se pudo guardar la cotización.");
     }
   };
-
-  const hayProductoNuevoSinGuardar = lineasCotizacion.some((linea) =>
-    !linea.persistida && !linea.producto_version_id && Boolean(linea.especificacion)
-  );
 
   const descargarPdf = async (versionId: number) => {
     try {
@@ -1584,11 +1656,25 @@ export default function RequerimientosPage() {
           onChange={setCondicionesOferta}
           onSave={() => void guardarCondiciones()}
         />}
-        aviso={hayProductoNuevoSinGuardar ? "Guarda primero como borrador. Los productos nuevos requieren revisión técnica antes de habilitar el envío." : !lineasCotizacion.length ? "Antes de enviar: Agrega al menos un producto" : undefined}
+        aviso={!lineasCotizacion.length
+          ? "Antes de enviar: Agrega al menos un producto"
+          : hayProductoNuevoSinViabilidadFavorable
+            ? lineasCotizacion
+                .filter((linea) => !linea.producto_version_id && linea.resultado_viabilidad?.trim().toLowerCase() !== "viable")
+                .map((linea) => {
+                  const estado = linea.resultado_viabilidad?.trim().toLowerCase();
+                  const encabezado = `${linea.nombre}: ${estado === "no_viable" ? "requiere revisión y aprobación del Jefe de Producción" : "requiere completar la evaluación técnica"}`;
+                  const detalle = linea.detalle_viabilidad?.length
+                    ? ` — ${linea.detalle_viabilidad.join("; ")}`
+                    : "";
+                  return `${encabezado}${detalle}`;
+                })
+                .join("\n")
+            : undefined}
         onBack={() => navigate("/requerimientoListPage")}
         onAddProduct={() => setMostrarCatalogo(true)}
         onSend={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }}
-        canSend={!hayProductoNuevoSinGuardar}
+        canSend={lineasCotizacion.length > 0 && !hayProductoNuevoSinViabilidadFavorable}
         onSaveDraft={lineasCotizacion.some((linea) => !linea.persistida) ? () => void guardarCotizacion() : undefined}
         onPdf={idVersionConsultada ? () => void descargarPdf(idVersionConsultada) : undefined}
       >
@@ -1808,7 +1894,7 @@ export default function RequerimientosPage() {
                   <p className="text-sm text-muted-foreground">{lineasCotizacion.length} {lineasCotizacion.length === 1 ? "producto" : "productos"} · Los importes se recalculan al guardar.</p>
                 </div>
                 <button type="button" onClick={() => document.getElementById("catalogo-productos-oferta")?.scrollIntoView({ behavior: "smooth" })} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">＋ Agregar producto</button>
-                {modoCatalogoExistente && step === 2 ? <button type="button" onClick={continuarConfiguracionExistentes} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">Continuar a cantidades y entrega</button> : !modoCatalogoExistente && <button
+                {modoCatalogoExistente && step === 2 ? <button type="button" onClick={continuarConfiguracionExistentes} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">Continuar a cantidades y entrega</button> : !modoCatalogoExistente && !hayProductoNuevoSinViabilidadFavorable && <button
                   type="button"
                   onClick={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }}
                   disabled={formalizarCotizacion.isPending || !cuentaComercialId}
@@ -1876,9 +1962,9 @@ export default function RequerimientosPage() {
               <h2 className="font-semibold">Acciones y estado</h2>
               <p className="text-xs text-muted-foreground">{cuentaSeleccionada ? nombreVisibleCliente(cuentaSeleccionada) : "Selecciona un cliente"} · {lineasCotizacion.length} productos</p>
               <div className="border-t border-border pt-4"><p className="text-xs text-muted-foreground">Valor actual</p><p className="mt-1 text-2xl font-bold">{datosCotizacion?.moneda ?? "BOB"} {lineasCotizacion.reduce((sum, linea) => sum + Number(linea.cantidad || 0) * Number(linea.precio_lista || 0) * (1 - Number(linea.descuento_porcentaje || 0) / 100), 0).toLocaleString("es-BO", { minimumFractionDigits: 2 })}</p><span className="mt-2 inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">Borrador: aún no enviado al cliente</span></div>
-              <button type="button" onClick={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }} disabled={formalizarCotizacion.isPending || !cuentaComercialId || hayProductoNuevoSinGuardar || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim())} className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">✓ Guardar y registrar envío</button>
-              {hayProductoNuevoSinGuardar && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">Guarda primero como borrador. Los productos nuevos requieren revisión técnica antes de habilitar el envío.</p>}
-              {!modoCatalogoExistente && <button type="button" onClick={() => void guardarCotizacion()} disabled={formalizarCotizacion.isPending || !cuentaComercialId} className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium">Guardar borrador</button>}
+              {!hayProductoNuevoSinViabilidadFavorable && <button type="button" onClick={() => { setErrorEnvio(""); setMostrarEnvioModal(true); }} disabled={formalizarCotizacion.isPending || !cuentaComercialId || !lineasCotizacion.length || lineasCotizacion.some((linea) => !Number(linea.cantidad) || !linea.precio_lista.trim())} className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">✓ Guardar y registrar envío</button>}
+              {lineasCotizacion.some((linea) => !linea.persistida) && <button type="button" onClick={() => void guardarCotizacion()} disabled={formalizarCotizacion.isPending || !cuentaComercialId} className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium">Guardar borrador</button>}
+              {hayProductoNuevoSinViabilidadFavorable && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">Hay un producto nuevo no viable o sin evaluación favorable. Guarda la oferta como borrador; se solicitará la revisión del jefe de producción cuando corresponda.</p>}
               {(!cuentaComercialId || !lineasCotizacion.length) && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">Selecciona el cliente y completa al menos un producto.</p>}
             </aside>
           </div>
@@ -2224,7 +2310,7 @@ export default function RequerimientosPage() {
         open={mostrarNuevoProducto}
         modo="solicitud_comercial"
         onClose={() => setMostrarNuevoProducto(false)}
-        onSolicitudCreada={(request, datosCantidad) => {
+        onSolicitudCreada={(request, datosCantidad, evaluacionViabilidad) => {
           const tipoProducto = request.especificacion_bolsa
             ? "bolsa"
             : request.especificacion_bobina
@@ -2276,6 +2362,20 @@ export default function RequerimientosPage() {
 
             nombre: request.producto.nombre,
             codigo: "Pendiente de confirmación",
+            resultado_viabilidad: (() => {
+              const estado = evaluacionViabilidad?.estado_global
+                ?.trim()
+                .toLowerCase();
+
+              if (estado === "viable" || evaluacionViabilidad?.viable_global === true) {
+                return "viable";
+              }
+              if (estado === "no_viable" || evaluacionViabilidad?.viable_global === false) {
+                return "no_viable";
+              }
+              return "pendiente";
+            })(),
+            detalle_viabilidad: obtenerDetalleProblemasViabilidad(evaluacionViabilidad),
           };
 
           setLineasCotizacion((actuales) => [
@@ -2290,7 +2390,11 @@ export default function RequerimientosPage() {
 
           mostrarToast(
             "Producto solicitado",
-            `${request.producto.nombre} se añadió a la cotización como especificación pendiente.`
+            evaluacionViabilidad?.viable_global === true
+              ? `${request.producto.nombre} se añadió a la cotización con evaluación viable.`
+              : evaluacionViabilidad?.viable_global === false
+                ? `${request.producto.nombre} se añadió a la cotización como no viable; deberá guardarse como borrador para revisión técnica.`
+                : `${request.producto.nombre} se añadió a la cotización sin evaluación de viabilidad confirmada; deberá guardarse como borrador.`
           );
 
           setMostrarNuevoProducto(false);
