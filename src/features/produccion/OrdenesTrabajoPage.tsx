@@ -1,28 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
   ClipboardList,
   Eye,
-  FileText,
-  LoaderCircle,
   RefreshCw,
   Search,
-  X,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { LoadingState } from "@/components/ui/States";
 import { useAuthStore } from "@/app/store/auth.store";
-import {
-  ordenesTrabajoApi,
-  type PedidoHabilitadoConDetalles,
-} from "@/features/produccion/ordenes-trabajo-api";
-import {
-  useCrearOTDesdePedido,
-  usePedidosHabilitadosParaOT,
-} from "./ordenes-trabajo.hooks";
+import type { PedidoHabilitadoConDetalles } from "@/features/produccion/ordenes-trabajo-api";
+import { usePedidosHabilitadosParaOT } from "./ordenes-trabajo.hooks";
+import OrdenTrabajoFormulario from "./OrdenTrabajoFormulario";
 import type {
   PedidoDetalleVista,
   SnapshotValor,
@@ -117,27 +109,8 @@ export default function OrdenesTrabajoPage() {
     refetch,
     isFetching,
   } = usePedidosHabilitadosParaOT();
-  const createOT = useCrearOTDesdePedido();
-
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<PedidoProducto | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState("");
-  const [observaciones, setObservaciones] = useState("");
-  const [feedback, setFeedback] = useState<{
-    kind: "success" | "error";
-    text: string;
-  } | null>(null);
-  const [confirming, setConfirming] = useState(false);
-
-  useEffect(
-    () => () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    },
-    [previewUrl],
-  );
-
   const pending = useMemo(
     () =>
       orders.flatMap((item) =>
@@ -179,67 +152,12 @@ export default function OrdenesTrabajoPage() {
     [completed],
   );
 
-  const closePreview = () => {
-    setSelected(null);
-    setPreviewError("");
-    setObservaciones("");
-    setConfirming(false);
-    setPreviewUrl((current) => {
-      if (current) URL.revokeObjectURL(current);
-      return null;
-    });
-  };
+  const closePreview = () => setSelected(null);
 
-  const openPreview = async (
+  const openPreview = (
     pedido: PedidoHabilitadoConDetalles,
     line: PedidoDetalleVista,
-  ) => {
-    setSelected({ pedido, line });
-    setPreviewLoading(true);
-    setPreviewError("");
-    setFeedback(null);
-    setPreviewUrl((current) => {
-      if (current) URL.revokeObjectURL(current);
-      return null;
-    });
-
-    try {
-      const blob = await ordenesTrabajoApi.previsualizarRequerimiento(line.id);
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-    } catch (requestError) {
-      setPreviewError(errorText(requestError));
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
-
-  const handleCreate = async () => {
-    if (!selected) return;
-    setConfirming(true);
-    setFeedback(null);
-
-    try {
-      const result = await createOT.mutateAsync({
-        pedidoDetalleId: selected.line.id,
-        observaciones,
-      });
-
-      if (!result.exito) {
-        throw new Error(result.mensaje || "No se pudo generar la orden de trabajo.");
-      }
-
-      setFeedback({
-        kind: "success",
-        text: `${result.numero_orden ?? "La OT"} fue generada correctamente para ${productName(selected.line)}.`,
-      });
-      closePreview();
-    } catch (requestError) {
-      setFeedback({ kind: "error", text: errorText(requestError) });
-    } finally {
-      setConfirming(false);
-    }
-  };
+  ) => setSelected({ pedido, line });
 
   if (!canManage) {
     return (
@@ -263,7 +181,7 @@ export default function OrdenesTrabajoPage() {
     <main className="mx-auto w-full max-w-[1500px] space-y-5 text-foreground">
       <PageHeader
         title="Órdenes de trabajo"
-        subtitle="Revisa el requerimiento de cada producto y genera su orden de producción individualmente."
+        subtitle="Revisa y ajusta los parámetros técnicos de cada producto antes de generar su PDF de fabricación."
         breadcrumb={[
           { label: "Producción" },
           { label: "Órdenes de trabajo" },
@@ -281,18 +199,6 @@ export default function OrdenesTrabajoPage() {
           </Button>
         }
       />
-
-      {feedback && (
-        <div
-          role={feedback.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg border p-3 text-sm ${feedback.kind === "error"
-              ? "border-destructive/30 bg-destructive/5 text-destructive"
-              : "border-emerald-200 bg-emerald-50 text-emerald-800"
-            }`}
-        >
-          {feedback.text}
-        </div>
-      )}
 
       {isError && (
         <div
@@ -412,7 +318,7 @@ export default function OrdenesTrabajoPage() {
                           className="w-full sm:w-auto"
                         >
                           <Eye className="h-4 w-4" />
-                          Revisar requerimiento
+                          Revisar datos técnicos
                         </Button>
                       </div>
                     </article>
@@ -467,19 +373,10 @@ export default function OrdenesTrabajoPage() {
                           {line.cantidad} {line.unidad_comercial}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          OT generada
-                        </span>
-                        <Button
-                          variant="outline"
-                          onClick={() => void openPreview(pedido, line)}
-                        >
-                          <Eye className="h-4 w-4" />
-                          Ver OT
-                        </Button>
-                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        OT generada
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -490,125 +387,11 @@ export default function OrdenesTrabajoPage() {
       )}
 
       {selected && (
-        <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-3 sm:p-6"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closePreview();
-          }}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="preview-title"
-            className="flex max-h-[95vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl"
-          >
-            <header className="flex items-start justify-between gap-3 border-b border-border p-4">
-              <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-wide text-primary">
-                  Pedido {selected.pedido.pedido.numero}
-                </p>
-                <h2
-                  id="preview-title"
-                  className="mt-1 truncate text-lg font-semibold"
-                >
-                  {productName(selected.line)}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {productCode(selected.line)} · Detalle #{selected.line.id}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closePreview}
-                aria-label="Cerrar previsualización"
-                className="rounded-md p-2 text-muted-foreground hover:bg-muted"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </header>
-
-            <div className="min-h-0 flex-1 overflow-auto p-4">
-              {previewLoading && (
-                <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-                  <LoaderCircle className="h-5 w-5 animate-spin" />
-                  Generando previsualización…
-                </div>
-              )}
-              {previewError && (
-                <div
-                  role="alert"
-                  className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
-                >
-                  No se pudo generar el PDF. {previewError}
-                </div>
-              )}
-              {previewUrl && (
-                <iframe
-                  title={`Requerimiento del producto ${productName(selected.line)}`}
-                  src={previewUrl}
-                  className="h-[55vh] w-full rounded-md border border-border"
-                />
-              )}
-              {!previewLoading && !previewError && !previewUrl && (
-                <div className="py-12 text-center text-sm text-muted-foreground">
-                  <FileText className="mx-auto mb-2 h-7 w-7" />
-                  No hay una previsualización disponible.
-                </div>
-              )}
-              {!selected.line.produccion_asociada && (
-                <label className="mt-4 block space-y-1 text-sm">
-                  <span className="font-medium">
-                    Observaciones para la OT (opcional)
-                  </span>
-                  <textarea
-                    value={observaciones}
-                    onChange={(event) => setObservaciones(event.target.value)}
-                    rows={2}
-                    maxLength={2000}
-                    placeholder="Añade una indicación para producción…"
-                    className="w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary"
-                  />
-                </label>
-              )}
-            </div>
-
-            <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4">
-              <p className="text-xs text-muted-foreground">
-                {selected.line.produccion_asociada
-                  ? "Esta OT ya fue generada. El documento muestra su número correlativo definitivo."
-                  : "La OT se creará únicamente al confirmar. La previsualización no guarda ni genera órdenes."}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={closePreview}
-                  disabled={confirming}
-                >
-                  Cerrar
-                </Button>
-                {!selected.line.produccion_asociada && (
-                  <Button
-                    onClick={() => void handleCreate()}
-                    disabled={
-                      !previewUrl ||
-                      previewLoading ||
-                      confirming ||
-                      createOT.isPending
-                    }
-                  >
-                    {confirming || createOT.isPending ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    Confirmar y generar OT
-                  </Button>
-                )}
-              </div>
-            </footer>
-          </section>
-        </div>
+        <OrdenTrabajoFormulario
+          pedido={selected.pedido}
+          line={selected.line}
+          onClose={closePreview}
+        />
       )}
     </main>
   );

@@ -26,9 +26,14 @@ export const ordenesTrabajoApi = {
     })));
   },
 
-  previsualizarRequerimiento: (pedidoDetalleId: number): Promise<Blob> =>
-    api.get<Blob>(
+  previsualizarRequerimiento: (
+    pedidoDetalleId: number,
+    datosRevision: Record<string, string | boolean>,
+    observaciones = "",
+  ): Promise<Blob> =>
+    api.post<Blob>(
       `/comercial/pedidos-detalles/${pedidoDetalleId}/pdf-requerimiento/`,
+      { datos_revision: datosRevision, observaciones },
       { config: { responseType: "blob" } },
     ),
 
