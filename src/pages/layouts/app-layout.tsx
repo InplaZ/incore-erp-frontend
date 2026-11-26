@@ -35,6 +35,12 @@ export function AppLayout() {
     if (!notification.read) markRead.mutate(Number(notification.id));
     if (notification.entityType === "revision_tecnica" && notification.entityId) {
       navigate(`/produccion/revisiones-tecnicas?revision=${notification.entityId}`);
+    } else if (
+      notification.entityType === "pedido" &&
+      notification.entityId &&
+      notification.title.toLowerCase().includes("generar órdenes de trabajo")
+    ) {
+      navigate("/produccion/ordenes-trabajo");
     } else if (notification.entityType === "pedido" && notification.entityId) {
       navigate(`/pedido?pedido=${notification.entityId}`);
     }
@@ -58,7 +64,11 @@ export function AppLayout() {
    * Convertimos NavigationItem a la interfaz
    * mínima que entiende Sidebar.
    */
-  const sidebarItems: SidebarItem[] = navigationItems.map((item) => ({
+  const visibleNavigationItems = navigationItems.filter((item) =>
+    !item.requiredRoles || roles.some((role) => item.requiredRoles?.includes(role.name)),
+  );
+
+  const sidebarItems: SidebarItem[] = visibleNavigationItems.map((item) => ({
     id: item.id,
     label: item.label,
     icon: item.icon,
@@ -77,7 +87,7 @@ export function AppLayout() {
         expandIcon={<ChevronLeft className="h-5 w-5 rotate-180" />}
         header={<SidebarBrand />}
         renderItem={(sidebarItem, context) => {
-          const navigationItem = navigationItems.find(
+          const navigationItem = visibleNavigationItems.find(
             (item) => item.id === sidebarItem.id,
           );
 

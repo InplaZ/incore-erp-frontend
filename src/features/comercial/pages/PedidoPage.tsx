@@ -102,11 +102,10 @@ export default function PedidoPage() {
       setApprovalPedidoId(null);
       setApprovalPedido(null);
 
-      if (result.flujo_directo_produccion) {
-        const cantidad = result.cantidad_ordenes_produccion ?? 0;
+      if (result.estado === "habilitado_produccion") {
         setConfirmationFeedback({
           kind: "success",
-          message: `${pedido.numero} fue confirmado correctamente. Se generaron ${cantidad} órdenes de producción.`,
+          message: `${pedido.numero} fue confirmado comercialmente y quedó habilitado para producción. El Jefe de Producción podrá revisar cada producto y generar sus órdenes de trabajo individualmente.`,
         });
         return;
       }

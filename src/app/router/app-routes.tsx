@@ -37,6 +37,7 @@ const ProductosPage = lazy(
 
 const WipPage = lazy(() => import("../../features/produccion/WipPage"));
 const RevisionTecnicaPage = lazy(() => import("../../features/produccion/RevisionTecnicaPage"));
+const OrdenesTrabajoPage = lazy(() => import("@/features/produccion/OrdenesTrabajoPage"));
 
 // Error
 const NotFoundPage = lazy(
@@ -97,6 +98,10 @@ export const appRoutes: AppRoute[] = [
       {
         path: "/produccion/revisiones-tecnicas",
         element: <RevisionTecnicaPage />,
+      },
+      {
+        path: "/produccion/ordenes-trabajo",
+        element: <OrdenesTrabajoPage />,
       },
       {
         path: "/cotizador",

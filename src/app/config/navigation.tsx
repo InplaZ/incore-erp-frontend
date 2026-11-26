@@ -1,4 +1,4 @@
-import { Home, PanelsTopLeft, BriefcaseBusiness, Package, UserPlus2, PhoneCallIcon, ShoppingCart, Workflow, Factory, CalculatorIcon, HandCoins } from "lucide-react";
+import { Home, PanelsTopLeft, BriefcaseBusiness, Package, UserPlus2, PhoneCallIcon, ShoppingCart, Workflow, Factory, CalculatorIcon, HandCoins, ClipboardList } from "lucide-react";
 
 import type { SidebarItem } from "../../components/navigation";
 
@@ -18,6 +18,7 @@ export interface NavigationItem extends SidebarItem {
    * Icono de Lucide utilizado por la aplicación.
    */
   icon?: React.ReactNode;
+  requiredRoles?: string[];
 }
 
 /**
@@ -69,6 +70,13 @@ export const navigationItems: NavigationItem[] = [
     label: "Revisión técnica",
     href: "/produccion/revisiones-tecnicas",
     icon: <Factory className="size-5" />,
+  },
+  {
+    id: "ordenes-trabajo",
+    label: "Órdenes de trabajo",
+    href: "/produccion/ordenes-trabajo",
+    icon: <ClipboardList className="size-5" />,
+    requiredRoles: ["Jefe de Producción"],
   },
   {
     id: "productos",
