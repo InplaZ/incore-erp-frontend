@@ -467,10 +467,19 @@ export default function OrdenesTrabajoPage() {
                           {line.cantidad} {line.unidad_comercial}
                         </p>
                       </div>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        OT generada
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          OT generada
+                        </span>
+                        <Button
+                          variant="outline"
+                          onClick={() => void openPreview(pedido, line)}
+                        >
+                          <Eye className="h-4 w-4" />
+                          Ver OT
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -547,25 +556,28 @@ export default function OrdenesTrabajoPage() {
                   No hay una previsualización disponible.
                 </div>
               )}
-              <label className="mt-4 block space-y-1 text-sm">
-                <span className="font-medium">
-                  Observaciones para la OT (opcional)
-                </span>
-                <textarea
-                  value={observaciones}
-                  onChange={(event) => setObservaciones(event.target.value)}
-                  rows={2}
-                  maxLength={2000}
-                  placeholder="Añade una indicación para producción…"
-                  className="w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary"
-                />
-              </label>
+              {!selected.line.produccion_asociada && (
+                <label className="mt-4 block space-y-1 text-sm">
+                  <span className="font-medium">
+                    Observaciones para la OT (opcional)
+                  </span>
+                  <textarea
+                    value={observaciones}
+                    onChange={(event) => setObservaciones(event.target.value)}
+                    rows={2}
+                    maxLength={2000}
+                    placeholder="Añade una indicación para producción…"
+                    className="w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary"
+                  />
+                </label>
+              )}
             </div>
 
             <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4">
               <p className="text-xs text-muted-foreground">
-                La OT se creará únicamente al confirmar. La previsualización no
-                guarda ni genera órdenes.
+                {selected.line.produccion_asociada
+                  ? "Esta OT ya fue generada. El documento muestra su número correlativo definitivo."
+                  : "La OT se creará únicamente al confirmar. La previsualización no guarda ni genera órdenes."}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -573,24 +585,26 @@ export default function OrdenesTrabajoPage() {
                   onClick={closePreview}
                   disabled={confirming}
                 >
-                  Cancelar
+                  Cerrar
                 </Button>
-                <Button
-                  onClick={() => void handleCreate()}
-                  disabled={
-                    !previewUrl ||
-                    previewLoading ||
-                    confirming ||
-                    createOT.isPending
-                  }
-                >
-                  {confirming || createOT.isPending ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4" />
-                  )}
-                  Confirmar y generar OT
-                </Button>
+                {!selected.line.produccion_asociada && (
+                  <Button
+                    onClick={() => void handleCreate()}
+                    disabled={
+                      !previewUrl ||
+                      previewLoading ||
+                      confirming ||
+                      createOT.isPending
+                    }
+                  >
+                    {confirming || createOT.isPending ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    Confirmar y generar OT
+                  </Button>
+                )}
               </div>
             </footer>
           </section>
