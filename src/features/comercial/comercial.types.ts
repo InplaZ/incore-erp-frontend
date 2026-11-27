@@ -1482,6 +1482,10 @@ export interface PedidoDetalleVista {
     color_bolsa: string;
     impresion: boolean;
     color_impresion: string[];
+    metros: string | null;
+    medio: string;
+    refilado: string;
+    laminado: string;
   } | null;
   especificacion_producto_solicitado_version: {
     id: number;

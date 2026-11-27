@@ -115,13 +115,17 @@ function buildInitialValues(line: PedidoDetalleVista): DatosRevisionOT {
   const values: DatosRevisionOT = {
     material: getVersion("material", product?.material ?? requested?.material),
     color_bolsa: getVersion("color_bolsa", product?.color_bolsa),
-    metros: getVersion("metros"),
+    metros: getVersion("metros", product?.metros),
     capas: getVersion("capas", product?.capas ?? requested?.capas),
     micraje: getVersion("micraje", product?.micraje ?? requested?.micraje),
-    medio: getVersion("medio"),
-    refilado: getVersion("refilado"),
-    laminado: getVersion("laminado"),
-    impresion: Boolean(snapshotValue(version, "impresion") ?? product?.impresion ?? requested?.impresion),
+    medio: getVersion("medio", product?.medio),
+    refilado: getVersion("refilado", product?.refilado),
+    laminado: getVersion("laminado", product?.laminado),
+    impresion: valorSnapshot(
+      snapshotValue(version, "impresion") ??
+      product?.impresion ??
+      requested?.impresion
+    ),
     cara_impresion: getVersion("cara_impresion"),
     tipo_impresion: getVersion("tipo_impresion"),
     tratamiento_impresion: getVersion("tratamiento_impresion", requested?.tratamiento_impresion),
@@ -138,7 +142,7 @@ function buildInitialValues(line: PedidoDetalleVista): DatosRevisionOT {
     ancho_doblado: valorSnapshot(snapshotValue(bag, "ancho_doblado")),
     largo_desdoblado: valorSnapshot(snapshotValue(bag, "largo_desdoblado")),
     largo_doblado: valorSnapshot(snapshotValue(bag, "largo_doblado")),
-    fuelle: Boolean(snapshotValue(bag, "fuelle")),
+    fuelle: valorSnapshot(snapshotValue(bag, "fuelle")),
     fuelle_izquierdo: valorSnapshot(snapshotValue(bag, "fuelle_izquierdo")),
     fuelle_derecho: valorSnapshot(snapshotValue(bag, "fuelle_derecho")),
     fuelle_superior: valorSnapshot(snapshotValue(bag, "fuelle_superior")),
@@ -168,8 +172,8 @@ function buildInitialValues(line: PedidoDetalleVista): DatosRevisionOT {
   const hasBag = Boolean(snapshot?.especificacion_bolsa);
   const extrusionWidth = hasBag
     ? (values.fuelle
-        ? (values.ancho_doblado || values.ancho_desdoblado)
-        : (values.ancho_desdoblado || values.ancho_doblado))
+      ? (values.ancho_doblado || values.ancho_desdoblado)
+      : (values.ancho_desdoblado || values.ancho_doblado))
     : values.ancho_bobina;
   values.ancho_requerido_extrusion = extrusionWidth || "";
   return values;
@@ -180,7 +184,11 @@ function Section({ title, description, fields, values, onChange }: SectionDefini
   onChange: (key: string, value: string | boolean) => void;
 }) {
   const visibleFields = fields.filter((field) => {
-    if (field.key.startsWith("fuelle_") && !field.key.endsWith("_bobina") && values.fuelle !== true) {
+    if (
+      field.key.startsWith("fuelle_") &&
+      !field.key.endsWith("_bobina") &&
+      values.fuelle === false
+    ) {
       return false;
     }
     return field.type === "boolean" || values[field.key] !== undefined;
@@ -196,15 +204,27 @@ function Section({ title, description, fields, values, onChange }: SectionDefini
           <label key={field.key} className="block min-w-0 space-y-1.5 text-sm">
             <span className="font-medium text-foreground">{field.label}</span>
             {field.type === "boolean" ? (
-              <span className="flex h-10 items-center gap-2 rounded-md border border-border px-3">
-                <input
-                  type="checkbox"
-                  checked={Boolean(values[field.key])}
-                  onChange={(event) => onChange(field.key, event.target.checked)}
-                  className="h-4 w-4 accent-primary"
-                />
-                <span className="text-sm text-muted-foreground">{values[field.key] ? "Sí" : "No"}</span>
-              </span>
+              <select
+                value={
+                  values[field.key] === true
+                    ? "true"
+                    : values[field.key] === false
+                      ? "false"
+                      : ""
+                }
+                onChange={(event) => {
+                  const value = event.target.value;
+                  onChange(
+                    field.key,
+                    value === "true" ? true : value === "false" ? false : ""
+                  );
+                }}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+              >
+                <option value="">Sin información</option>
+                <option value="true">Sí</option>
+                <option value="false">No</option>
+              </select>
             ) : (
               <span className="flex h-10 items-center rounded-md border border-border bg-background focus-within:border-primary">
                 <input
@@ -235,7 +255,8 @@ export default function OrdenTrabajoFormulario({ pedido, line, onClose }: Props)
   const snapshot = line.especificacion_snapshot;
   const isBag = Boolean(snapshot?.especificacion_bolsa);
   const isRoll = Boolean(snapshot?.especificacion_bobina);
-  const isPrinted = Boolean(values.impresion);
+  const isPrinted = values.impresion === true;
+  const showFlexografia = values.impresion !== false;
   const productName = line.producto_version?.nombre || snapshot?.nombre || `Producto #${line.id}`;
   const productCode = line.producto_version?.codigo || snapshot?.codigo || `DET-${line.id}`;
   const filename = `Requerimiento_${pedido.pedido.numero}_${productCode}.pdf`;
@@ -294,15 +315,23 @@ export default function OrdenTrabajoFormulario({ pedido, line, onClose }: Props)
             </div>
 
             <Section title="Extrusión" description="Revisa los parámetros de material y dimensiones requeridas para extrusión." fields={extrusionFields} values={values} onChange={handleChange} />
-            {isPrinted && <Section title="Flexografía" description="Parámetros de impresión. Esta sección aparece cuando el producto requiere impresión." fields={flexografiaFields} values={values} onChange={handleChange} />}
+            {showFlexografia && (
+              <Section
+                title="Flexografía"
+                description="Parámetros de impresión. Revisa o completa los datos cuando corresponda."
+                fields={flexografiaFields}
+                values={values}
+                onChange={handleChange}
+              />
+            )}
             {isBag && !values.fuelle && (
               Number(values.ancho_doblado) !== Number(values.ancho_desdoblado) ||
               Number(values.largo_doblado) !== Number(values.largo_desdoblado)
             ) && (
-              <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                Las dimensiones dobladas no coinciden con las desdobladas aunque el producto indica que no tiene fuelle. Revisa estos valores antes de generar el PDF.
-              </div>
-            )}
+                <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                  Las dimensiones dobladas no coinciden con las desdobladas aunque el producto indica que no tiene fuelle. Revisa estos valores antes de generar el PDF.
+                </div>
+              )}
             {isBag && <Section title="Confección · Bolsa" description="Dimensiones y acabados de confección." fields={bolsaFields} values={values} onChange={handleChange} />}
             {isRoll && <Section title="Bobina" description="Dimensiones y configuración de la bobina." fields={bobinaFields} values={values} onChange={handleChange} />}
 

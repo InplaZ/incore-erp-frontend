@@ -1807,7 +1807,7 @@ export default function ProductoComercialWizardModal({
                 options: ["fondo", "lateral"],
               })}
               {field("Pestaña", "pestana", {
-                options: ["sin_pestana", "con_pestana"],
+                options: ["sin_pestana", "superior", "inferior", "ambas"],
               })}
             </div>
           </div>
